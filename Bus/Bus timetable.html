@@ -30,6 +30,88 @@
             border-radius: 4px;
             margin-left: 8px;
         }
+        /* Table Styles */
+        .time-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        .time-table th {
+            background-color: #f0fdfa;
+            color: #0f766e;
+            padding: 10px;
+            font-size: 0.9rem;
+            border-bottom: 2px solid #ccfbf1;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        .time-table td {
+            padding: 12px 8px;
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: middle;
+        }
+        .hour-cell {
+            background-color: #f9fafb;
+            font-weight: bold;
+            text-align: center;
+            width: 60px;
+            font-family: monospace;
+            font-size: 1.1rem;
+            color: #374151;
+            border-right: 1px solid #e5e7eb;
+        }
+        .minute-cell {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .minute-tag {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 1rem;
+            color: #374151;
+            background-color: #f3f4f6;
+            transition: all 0.2s;
+        }
+        .minute-tag.past {
+            color: #9ca3af;
+            background-color: transparent;
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+        .minute-tag.next {
+            background-color: #14b8a6;
+            color: white;
+            font-weight: bold;
+            transform: scale(1.1);
+            box-shadow: 0 2px 4px rgba(20, 184, 166, 0.3);
+        }
+        .minute-tag.employee {
+            border: 1px solid #fcd34d;
+        }
+        .emp-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: #f59e0b;
+            border-radius: 50%;
+            margin-left: 4px;
+        }
+        .emp-text {
+            font-size: 0.6rem;
+            color: #d97706;
+            margin-left: 2px;
+            font-weight: normal;
+        }
+        .minute-tag.next .emp-text {
+            color: #fef3c7;
+        }
+        
         /* Custom scrollbar for webkit */
         ::-webkit-scrollbar {
             width: 6px;
@@ -106,14 +188,14 @@
         </div>
 
         <!-- Schedule List -->
-        <div id="schedule-container" class="flex-1 overflow-y-auto p-2 space-y-1 pb-safe">
+        <div id="schedule-container" class="flex-1 overflow-y-auto pb-safe bg-white">
             <!-- Dynamic Content -->
         </div>
 
         <!-- Footer Info -->
         <div class="bg-gray-100 p-2 text-center text-xs text-gray-400 shrink-0 border-t">
             <p>※ 時間僅供參考，請提早候車</p>
-            <p>※ 標示 <span class="bg-amber-500 text-white px-1 rounded text-[10px]">員</span> 為員工專車</p>
+            <p>※ <span class="text-amber-600 font-bold">員</span> 代表員工專車</p>
         </div>
     </main>
 
@@ -147,7 +229,7 @@
                     "20:20", "20:40", "21:00", "21:30", "22:00", "22:30", "23:00", "23:30", "24:05", "24:35"
                 ],
                 toLover: [
-                    "06:40", "07:00", "07:10(員工專車)", "07:20", "07:30", "07:40", "07:55(員工專車)", "08:00", "08:05(員工專車)", "08:20", 
+                    "06:40", "07:00", "07:10(員工專車)", "07:20", "07:30(員工專車)", "07:40", "07:55(員工專車)", "08:00", "08:05(員工專車)", "08:20", 
                     "08:40", "09:00", "09:20", "09:50", "10:20", "10:50", "11:20", "11:50", "12:20", "12:50", 
                     "13:20", "13:50", "14:20", "14:50", "15:20", "15:40", "16:00", "16:20", "16:40", "17:05", 
                     "17:20", "17:40", "18:00", "18:20", "18:40", "19:00", "19:20", "19:40", "20:00", "20:20", 
@@ -263,55 +345,97 @@
 
             container.innerHTML = '';
 
-            // Find next bus index for scrolling
-            let nextBusIndex = -1;
+            // Group by Hour
+            const grouped = {};
+            // Track next bus to scroll to
+            let nextBusRowId = null;
+            let foundNext = false;
 
             listData.forEach((bus, index) => {
-                const row = document.createElement('div');
+                const key = bus.h; 
                 
-                // Determine if this bus is in the past or future
+                if (!grouped[key]) grouped[key] = [];
+                
+                // Determine status
                 let isPast = false;
                 if (bus.totalMinutes < currentMinutes && bus.h < 24) {
                     isPast = true;
                 }
-                // Handle late night edge case: Current time 00:10, looking at 24:xx bus
                 if (now.getHours() === 0 && bus.h >= 24) {
                     isPast = (currentMinutes + 1440) > bus.totalMinutes; 
                 }
 
-                // Check if this is the "next" bus
-                const isNext = (nextBusIndex === -1 && !isPast);
-                if (isNext) nextBusIndex = index;
-
-                // Modified for compactness: py-2 instead of p-3, rounded instead of rounded-lg
-                row.className = `flex justify-between items-center py-2 px-3 rounded border border-gray-100 ${isNext ? 'highlight-row shadow-sm' : 'bg-white hover:bg-gray-50'} ${isPast ? 'opacity-50 grayscale' : ''}`;
-                
-                let badge = bus.isEmployee ? `<span class="employee-badge">員工專車</span>` : '';
-                let statusText = '';
-                
-                if (isNext) {
-                    statusText = `<span class="text-xs font-bold text-teal-600">即將發車</span>`;
+                let isNext = false;
+                if (!foundNext && !isPast) {
+                    isNext = true;
+                    foundNext = true;
+                    nextBusRowId = `row-${key}`;
                 }
 
-                // Modified for compactness: text-base instead of text-lg
-                row.innerHTML = `
-                    <div class="flex items-center">
-                        <span class="text-base font-mono font-bold ${isNext ? 'text-teal-800' : 'text-gray-700'}">${bus.rawTime}</span>
-                        ${badge}
-                    </div>
-                    <div>
-                        ${statusText}
-                    </div>
-                `;
-                container.appendChild(row);
+                grouped[key].push({
+                    ...bus,
+                    isPast,
+                    isNext
+                });
             });
 
-            // Scroll to next bus if possible
-            if (nextBusIndex > 2) { 
-                 const rows = container.children;
-                 if (rows[nextBusIndex]) {
-                     rows[nextBusIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                 }
+            // Build Table
+            const table = document.createElement('table');
+            table.className = 'time-table';
+            
+            const thead = document.createElement('thead');
+            thead.innerHTML = `<tr><th class="w-[60px] text-center">時</th><th class="text-left pl-4">分</th></tr>`;
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            
+            // Sort keys to ensure order (6, 7... 24)
+            const sortedKeys = Object.keys(grouped).sort((a,b) => Number(a) - Number(b));
+
+            sortedKeys.forEach(key => {
+                const buses = grouped[key];
+                const tr = document.createElement('tr');
+                tr.id = `row-${key}`;
+                
+                // Hour Cell (Handle 24 as 00)
+                const displayHour = key >= 24 ? `00` : String(key).padStart(2, '0');
+                
+                // Minute Cells
+                let minutesHTML = buses.map(bus => {
+                    const minStr = String(bus.m).padStart(2, '0');
+                    let classes = 'minute-tag';
+                    if (bus.isPast) classes += ' past';
+                    if (bus.isNext) classes += ' next';
+                    if (bus.isEmployee) classes += ' employee';
+                    
+                    let content = minStr;
+                    if (bus.isEmployee) {
+                        content += `<span class="emp-text">員</span>`;
+                    }
+
+                    const idAttr = bus.isNext ? 'id="target-bus"' : '';
+
+                    return `<span class="${classes}" ${idAttr}>${content}</span>`;
+                }).join('');
+
+                tr.innerHTML = `
+                    <td class="hour-cell">${displayHour}</td>
+                    <td class="minute-cell">${minutesHTML}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(tbody);
+            container.appendChild(table);
+
+            // Scroll to next bus
+            if (nextBusRowId) {
+                setTimeout(() => {
+                    const target = document.getElementById('target-bus') || document.getElementById(nextBusRowId);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 100);
             }
         }
 
@@ -381,22 +505,18 @@
         // --- Lifecycle ---
         
         document.addEventListener('DOMContentLoaded', () => {
-            // Set initial state based on real day
             state.dayType = detectDayType();
             
-            // Initial Renders
             updateDirectionUI();
             updateDayTypeUI();
             updateScheduleList();
             updateNextBus();
             updateRealTimeClock();
 
-            // High frequency interval for clock (1s)
             setInterval(() => {
                 updateRealTimeClock();
             }, 1000);
 
-            // Medium frequency for bus logic (30s)
             setInterval(() => {
                 updateScheduleList(); 
                 updateNextBus();      
