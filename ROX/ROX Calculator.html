@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>ROX Index 計算器</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- React 及 ReactDOM CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC",
+        "Noto Sans TC", sans-serif;
+      background: #f5f7fb;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      padding: 20px 24px 24px;
+    }
+    h1 {
+      font-size: 22px;
+      margin: 0 0 8px 0;
+      text-align: center;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #666;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .field-group {
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    .hint {
+      font-size: 11px;
+      color: #777;
+      margin-top: 2px;
+    }
+    .error {
+      font-size: 11px;
+      color: #c62828;
+      margin-top: 3px;
+    }
+    .result-card {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #f0f4ff;
+    }
+    .rox-value {
+      font-size: 26px;
+      font-weight: 600;
+    }
+    .rox-label {
+      font-size: 13px;
+      color: #555;
+    }
+    .status {
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .status-low {
+      background: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #a5d6a7;
+    }
+    .status-mid {
+      background: #fff8e1;
+      color: #f57f17;
+      border: 1px solid #ffe082;
+    }
+    .status-high {
+      background: #ffebee;
+      color: #c62828;
+      border: 1px solid #ef9a9a;
+    }
+    .sf-info {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #555;
+    }
+    .ref {
+      margin-top: 12px;
+      font-size: 11px;
+      color: #888;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script>
+    const { useState } = React;
+
+    function classifyROX(rox) {
+      if (isNaN(rox) || !isFinite(rox)) return { level: "N/A", text: "請輸入完整數值以計算。", className: "" };
+
+      // 這裡給一個簡化、時間點未分層的風險分級：
+      // 參考：ROX ≥4.88 成功機率較高；<2.85、<3.47 等與插管風險增加相關。[web:24][web:25][web:26][web:28][web:29][web:31][web:36]
+      if (rox >= 4.88) {
+        return {
+          level: "低風險",
+          text: "ROX ≥ 4.88：治療成功機率高，插管風險相對較低（仍需依臨床整體評估）。",
+          className: "status status-low"
+        };
+      } else if (rox >= 3.5) {
+        return {
+          level: "中等風險",
+          text: "ROX 3.5–4.88：需密切觀察，視病人變化與時間點評估是否升級治療。",
+          className: "status status-mid"
+        };
+      } else if (rox >= 2.85) {
+        return {
+          level: "高風險",
+          text: "ROX 2.85–3.5：插管風險較高，應及早與醫療團隊討論氣管插管或其他介入。",
+          className: "status status-high"
+        };
+      } else {
+        return {
+          level: "極高風險",
+          text: "ROX < 2.85：強烈暗示高失敗／插管風險，請立即依照臨床情況考慮升級呼吸支持。",
+          className: "status status-high"
+        };
+      }
+    }
+
+    function App() {
+      const [spo2, setSpo2] = useState("");
+      const [fio2, setFio2] = useState("");
+      const [rr, setRr] = useState("");
+      const [errors, setErrors] = useState({});
+
+      const spo2Num = parseFloat(spo2);
+      const fio2Num = parseFloat(fio2);
+      const rrNum = parseFloat(rr);
+
+      let sfRatio = null;
+      let rox = null;
+
+      const newErrors = {};
+      if (spo2 !== "" && (spo2Num <= 0 || spo2Num > 100)) {
+        newErrors.spo2 = "SpO₂ 應介於 0–100。";
+      }
+      if (fio2 !== "" && (fio2Num <= 0 || fio2Num > 100)) {
+        newErrors.fio2 = "FiO₂% 應介於 0–100。";
+      }
+      if (rr !== "" && (rrNum <= 0 || rrNum > 80)) {
+        newErrors.rr = "RR 應為合理呼吸次數（1–80 次/分）。";
+      }
+      React.useEffect(() => setErrors(newErrors), [spo2, fio2, rr]);
+
+      if (!isNaN(spo2Num) && !isNaN(fio2Num) && fio2Num > 0) {
+        // 使用百分比直接相除，等同於 (SpO2/FiO2)/RR 但 FiO2 以 %
+        sfRatio = spo2Num / fio2Num;
+      }
+      if (sfRatio !== null && !isNaN(rrNum) && rrNum > 0) {
+        rox = sfRatio / rrNum;
+      }
+
+      const risk = classifyROX(rox);
+
+      return (
+        React.createElement("div", { className: "container" },
+          React.createElement("h1", null, "ROX Index 計算器"),
+          React.createElement("div", { className: "subtitle" },
+            "公式：ROX = (SpO₂ / FiO₂) / RR，FiO₂ 以百分比輸入（如 30%）。"
+          ),
+
+          React.createElement("div", { className: "field-group" },
+            React.createElement("label", null, "SpO₂ (%)"),
+            React.createElement("input", {
+              type: "number",
+              value: spo2,
+              onChange: e => setSpo2(e.target.value),
+              placeholder: "例如 92"
+            }),
+            React.createElement("div", { className: "hint" }, "手指脈氧監測到的 SpO₂ 百分比。"),
+            errors.spo2 && React.createElement("div", { className: "error" }, errors.spo2)
+          ),
+
+          React.createElement("div", { className: "field-group" },
+            React.createElement("label", null, "FiO₂ (%)"),
+            React.createElement("input", {
+              type: "number",
+              value: fio2,
+              onChange: e => setFio2(e.target.value),
+              placeholder: "例如 30（代表 FiO₂ = 0.30）"
+            }),
+            React.createElement("div", { className: "hint" }, "請直接輸入百分比數值，例如 30 代表 FiO₂ = 0.30。"),
+            errors.fio2 && React.createElement("div", { className: "error" }, errors.fio2)
+          ),
+
+          React.createElement("div", { className: "field-group" },
+            React.createElement("label", null, "RR（呼吸次數 / 分）"),
+            React.createElement("input", {
+              type: "number",
+              value: rr,
+              onChange: e => setRr(e.target.value),
+              placeholder: "例如 24"
+            }),
+            React.createElement("div", { className: "hint" }, "每分鐘呼吸次數。"),
+            errors.rr && React.createElement("div", { className: "error" }, errors.rr)
+          ),
+
+          React.createElement("div", { className: "result-card" },
+            React.createElement("div", { className: "rox-label" }, "計算結果："),
+            React.createElement("div", { className: "rox-value" },
+              rox !== null && isFinite(rox) ? rox.toFixed(2) : "--"
+            ),
+            sfRatio !== null && isFinite(sfRatio) && React.createElement("div", { className: "sf-info" },
+              "SpO₂/FiO₂ 比值：約 ", sfRatio.toFixed(1)
+            ),
+            React.createElement("div", { className: risk.className }, risk.level + "｜" + risk.text)
+          ),
+
+          React.createElement("div", { className: "ref" },
+            "說明：本工具僅供臨床教學與初步評估參考，不可取代醫師專業判斷或醫療指引。"
+          )
+        )
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(React.createElement(App));
+  </script>
+</body>
+</html>
+
