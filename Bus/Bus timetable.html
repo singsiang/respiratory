@@ -141,33 +141,36 @@
     <main class="flex-1 flex flex-col max-w-md mx-auto w-full overflow-hidden bg-white shadow-xl sm:border-x sm:border-gray-200">
         
         <!-- Day Type Selector -->
-        <div class="flex border-b border-gray-200 shrink-0 bg-gray-50">
-            <button onclick="setDayType('weekday')" id="tab-weekday" class="flex-1 py-3 text-sm font-medium border-b-2 border-teal-500 text-teal-600 hover:bg-gray-100 transition-colors">
+        <div class="flex border-b border-gray-200 shrink-0 bg-gray-100">
+            <button onclick="setDayType('weekday')" id="tab-weekday" class="flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:bg-gray-50 transition-all duration-200">
                 週一至週五
             </button>
-            <button onclick="setDayType('saturday')" id="tab-saturday" class="flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:bg-gray-100 transition-colors">
+            <button onclick="setDayType('saturday')" id="tab-saturday" class="flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:bg-gray-50 transition-all duration-200">
                 週六
             </button>
-            <button onclick="setDayType('sunday')" id="tab-sunday" class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:bg-gray-100 transition-colors flex flex-col items-center justify-center leading-tight">
+            <button onclick="setDayType('sunday')" id="tab-sunday" class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:bg-gray-50 transition-all duration-200 flex flex-col items-center justify-center leading-tight">
                 <span>週日 / 國定假日</span>
-                <span class="text-[10px] text-amber-600 font-normal">※ 遇假日請點此</span>
+                <span class="text-[10px] opacity-70 font-normal">※ 遇假日請點此</span>
             </button>
         </div>
 
         <!-- Next Bus & Current Time Status Card -->
         <div class="p-4 bg-teal-50 border-b border-teal-100 shrink-0">
-            <div class="flex justify-between items-center">
+            <div class="flex justify-between items-start">
                 <!-- Next Bus Info -->
                 <div>
-                    <p class="text-xs text-teal-600 font-bold uppercase tracking-wide mb-1">下一班車</p>
-                    <h2 id="next-bus-time" class="text-3xl font-bold text-gray-800">--:--</h2>
-                    <p id="next-bus-countdown" class="text-sm text-gray-600 mt-1">計算中...</p>
+                    <div class="flex items-center gap-2 mb-1">
+                        <p class="text-xs text-teal-600 font-bold uppercase tracking-wide">下一班車</p>
+                        <span id="current-mode-badge" class="bg-teal-600 text-white text-[10px] px-1.5 py-0.5 rounded shadow-sm">平日班表</span>
+                    </div>
+                    <h2 id="next-bus-time" class="text-3xl font-bold text-gray-800 leading-none">--:--</h2>
+                    <p id="next-bus-countdown" class="text-sm text-gray-600 mt-2">計算中...</p>
                 </div>
                 <!-- Current Time Display -->
                 <div class="text-right">
                     <p class="text-xs text-teal-600/70 font-bold uppercase tracking-wide mb-1">現在時間</p>
-                    <h2 id="current-time-display" class="text-3xl font-bold text-teal-700/80 font-mono">--:--</h2>
-                    <p id="current-seconds" class="text-xs text-teal-400 font-mono">--</p>
+                    <h2 id="current-time-display" class="text-3xl font-bold text-teal-700/80 font-mono leading-none">--:--</h2>
+                    <p id="current-seconds" class="text-xs text-teal-400 font-mono mt-1">--</p>
                 </div>
             </div>
         </div>
@@ -308,14 +311,18 @@
         }
 
         function updateDayTypeUI() {
+            const badge = document.getElementById('current-mode-badge');
+            const labels = { 'weekday': '平日班表', 'saturday': '週六班表', 'sunday': '假日班表' };
+            badge.textContent = labels[state.dayType];
+
             ['weekday', 'saturday', 'sunday'].forEach(type => {
                 const btn = document.getElementById(`tab-${type}`);
                 if (state.dayType === type) {
-                    btn.classList.add('border-teal-500', 'text-teal-600');
-                    btn.classList.remove('border-transparent', 'text-gray-500');
+                    btn.classList.add('border-teal-500', 'text-teal-600', 'bg-white', 'font-bold');
+                    btn.classList.remove('border-transparent', 'text-gray-500', 'bg-gray-100');
                 } else {
-                    btn.classList.remove('border-teal-500', 'text-teal-600');
-                    btn.classList.add('border-transparent', 'text-gray-500');
+                    btn.classList.remove('border-teal-500', 'text-teal-600', 'bg-white', 'font-bold');
+                    btn.classList.add('border-transparent', 'text-gray-500', 'bg-gray-100');
                 }
             });
         }
