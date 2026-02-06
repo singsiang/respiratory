@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>呼吸器天數計算器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 28px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #999;
+            text-align: center;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            color: #555;
+            font-weight: 500;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        input[type="date"] {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        input[type="date"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .result-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            display: none;
+            animation: slideIn 0.5s ease;
+        }
+
+        .result-box.show {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .result-days {
+            color: white;
+            font-size: 48px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .result-text {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 16px;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 14px;
+            border-radius: 8px;
+            border-left: 4px solid #c33;
+            display: none;
+            font-size: 14px;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .info {
+            background: #f0f4ff;
+            color: #333;
+            padding: 12px 14px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            font-size: 13px;
+            margin-top: 20px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>呼吸器天數計算器</h1>
+        <p class="subtitle">計算使用天數</p>
+
+        <div class="form-group">
+            <label for="startDate">初始呼吸器日期：</label>
+            <input 
+                type="date" 
+                id="startDate" 
+                placeholder="選擇開始日期"
+            >
+        </div>
+
+        <div class="error" id="errorMsg"></div>
+
+        <div class="result-box" id="resultBox">
+            <div class="result-label">目前進度</div>
+            <div class="result-days" id="resultDays">0</div>
+            <div class="result-text">天</div>
+        </div>
+
+        <div class="info">
+            <strong>💡 提示：</strong>選擇開始使用呼吸器的日期，系統將自動計算到今天為止已使用的天數。
+        </div>
+    </div>
+
+    <script>
+        const startDateInput = document.getElementById('startDate');
+        const resultBox = document.getElementById('resultBox');
+        const resultDays = document.getElementById('resultDays');
+        const errorMsg = document.getElementById('errorMsg');
+
+        function calculateDays() {
+            const startDateStr = startDateInput.value;
+            
+            // 清除錯誤信息
+            errorMsg.classList.remove('show');
+            resultBox.classList.remove('show');
+
+            if (!startDateStr) {
+                return;
+            }
+
+            try {
+                // 解析日期（避免時區問題）
+                const [year, month, day] = startDateStr.split('-').map(Number);
+                const startDate = new Date(year, month - 1, day);
+
+                // 今天的日期（午夜時刻）
+                const today = new Date();
+                const todayAtMidnight = new Date(
+                    today.getFullYear(),
+                    today.getMonth(),
+                    today.getDate()
+                );
+
+                // 檢查開始日期是否在未來
+                if (startDate > todayAtMidnight) {
+                    errorMsg.textContent = '❌ 開始日期不能在未來';
+                    errorMsg.classList.add('show');
+                    return;
+                }
+
+                // 計算天數差
+                const diffMs = todayAtMidnight.getTime() - startDate.getTime();
+                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+                // 第一天算作「第 1 天」
+                const totalDays = diffDays + 1;
+
+                resultDays.textContent = totalDays;
+                resultBox.classList.add('show');
+            } catch (error) {
+                errorMsg.textContent = '❌ 日期格式錯誤，請重新選擇';
+                errorMsg.classList.add('show');
+            }
+        }
+
+        // 監聽日期輸入變化
+        startDateInput.addEventListener('change', calculateDays);
+        startDateInput.addEventListener('input', calculateDays);
+
+        // 頁面載入時，設定預設日期為 30 天前（示例）
+        window.addEventListener('load', function() {
+            const today = new Date();
+            const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+            const year = thirtyDaysAgo.getFullYear();
+            const month = String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0');
+            const day = String(thirtyDaysAgo.getDate()).padStart(2, '0');
+            startDateInput.value = `${year}-${month}-${day}`;
+            calculateDays();
+        });
+    </script>
+</body>
+</html>
