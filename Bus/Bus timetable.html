@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>基隆長庚接駁車時刻表 (2026)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -11,6 +11,8 @@
             font-family: 'Noto Sans TC', sans-serif;
             background-color: #f3f4f6;
             -webkit-tap-highlight-color: transparent;
+            /* 確保填滿整個動態視窗高度 */
+            height: 100dvh; 
         }
         .bus-card {
             transition: all 0.2s ease;
@@ -21,14 +23,6 @@
         .highlight-row {
             background-color: #ecfdf5;
             border-left: 4px solid #10b981;
-        }
-        .employee-badge {
-            background-color: #f59e0b;
-            color: white;
-            font-size: 0.75rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            margin-left: 8px;
         }
         /* Table Styles */
         .time-table {
@@ -94,14 +88,6 @@
         .minute-tag.employee {
             border: 1px solid #fcd34d;
         }
-        .emp-dot {
-            display: inline-block;
-            width: 6px;
-            height: 6px;
-            background-color: #f59e0b;
-            border-radius: 50%;
-            margin-left: 4px;
-        }
         .emp-text {
             font-size: 0.6rem;
             color: #d97706;
@@ -112,7 +98,6 @@
             color: #fef3c7;
         }
         
-        /* Custom scrollbar for webkit */
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -128,15 +113,15 @@
         }
     </style>
 </head>
-<body class="text-slate-800 h-screen flex flex-col overflow-hidden">
+<body class="text-slate-800 flex flex-col overflow-hidden">
 
     <!-- Header -->
-    <header class="bg-teal-600 text-white shadow-md z-10 shrink-0">
-        <div class="max-w-md mx-auto px-4 py-4">
+    <header class="bg-teal-600 text-white shadow-md z-10 shrink-0 pt-[env(safe-area-inset-top)]">
+        <div class="max-w-md mx-auto px-4 py-3">
             <h1 class="text-xl font-bold flex items-center justify-center gap-2">
                 <i class="fas fa-bus"></i> 基隆長庚接駁車
             </h1>
-            <p class="text-center text-teal-100 text-xs mt-1">2026/01/19 起適用</p>
+            <p class="text-center text-teal-100 text-xs mt-0.5">2026/01/19 起適用</p>
         </div>
         
         <!-- Direction Toggle -->
@@ -178,7 +163,7 @@
                     <h2 id="next-bus-time" class="text-3xl font-bold text-gray-800">--:--</h2>
                     <p id="next-bus-countdown" class="text-sm text-gray-600 mt-1">計算中...</p>
                 </div>
-                <!-- Current Time Display (Replaces Icon) -->
+                <!-- Current Time Display -->
                 <div class="text-right">
                     <p class="text-xs text-teal-600/70 font-bold uppercase tracking-wide mb-1">現在時間</p>
                     <h2 id="current-time-display" class="text-3xl font-bold text-teal-700/80 font-mono">--:--</h2>
@@ -193,7 +178,7 @@
         </div>
 
         <!-- Footer Info -->
-        <div class="bg-gray-100 p-2 text-center text-xs text-gray-400 shrink-0 border-t">
+        <div class="bg-gray-100 p-2 text-center text-xs text-gray-400 shrink-0 border-t pb-[env(safe-area-inset-bottom)]">
             <p>※ 時間僅供參考，請提早候車</p>
             <p>※ <span class="text-amber-600 font-bold">員</span> 代表員工專車</p>
         </div>
@@ -202,12 +187,10 @@
     <script>
         // --- Data Definitions ---
         
-        // Helper to create pure time objects from strings like "06:20" or "07:00(員工專車)"
         const parseTimeStr = (str) => {
             const isEmp = str.includes("員工專車");
             const rawTime = str.replace(/\(.*\)/, "").trim();
             const [h, m] = rawTime.split(":").map(Number);
-            // Handle 24:xx as next day 00:xx for display
             const totalMinutes = h * 60 + m;
             return {
                 display: str,
@@ -268,15 +251,15 @@
 
         // --- State Management ---
         let state = {
-            direction: 'to-main', // 'to-main' or 'to-lover'
-            dayType: 'weekday',   // 'weekday', 'saturday', 'sunday'
+            direction: 'to-main',
+            dayType: 'weekday',
             currentSchedule: []
         };
 
         // --- Initialization ---
         
         function detectDayType() {
-            const day = new Date().getDay(); // 0 is Sunday, 6 is Saturday
+            const day = new Date().getDay();
             if (day === 0) return 'sunday';
             if (day === 6) return 'saturday';
             return 'weekday';
@@ -345,18 +328,14 @@
 
             container.innerHTML = '';
 
-            // Group by Hour
             const grouped = {};
-            // Track next bus to scroll to
             let nextBusRowId = null;
             let foundNext = false;
 
             listData.forEach((bus, index) => {
                 const key = bus.h; 
-                
                 if (!grouped[key]) grouped[key] = [];
                 
-                // Determine status
                 let isPast = false;
                 if (bus.totalMinutes < currentMinutes && bus.h < 24) {
                     isPast = true;
@@ -379,7 +358,6 @@
                 });
             });
 
-            // Build Table
             const table = document.createElement('table');
             table.className = 'time-table';
             
@@ -388,19 +366,14 @@
             table.appendChild(thead);
 
             const tbody = document.createElement('tbody');
-            
-            // Sort keys to ensure order (6, 7... 24)
             const sortedKeys = Object.keys(grouped).sort((a,b) => Number(a) - Number(b));
 
             sortedKeys.forEach(key => {
                 const buses = grouped[key];
                 const tr = document.createElement('tr');
                 tr.id = `row-${key}`;
-                
-                // Hour Cell (Handle 24 as 00)
                 const displayHour = key >= 24 ? `00` : String(key).padStart(2, '0');
                 
-                // Minute Cells
                 let minutesHTML = buses.map(bus => {
                     const minStr = String(bus.m).padStart(2, '0');
                     let classes = 'minute-tag';
@@ -412,9 +385,7 @@
                     if (bus.isEmployee) {
                         content += `<span class="emp-text">員</span>`;
                     }
-
                     const idAttr = bus.isNext ? 'id="target-bus"' : '';
-
                     return `<span class="${classes}" ${idAttr}>${content}</span>`;
                 }).join('');
 
@@ -428,7 +399,6 @@
             table.appendChild(tbody);
             container.appendChild(table);
 
-            // Scroll to next bus
             if (nextBusRowId) {
                 setTimeout(() => {
                     const target = document.getElementById('target-bus') || document.getElementById(nextBusRowId);
@@ -443,8 +413,6 @@
             const listData = getScheduleData();
             const now = new Date();
             let currentMinutes = now.getHours() * 60 + now.getMinutes();
-            
-            // Find the next bus
             let nextBus = null;
             
             for (let bus of listData) {
@@ -459,9 +427,7 @@
 
             if (nextBus) {
                 timeDisplay.textContent = nextBus.rawTime;
-                
                 let diffMinutes = nextBus.totalMinutes - currentMinutes;
-                
                 let hourStr = '';
                 if (diffMinutes >= 60) {
                     const h = Math.floor(diffMinutes / 60);
@@ -470,14 +436,11 @@
                 } else {
                     hourStr = `${diffMinutes} 分鐘`;
                 }
-                
                 countdownDisplay.textContent = `還有 ${hourStr}`;
                 countdownDisplay.className = "text-sm text-teal-600 font-bold mt-1";
-                
                 if (diffMinutes <= 5) {
                     countdownDisplay.classList.add("animate-pulse", "text-red-500");
                 }
-
             } else {
                 timeDisplay.textContent = "末班已過";
                 countdownDisplay.textContent = "請查詢明日班次";
@@ -485,44 +448,30 @@
             }
         }
 
-        // --- New Function: Real-time Clock ---
         function updateRealTimeClock() {
             const now = new Date();
             const h = String(now.getHours()).padStart(2, '0');
             const m = String(now.getMinutes()).padStart(2, '0');
             const s = String(now.getSeconds()).padStart(2, '0');
-            
-            const timeStr = `${h}:${m}`;
-            const secStr = `${s}`;
-
             const timeEl = document.getElementById('current-time-display');
             const secEl = document.getElementById('current-seconds');
-
-            if(timeEl) timeEl.textContent = timeStr;
-            if(secEl) secEl.textContent = secStr;
+            if(timeEl) timeEl.textContent = `${h}:${m}`;
+            if(secEl) secEl.textContent = s;
         }
 
-        // --- Lifecycle ---
-        
         document.addEventListener('DOMContentLoaded', () => {
             state.dayType = detectDayType();
-            
             updateDirectionUI();
             updateDayTypeUI();
             updateScheduleList();
             updateNextBus();
             updateRealTimeClock();
-
-            setInterval(() => {
-                updateRealTimeClock();
-            }, 1000);
-
+            setInterval(updateRealTimeClock, 1000);
             setInterval(() => {
                 updateScheduleList(); 
                 updateNextBus();      
             }, 30000); 
         });
-
     </script>
 </body>
 </html>
