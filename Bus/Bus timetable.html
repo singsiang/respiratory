@@ -81,27 +81,32 @@
             <button onclick="setDayType('saturday')" id="tab-saturday" class="flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:bg-gray-100 transition-colors">
                 週六
             </button>
-            <button onclick="setDayType('sunday')" id="tab-sunday" class="flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:bg-gray-100 transition-colors">
-                週日/假日
+            <button onclick="setDayType('sunday')" id="tab-sunday" class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:bg-gray-100 transition-colors flex flex-col items-center justify-center leading-tight">
+                <span>週日 / 國定假日</span>
+                <span class="text-[10px] text-amber-600 font-normal">※ 遇假日請點此</span>
             </button>
         </div>
 
-        <!-- Next Bus Status Card -->
+        <!-- Next Bus & Current Time Status Card -->
         <div class="p-4 bg-teal-50 border-b border-teal-100 shrink-0">
             <div class="flex justify-between items-center">
+                <!-- Next Bus Info -->
                 <div>
                     <p class="text-xs text-teal-600 font-bold uppercase tracking-wide mb-1">下一班車</p>
                     <h2 id="next-bus-time" class="text-3xl font-bold text-gray-800">--:--</h2>
                     <p id="next-bus-countdown" class="text-sm text-gray-600 mt-1">計算中...</p>
                 </div>
-                <div class="text-teal-600 opacity-80">
-                    <i class="fas fa-clock fa-2x"></i>
+                <!-- Current Time Display (Replaces Icon) -->
+                <div class="text-right">
+                    <p class="text-xs text-teal-600/70 font-bold uppercase tracking-wide mb-1">現在時間</p>
+                    <h2 id="current-time-display" class="text-3xl font-bold text-teal-700/80 font-mono">--:--</h2>
+                    <p id="current-seconds" class="text-xs text-teal-400 font-mono">--</p>
                 </div>
             </div>
         </div>
 
         <!-- Schedule List -->
-        <div id="schedule-container" class="flex-1 overflow-y-auto p-2 space-y-2 pb-safe">
+        <div id="schedule-container" class="flex-1 overflow-y-auto p-2 space-y-1 pb-safe">
             <!-- Dynamic Content -->
         </div>
 
@@ -120,8 +125,7 @@
             const isEmp = str.includes("員工專車");
             const rawTime = str.replace(/\(.*\)/, "").trim();
             const [h, m] = rawTime.split(":").map(Number);
-            // Handle 24:xx as next day 00:xx for display, but logic needs careful handling
-            // We will store 'value' as minutes from midnight. 24:00 = 1440.
+            // Handle 24:xx as next day 00:xx for display
             const totalMinutes = h * 60 + m;
             return {
                 display: str,
@@ -266,24 +270,21 @@
                 const row = document.createElement('div');
                 
                 // Determine if this bus is in the past or future
-                // Special handling for 24:xx -> treat as > all of today's regular times
                 let isPast = false;
                 if (bus.totalMinutes < currentMinutes && bus.h < 24) {
-                    // Logic check: if current time is 00:10, and bus is 24:05 (next day technically)
-                    // We assume user viewing schedule at 10AM sees 06:00 as past.
                     isPast = true;
                 }
                 // Handle late night edge case: Current time 00:10, looking at 24:xx bus
                 if (now.getHours() === 0 && bus.h >= 24) {
-                    isPast = (currentMinutes + 1440) > bus.totalMinutes; // e.g. 1450 > 1445
+                    isPast = (currentMinutes + 1440) > bus.totalMinutes; 
                 }
-
 
                 // Check if this is the "next" bus
                 const isNext = (nextBusIndex === -1 && !isPast);
                 if (isNext) nextBusIndex = index;
 
-                row.className = `flex justify-between items-center p-3 rounded-lg border border-gray-100 ${isNext ? 'highlight-row shadow-sm' : 'bg-white hover:bg-gray-50'} ${isPast ? 'opacity-50 grayscale' : ''}`;
+                // Modified for compactness: py-2 instead of p-3, rounded instead of rounded-lg
+                row.className = `flex justify-between items-center py-2 px-3 rounded border border-gray-100 ${isNext ? 'highlight-row shadow-sm' : 'bg-white hover:bg-gray-50'} ${isPast ? 'opacity-50 grayscale' : ''}`;
                 
                 let badge = bus.isEmployee ? `<span class="employee-badge">員工專車</span>` : '';
                 let statusText = '';
@@ -292,9 +293,10 @@
                     statusText = `<span class="text-xs font-bold text-teal-600">即將發車</span>`;
                 }
 
+                // Modified for compactness: text-base instead of text-lg
                 row.innerHTML = `
                     <div class="flex items-center">
-                        <span class="text-lg font-mono font-bold ${isNext ? 'text-teal-800' : 'text-gray-700'}">${bus.rawTime}</span>
+                        <span class="text-base font-mono font-bold ${isNext ? 'text-teal-800' : 'text-gray-700'}">${bus.rawTime}</span>
                         ${badge}
                     </div>
                     <div>
@@ -305,7 +307,7 @@
             });
 
             // Scroll to next bus if possible
-            if (nextBusIndex > 2) { // Only scroll if it's further down
+            if (nextBusIndex > 2) { 
                  const rows = container.children;
                  if (rows[nextBusIndex]) {
                      rows[nextBusIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -316,14 +318,12 @@
         function updateNextBus() {
             const listData = getScheduleData();
             const now = new Date();
-            // Convert current time to comparable minutes
             let currentMinutes = now.getHours() * 60 + now.getMinutes();
             
             // Find the next bus
             let nextBus = null;
             
             for (let bus of listData) {
-                // Normal case: Bus time > Current time
                 if (bus.totalMinutes > currentMinutes) {
                     nextBus = bus;
                     break;
@@ -336,7 +336,6 @@
             if (nextBus) {
                 timeDisplay.textContent = nextBus.rawTime;
                 
-                // Calculate diff
                 let diffMinutes = nextBus.totalMinutes - currentMinutes;
                 
                 let hourStr = '';
@@ -356,11 +355,27 @@
                 }
 
             } else {
-                // If no bus left today in current list
                 timeDisplay.textContent = "末班已過";
                 countdownDisplay.textContent = "請查詢明日班次";
                 countdownDisplay.className = "text-sm text-gray-400 mt-1";
             }
+        }
+
+        // --- New Function: Real-time Clock ---
+        function updateRealTimeClock() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            
+            const timeStr = `${h}:${m}`;
+            const secStr = `${s}`;
+
+            const timeEl = document.getElementById('current-time-display');
+            const secEl = document.getElementById('current-seconds');
+
+            if(timeEl) timeEl.textContent = timeStr;
+            if(secEl) secEl.textContent = secStr;
         }
 
         // --- Lifecycle ---
@@ -374,12 +389,18 @@
             updateDayTypeUI();
             updateScheduleList();
             updateNextBus();
+            updateRealTimeClock();
 
-            // Refresh timer every minute
+            // High frequency interval for clock (1s)
             setInterval(() => {
-                updateScheduleList(); // Refreshes "past/future" styling
-                updateNextBus();      // Refreshes countdown
-            }, 30000); // 30 seconds
+                updateRealTimeClock();
+            }, 1000);
+
+            // Medium frequency for bus logic (30s)
+            setInterval(() => {
+                updateScheduleList(); 
+                updateNextBus();      
+            }, 30000); 
         });
 
     </script>
