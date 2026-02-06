@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小兒HFNC PEEP計算器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Microsoft JhengHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 30px;
+            font-weight: 400;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        input[type="number"] {
+            flex: 1;
+            padding: 12px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+            font-family: inherit;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .unit {
+            color: #666;
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            min-width: 40px;
+        }
+
+        .formula-box {
+            background: #f5f7fa;
+            border-left: 4px solid #667eea;
+            padding: 16px;
+            margin: 30px 0;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #555;
+            font-family: 'Courier New', monospace;
+        }
+
+        .formula-box strong {
+            color: #333;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        button {
+            flex: 1;
+            padding: 14px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .btn-calculate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-calculate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-calculate:active {
+            transform: translateY(0);
+        }
+
+        .btn-reset {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-reset:hover {
+            background: #d0d0d0;
+        }
+
+        .result-container {
+            background: #f0f4ff;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            display: none;
+        }
+
+        .result-container.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-label {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .result-value {
+            font-size: 48px;
+            font-weight: 700;
+            color: #667eea;
+            margin: 16px 0;
+        }
+
+        .result-unit {
+            color: #666;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .calculation-details {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 13px;
+            color: #666;
+            text-align: left;
+        }
+
+        .detail-item {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .error-message {
+            color: #d32f2f;
+            font-size: 13px;
+            margin-top: 8px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .result-value {
+                font-size: 36px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>小兒HFNC PEEP</h1>
+        <p class="subtitle">計算器</p>
+
+        <form id="calculatorForm">
+            <div class="form-group">
+                <label for="flow">Flow 數值</label>
+                <div class="input-wrapper">
+                    <input 
+                        type="number" 
+                        id="flow" 
+                        placeholder="請輸入Flow數值" 
+                        step="0.1"
+                        min="0"
+                        required
+                    >
+                    <span class="unit">L/min</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="weight">體重</label>
+                <div class="input-wrapper">
+                    <input 
+                        type="number" 
+                        id="weight" 
+                        placeholder="請輸入體重" 
+                        step="0.1"
+                        min="0"
+                        required
+                    >
+                    <span class="unit">g</span>
+                </div>
+            </div>
+
+            <div class="formula-box">
+                <strong>計算公式：</strong>
+                HFNC PEEP = 0.8×Flow - 1.4×BW(kg) + 2.6
+            </div>
+
+            <div class="button-group">
+                <button type="button" class="btn-calculate" onclick="calculatePEEP()">計算</button>
+                <button type="button" class="btn-reset" onclick="resetForm()">清空</button>
+            </div>
+
+            <div class="error-message" id="errorMessage"></div>
+        </form>
+
+        <div class="result-container" id="resultContainer">
+            <p class="result-label">計算結果</p>
+            <div class="result-value" id="resultValue">-</div>
+            <p class="result-unit">cmH₂O</p>
+
+            <div class="calculation-details">
+                <div class="detail-item">
+                    <strong>輸入值：</strong>
+                </div>
+                <div class="detail-item" id="detailFlow">
+                    Flow = - L/min
+                </div>
+                <div class="detail-item" id="detailWeight">
+                    體重 = - g (- kg)
+                </div>
+                <div class="detail-item" style="margin-top: 12px;">
+                    <strong>計算過程：</strong>
+                </div>
+                <div class="detail-item" id="detailCalculation">
+                    -
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function calculatePEEP() {
+            const flowInput = document.getElementById('flow').value;
+            const weightInput = document.getElementById('weight').value;
+            const errorMessage = document.getElementById('errorMessage');
+            const resultContainer = document.getElementById('resultContainer');
+
+            // 清除錯誤訊息
+            errorMessage.classList.remove('show');
+            errorMessage.textContent = '';
+
+            // 驗證輸入
+            if (!flowInput || !weightInput) {
+                errorMessage.textContent = '請輸入所有必填項目';
+                errorMessage.classList.add('show');
+                resultContainer.classList.remove('show');
+                return;
+            }
+
+            const flow = parseFloat(flowInput);
+            const weightG = parseFloat(weightInput);
+
+            // 驗證數值有效性
+            if (isNaN(flow) || isNaN(weightG) || flow < 0 || weightG < 0) {
+                errorMessage.textContent = '請輸入有效的正數值';
+                errorMessage.classList.add('show');
+                resultContainer.classList.remove('show');
+                return;
+            }
+
+            // 將公克轉換為公斤
+            const weightKg = weightG / 1000;
+
+            // 計算 HFNC PEEP
+            // HFNC PEEP = 0.8*Flow - 1.4*BW(kg) + 2.6
+            const peep = (0.8 * flow) - (1.4 * weightKg) + 2.6;
+
+            // 顯示結果
+            document.getElementById('resultValue').textContent = peep.toFixed(2);
+            document.getElementById('detailFlow').textContent = `Flow = ${flow} L/min`;
+            document.getElementById('detailWeight').textContent = `體重 = ${weightG} g (${weightKg.toFixed(3)} kg)`;
+            
+            const calculation = `0.8 × ${flow} - 1.4 × ${weightKg.toFixed(3)} + 2.6 = ${peep.toFixed(2)} cmH₂O`;
+            document.getElementById('detailCalculation').textContent = calculation;
+
+            resultContainer.classList.add('show');
+        }
+
+        function resetForm() {
+            document.getElementById('calculatorForm').reset();
+            document.getElementById('resultContainer').classList.remove('show');
+            document.getElementById('errorMessage').classList.remove('show');
+            document.getElementById('errorMessage').textContent = '';
+            document.getElementById('flow').focus();
+        }
+
+        // 按 Enter 鍵時計算
+        document.getElementById('calculatorForm').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                calculatePEEP();
+            }
+        });
+
+        // 頁面載入時聚焦到 Flow 輸入框
+        window.addEventListener('load', function() {
+            document.getElementById('flow').focus();
+        });
+    </script>
+</body>
+</html>
