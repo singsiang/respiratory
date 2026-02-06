@@ -16,7 +16,7 @@
       padding: 20px;
     }
     .container {
-      max-width: 480px;
+      max-width: 520px;
       margin: 0 auto;
       background: #ffffff;
       border-radius: 12px;
@@ -35,51 +35,60 @@
       margin-bottom: 16px;
     }
     .field-group {
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
     label {
       display: block;
       font-size: 14px;
+      font-weight: 500;
       margin-bottom: 4px;
     }
     input[type="number"] {
       width: 100%;
-      padding: 8px 10px;
-      font-size: 14px;
+      padding: 10px 12px;
+      font-size: 15px;
       border-radius: 6px;
       border: 1px solid #ccc;
       box-sizing: border-box;
     }
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #2196f3;
+    }
     .hint {
       font-size: 11px;
       color: #777;
-      margin-top: 2px;
+      margin-top: 3px;
     }
     .error {
       font-size: 11px;
       color: #c62828;
       margin-top: 3px;
+      font-weight: 500;
     }
     .result-card {
-      margin-top: 16px;
-      padding: 12px;
+      margin-top: 20px;
+      padding: 16px;
       border-radius: 8px;
       background: #f0f4ff;
     }
     .rox-value {
-      font-size: 26px;
+      font-size: 32px;
       font-weight: 600;
+      color: #1565c0;
     }
     .rox-label {
       font-size: 13px;
       color: #555;
+      margin-bottom: 4px;
     }
     .status {
-      margin-top: 8px;
-      padding: 8px 10px;
+      margin-top: 12px;
+      padding: 10px 12px;
       border-radius: 6px;
       font-size: 13px;
       font-weight: 500;
+      line-height: 1.5;
     }
     .status-low {
       background: #e8f5e9;
@@ -97,15 +106,28 @@
       border: 1px solid #ef9a9a;
     }
     .sf-info {
-      margin-top: 8px;
+      margin-top: 10px;
       font-size: 12px;
       color: #555;
+      padding: 8px;
+      background: #fff;
+      border-radius: 4px;
     }
     .ref {
-      margin-top: 12px;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid #e0e0e0;
       font-size: 11px;
       color: #888;
-      line-height: 1.5;
+      line-height: 1.6;
+    }
+    .example {
+      margin-top: 10px;
+      padding: 10px;
+      background: #f9f9f9;
+      border-left: 3px solid #2196f3;
+      font-size: 12px;
+      color: #555;
     }
   </style>
 </head>
@@ -113,35 +135,40 @@
   <div id="root"></div>
 
   <script>
-    const { useState } = React;
+    const { useState, useEffect } = React;
 
+    // 風險分級（依文獻：ROX ≥4.88 成功機率高，<3.85、<2.85 風險增加）[web:37][web:4][web:45]
     function classifyROX(rox) {
-      if (isNaN(rox) || !isFinite(rox)) return { level: "N/A", text: "請輸入完整數值以計算。", className: "" };
+      if (isNaN(rox) || !isFinite(rox)) {
+        return {
+          level: "N/A",
+          text: "請輸入完整數值以計算 ROX Index。",
+          className: ""
+        };
+      }
 
-      // 這裡給一個簡化、時間點未分層的風險分級：
-      // 參考：ROX ≥4.88 成功機率較高；<2.85、<3.47 等與插管風險增加相關。[web:24][web:25][web:26][web:28][web:29][web:31][web:36]
       if (rox >= 4.88) {
         return {
-          level: "低風險",
-          text: "ROX ≥ 4.88：治療成功機率高，插管風險相對較低（仍需依臨床整體評估）。",
+          level: "✓ 低風險",
+          text: "ROX ≥ 4.88：治療成功機率較高，插管風險相對較低。",
           className: "status status-low"
         };
-      } else if (rox >= 3.5) {
+      } else if (rox >= 3.85) {
         return {
-          level: "中等風險",
-          text: "ROX 3.5–4.88：需密切觀察，視病人變化與時間點評估是否升級治療。",
+          level: "⚠ 中等風險",
+          text: "ROX 3.85–4.88：需密切觀察，視病程與時間點決定是否升級治療。",
           className: "status status-mid"
         };
       } else if (rox >= 2.85) {
         return {
-          level: "高風險",
-          text: "ROX 2.85–3.5：插管風險較高，應及早與醫療團隊討論氣管插管或其他介入。",
+          level: "⚠ 高風險",
+          text: "ROX 2.85–3.85：插管風險較高，建議儘早與團隊討論介入。",
           className: "status status-high"
         };
       } else {
         return {
-          level: "極高風險",
-          text: "ROX < 2.85：強烈暗示高失敗／插管風險，請立即依照臨床情況考慮升級呼吸支持。",
+          level: "✕ 極高風險",
+          text: "ROX < 2.85：高度懷疑治療失敗，請立即評估升級呼吸支持。",
           className: "status status-high"
         };
       }
@@ -149,33 +176,42 @@
 
     function App() {
       const [spo2, setSpo2] = useState("");
-      const [fio2, setFio2] = useState("");
+      const [fio2Percent, setFio2Percent] = useState("");
       const [rr, setRr] = useState("");
       const [errors, setErrors] = useState({});
 
       const spo2Num = parseFloat(spo2);
-      const fio2Num = parseFloat(fio2);
+      const fio2PercentNum = parseFloat(fio2Percent);
       const rrNum = parseFloat(rr);
+
+      // FiO2 以「%輸入」，自動轉為「小數」參與公式：例如 30 → 0.3
+      const fio2Decimal =
+        !isNaN(fio2PercentNum) && fio2PercentNum > 0
+          ? fio2PercentNum / 100
+          : NaN;
 
       let sfRatio = null;
       let rox = null;
 
+      // 驗證
       const newErrors = {};
       if (spo2 !== "" && (spo2Num <= 0 || spo2Num > 100)) {
-        newErrors.spo2 = "SpO₂ 應介於 0–100。";
+        newErrors.spo2 = "SpO₂ 應介於 1–100。";
       }
-      if (fio2 !== "" && (fio2Num <= 0 || fio2Num > 100)) {
-        newErrors.fio2 = "FiO₂% 應介於 0–100。";
+      if (fio2Percent !== "" && (fio2PercentNum < 21 || fio2PercentNum > 100)) {
+        newErrors.fio2 = "FiO₂ 通常介於 21–100%。";
       }
       if (rr !== "" && (rrNum <= 0 || rrNum > 80)) {
-        newErrors.rr = "RR 應為合理呼吸次數（1–80 次/分）。";
+        newErrors.rr = "RR 應為 1–80 次/分。";
       }
-      React.useEffect(() => setErrors(newErrors), [spo2, fio2, rr]);
+      useEffect(() => setErrors(newErrors), [spo2, fio2Percent, rr]);
 
-      if (!isNaN(spo2Num) && !isNaN(fio2Num) && fio2Num > 0) {
-        // 使用百分比直接相除，等同於 (SpO2/FiO2)/RR 但 FiO2 以 %
-        sfRatio = spo2Num / fio2Num;
+      // 計算 SpO2 / FiO2（FiO2 必須是小數）[web:37][web:5]
+      if (!isNaN(spo2Num) && !isNaN(fio2Decimal) && fio2Decimal > 0) {
+        sfRatio = spo2Num / fio2Decimal;
       }
+
+      // 計算 ROX = (SpO2 / FiO2) / RR [web:37][web:42]
       if (sfRatio !== null && !isNaN(rrNum) && rrNum > 0) {
         rox = sfRatio / rrNum;
       }
@@ -186,18 +222,21 @@
         React.createElement("div", { className: "container" },
           React.createElement("h1", null, "ROX Index 計算器"),
           React.createElement("div", { className: "subtitle" },
-            "公式：ROX = (SpO₂ / FiO₂) / RR，FiO₂ 以百分比輸入（如 30%）。"
+            "公式：ROX = (SpO₂ / FiO₂) / RR　（FiO₂ 以小數形式參與計算）"
           ),
 
           React.createElement("div", { className: "field-group" },
             React.createElement("label", null, "SpO₂ (%)"),
             React.createElement("input", {
               type: "number",
+              step: "0.1",
               value: spo2,
               onChange: e => setSpo2(e.target.value),
-              placeholder: "例如 92"
+              placeholder: "例如 94"
             }),
-            React.createElement("div", { className: "hint" }, "手指脈氧監測到的 SpO₂ 百分比。"),
+            React.createElement("div", { className: "hint" },
+              "脈搏血氧飽和度，輸入整數或小數（如 94 或 94.5）。"
+            ),
             errors.spo2 && React.createElement("div", { className: "error" }, errors.spo2)
           ),
 
@@ -205,11 +244,14 @@
             React.createElement("label", null, "FiO₂ (%)"),
             React.createElement("input", {
               type: "number",
-              value: fio2,
-              onChange: e => setFio2(e.target.value),
+              step: "1",
+              value: fio2Percent,
+              onChange: e => setFio2Percent(e.target.value),
               placeholder: "例如 30（代表 FiO₂ = 0.30）"
             }),
-            React.createElement("div", { className: "hint" }, "請直接輸入百分比數值，例如 30 代表 FiO₂ = 0.30。"),
+            React.createElement("div", { className: "hint" },
+              "直接輸入百分比數值：輸入 30 代表 FiO₂ = 0.30，輸入 60 代表 FiO₂ = 0.60。"
+            ),
             errors.fio2 && React.createElement("div", { className: "error" }, errors.fio2)
           ),
 
@@ -217,27 +259,39 @@
             React.createElement("label", null, "RR（呼吸次數 / 分）"),
             React.createElement("input", {
               type: "number",
+              step: "1",
               value: rr,
               onChange: e => setRr(e.target.value),
-              placeholder: "例如 24"
+              placeholder: "例如 25"
             }),
             React.createElement("div", { className: "hint" }, "每分鐘呼吸次數。"),
             errors.rr && React.createElement("div", { className: "error" }, errors.rr)
           ),
 
           React.createElement("div", { className: "result-card" },
-            React.createElement("div", { className: "rox-label" }, "計算結果："),
+            React.createElement("div", { className: "rox-label" }, "ROX Index："),
             React.createElement("div", { className: "rox-value" },
-              rox !== null && isFinite(rox) ? rox.toFixed(2) : "--"
+              rox !== null && isFinite(rox) ? rox.toFixed(2) : "—"
             ),
             sfRatio !== null && isFinite(sfRatio) && React.createElement("div", { className: "sf-info" },
-              "SpO₂/FiO₂ 比值：約 ", sfRatio.toFixed(1)
+              "SpO₂/FiO₂ 比值：", sfRatio.toFixed(1),
+              (!isNaN(fio2Decimal) && fio2Decimal > 0)
+                ? "（FiO₂ = " + fio2Decimal.toFixed(2) + "）"
+                : ""
             ),
             React.createElement("div", { className: risk.className }, risk.level + "｜" + risk.text)
           ),
 
+          React.createElement("div", { className: "example" },
+            React.createElement("strong", null, "計算範例："), React.createElement("br"),
+            "SpO₂ = 94、FiO₂ 輸入 60、RR = 25", React.createElement("br"),
+            "→ 內部換算 FiO₂ = 0.60", React.createElement("br"),
+            "→ SpO₂/FiO₂ = 94 / 0.60 ≈ 156.7", React.createElement("br"),
+            "→ ROX = 156.7 / 25 ≈ 6.27（與文獻範例相符）"
+          ),
+
           React.createElement("div", { className: "ref" },
-            "說明：本工具僅供臨床教學與初步評估參考，不可取代醫師專業判斷或醫療指引。"
+            "⚠ 本工具僅供教學與初步評估參考，ROX Index 定義與 cut-off 參考相關研究與指引。[web:37][web:4][web:45][web:5]"
           )
         )
       );
