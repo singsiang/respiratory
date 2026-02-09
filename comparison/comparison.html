@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>進階比價助手 - 多重溢價分析版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f8fafc;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background-color: white; padding: 0; }
+            .shadow-xl, .shadow-sm { shadow: none !important; border: 1px solid #eee; }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-5xl mx-auto">
+        <!-- 標題 -->
+        <header class="mb-8 text-center no-print">
+            <h1 class="text-4xl font-extrabold text-gray-900 mb-2">📊 溢價深度分析報告</h1>
+            <p class="text-gray-500 text-lg">精確顯示「貴多少 %」，幫您過濾高價陷阱</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- 左側：輸入表單 -->
+            <div class="lg:col-span-4 no-print">
+                <div class="bg-white p-6 rounded-3xl shadow-xl border border-gray-100 sticky top-8">
+                    <h2 class="text-xl font-bold mb-6 flex items-center text-gray-800">
+                        <span class="mr-2">📝</span> 輸入數據
+                    </h2>
+                    <div class="space-y-5">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1">商品名稱</label>
+                            <input type="text" id="itemName" placeholder="例如：品牌A" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none transition-all">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1">總價格 ($)</label>
+                                <input type="number" id="itemPrice" placeholder="0" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-1">份量/數量</label>
+                                <input type="number" id="itemQuantity" placeholder="1" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-400 outline-none transition-all">
+                            </div>
+                        </div>
+                        <button onclick="addItem()" class="w-full gradient-bg text-white font-bold py-4 rounded-xl shadow-lg hover:opacity-90 transition-all transform hover:-translate-y-1">
+                            加入清單分析
+                        </button>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="clearAll()" class="bg-white border border-gray-200 text-gray-500 font-medium py-2 rounded-xl hover:bg-gray-50 transition-all text-sm">
+                                全部清空
+                            </button>
+                            <button onclick="window.print()" class="bg-gray-800 text-white font-medium py-2 rounded-xl hover:bg-black transition-all text-sm flex items-center justify-center">
+                                🖨️ 列印/PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右側：結果與圖表 -->
+            <div class="lg:col-span-8 space-y-8">
+                <!-- 分析摘要卡片 -->
+                <div id="summaryCard" class="hidden p-6 rounded-3xl gradient-bg text-white shadow-xl relative overflow-hidden">
+                    <div class="relative z-10">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="text-indigo-100 font-medium mb-1">💡 最佳省錢選擇</h3>
+                                <div id="topWinnerName" class="text-3xl font-black italic">---</div>
+                            </div>
+                            <div class="bg-white/20 backdrop-blur-md px-4 py-2 rounded-full text-xs font-bold border border-white/30">
+                                👑 價格最低
+                            </div>
+                        </div>
+                        
+                        <div id="summaryComparison" class="mt-6 space-y-3 bg-black/10 p-4 rounded-2xl border border-white/10">
+                            <!-- 動態插入最貴與第二貴對比 -->
+                        </div>
+
+                        <div class="mt-6 flex gap-3 no-print">
+                            <button onclick="copyToClipboard()" class="bg-white/20 hover:bg-white/30 border border-white/40 px-4 py-2 rounded-lg text-sm transition flex items-center">
+                                📋 複製完整分析報告
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 圖表區 -->
+                <div id="chartContainer" class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-bold text-gray-800 mb-6 flex items-center">
+                        <span class="mr-2">📈</span> 單價視覺化對比
+                    </h3>
+                    <div class="h-[320px] relative">
+                        <canvas id="priceChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 排行清單 -->
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
+                        <h3 class="text-lg font-bold text-gray-800">🏆 價格排名與溢價率</h3>
+                        <span id="itemCount" class="px-3 py-1 bg-gray-200 text-gray-600 rounded-full text-xs font-bold">0 件商品</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="text-gray-400 text-xs uppercase tracking-wider">
+                                    <th class="px-6 py-4">排名</th>
+                                    <th class="px-6 py-4">商品名稱</th>
+                                    <th class="px-6 py-4 text-right">單位價格</th>
+                                    <th class="px-6 py-4 text-right">貴多少 %</th>
+                                    <th class="px-6 py-4 text-center no-print">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemList" class="divide-y divide-gray-50 text-gray-700 font-medium">
+                                <!-- 動態數據 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="emptyState" class="py-20 text-center flex flex-col items-center no-print">
+                        <div class="bg-gray-100 p-4 rounded-full mb-4 animate-bounce">🛒</div>
+                        <p class="text-gray-400 font-medium">請在左側輸入資料，我們幫您精打細算</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 訊息提示 -->
+    <div id="toast" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-8 py-3 rounded-full shadow-2xl transition-all opacity-0 pointer-events-none z-50">
+        已成功複製到剪貼簿！
+    </div>
+
+    <script>
+        let items = [];
+        let myChart = null;
+
+        function initChart() {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '單價 (元)',
+                        data: [],
+                        backgroundColor: [],
+                        borderRadius: 10,
+                        barThickness: 'flex',
+                        maxBarThickness: 45,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => ` 單價: $${context.parsed.y.toFixed(3)} 元`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#f1f5f9', borderDash: [5, 5] },
+                            ticks: { callback: (value) => '$' + value }
+                        },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function addItem() {
+            const nameInput = document.getElementById('itemName');
+            const priceInput = document.getElementById('itemPrice');
+            const qtyInput = document.getElementById('itemQuantity');
+            
+            const name = nameInput.value || `商品 ${items.length + 1}`;
+            const price = parseFloat(priceInput.value);
+            const quantity = parseFloat(qtyInput.value);
+
+            if (isNaN(price) || price <= 0 || isNaN(quantity) || quantity <= 0) {
+                showToast("⚠️ 請輸入正確的數字格式！");
+                return;
+            }
+
+            const unitPrice = price / quantity;
+            items.push({
+                id: Date.now(),
+                name, price, quantity, unitPrice
+            });
+
+            nameInput.value = '';
+            priceInput.value = '';
+            qtyInput.value = '';
+            nameInput.focus();
+
+            updateUI();
+        }
+
+        function deleteItem(id) {
+            items = items.filter(item => item.id !== id);
+            updateUI();
+        }
+
+        function clearAll() {
+            if(confirm("確定要清空所有比價紀錄嗎？")) {
+                items = [];
+                updateUI();
+            }
+        }
+
+        function calculatePercentageMore(current, base) {
+            if (base === 0) return 0;
+            return ((current - base) / base) * 100;
+        }
+
+        function updateUI() {
+            const listElement = document.getElementById('itemList');
+            const emptyState = document.getElementById('emptyState');
+            const summaryCard = document.getElementById('summaryCard');
+            const summaryComp = document.getElementById('summaryComparison');
+
+            // 排序 (單價低到高)
+            items.sort((a, b) => a.unitPrice - b.unitPrice);
+
+            listElement.innerHTML = '';
+            
+            if (items.length === 0) {
+                emptyState.classList.remove('hidden');
+                document.getElementById('itemCount').innerText = '0 件商品';
+                summaryCard.classList.add('hidden');
+                updateChart();
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            document.getElementById('itemCount').innerText = `${items.length} 件分析中`;
+
+            const basePrice = items[0].unitPrice;
+
+            items.forEach((item, index) => {
+                const isCheapest = index === 0;
+                const percentMore = calculatePercentageMore(item.unitPrice, basePrice);
+                const row = document.createElement('tr');
+                row.className = `transition-all ${isCheapest ? 'bg-emerald-50/70' : ''}`;
+                
+                row.innerHTML = `
+                    <td class="px-6 py-5">
+                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl font-black ${isCheapest ? 'bg-emerald-500 text-white shadow-sm' : 'bg-gray-100 text-gray-400'}">
+                            ${index + 1}
+                        </span>
+                    </td>
+                    <td class="px-6 py-5">
+                        <div class="font-bold text-gray-800">${item.name}</div>
+                        <div class="text-[10px] text-gray-400 uppercase font-bold mt-0.5">$${item.price} / ${item.quantity} 單位</div>
+                    </td>
+                    <td class="px-6 py-5 text-right font-mono font-bold ${isCheapest ? 'text-emerald-600' : 'text-gray-700'}">
+                        $${item.unitPrice.toFixed(3)}
+                    </td>
+                    <td class="px-6 py-5 text-right font-bold">
+                        ${isCheapest ? 
+                            '<span class="text-emerald-500">基準點</span>' : 
+                            `<span class="text-red-500">+${percentMore.toFixed(1)}%</span>`
+                        }
+                    </td>
+                    <td class="px-6 py-5 text-center no-print">
+                        <button onclick="deleteItem(${item.id})" class="text-gray-300 hover:text-red-500 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </td>
+                `;
+                listElement.appendChild(row);
+            });
+
+            // 更新摘要卡片內容
+            if (items.length > 1) {
+                const cheapest = items[0];
+                const mostExpensive = items[items.length - 1];
+                const secondMost = items.length >= 3 ? items[items.length - 2] : null;
+
+                summaryCard.classList.remove('hidden');
+                document.getElementById('topWinnerName').innerText = cheapest.name;
+                
+                let compHtml = `
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="opacity-80 font-medium">🔴 最貴商品：${mostExpensive.name}</span>
+                        <span class="font-black text-red-300">比最便宜貴了 ${calculatePercentageMore(mostExpensive.unitPrice, basePrice).toFixed(1)}%</span>
+                    </div>
+                `;
+
+                if (secondMost) {
+                    compHtml += `
+                        <div class="flex justify-between items-center text-sm pt-2 border-t border-white/10">
+                            <span class="opacity-80 font-medium">🟠 第二貴商品：${secondMost.name}</span>
+                            <span class="font-black text-orange-300">比最便宜貴了 ${calculatePercentageMore(secondMost.unitPrice, basePrice).toFixed(1)}%</span>
+                        </div>
+                    `;
+                }
+
+                summaryComp.innerHTML = compHtml;
+            } else {
+                summaryCard.classList.add('hidden');
+            }
+
+            updateChart();
+        }
+
+        function updateChart() {
+            if (!myChart) return;
+            const basePrice = items.length > 0 ? items[0].unitPrice : 0;
+            
+            myChart.data.labels = items.map(i => i.name);
+            myChart.data.datasets[0].data = items.map(i => i.unitPrice);
+            myChart.data.datasets[0].backgroundColor = items.map((i, index) => {
+                if (index === 0) return '#10b981'; // 最划算
+                if (index === items.length - 1 && items.length > 1) return '#ef4444'; // 最貴
+                if (index === items.length - 2 && items.length > 2) return '#f97316'; // 第二貴
+                return '#6366f1'; // 其他
+            });
+            myChart.update();
+        }
+
+        function copyToClipboard() {
+            if (items.length === 0) return;
+            
+            const cheapest = items[0];
+            const basePrice = cheapest.unitPrice;
+
+            let text = `🎯 溢價深度分析報告\n`;
+            text += `--------------------------------\n`;
+            text += `✅ 最佳首選：${cheapest.name} (單價: $${basePrice.toFixed(3)})\n\n`;
+            text += `📊 價格排名與溢價率：\n`;
+            
+            items.forEach((item, i) => {
+                const more = calculatePercentageMore(item.unitPrice, basePrice);
+                text += `${i+1}. ${item.name}：單價 $${item.unitPrice.toFixed(3)} ${i === 0 ? '(基準)' : `(貴了 ${more.toFixed(1)}%)`}\n`;
+            });
+
+            if (items.length > 1) {
+                const mostExpensive = items[items.length - 1];
+                const totalDiff = (mostExpensive.unitPrice - basePrice) * mostExpensive.quantity;
+                text += `\n💡 結論：選「${cheapest.name}」比買「${mostExpensive.name}」省下 ${calculatePercentageMore(mostExpensive.unitPrice, basePrice).toFixed(1)}% 的預算！`;
+            }
+
+            const el = document.createElement('textarea');
+            el.value = text;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            
+            showToast("報告已複製到剪貼簿！");
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.style.opacity = '1';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, 2000);
+        }
+
+        window.onload = initChart;
+    </script>
+</body>
+</html>
+
