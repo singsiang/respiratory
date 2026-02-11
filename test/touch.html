@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>幼兒啟蒙小遊戲 - Toddler Learning App</title>
     <!-- 載入 React 與 Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -17,12 +17,21 @@
         }
         body {
             margin: 0;
+            /* 防止手機版網頁上下拉動的橡皮筋效果 */
             overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
             touch-action: manipulation;
             font-family: system-ui, -apple-system, sans-serif;
         }
         .bubble-float {
             animation: float 4s infinite ease-in-out;
+        }
+        /* 針對現代瀏覽器的動態高度支援 */
+        .full-h {
+            height: 100vh;
+            height: 100dvh;
         }
     </style>
 </head>
@@ -30,9 +39,9 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useCallback, useRef } = React;
+        const { useState, useEffect, useCallback } = React;
 
-        // --- 小圖示組件 (修正：將相鄰的 JSX 元素包裹在 <> </> 中) ---
+        // --- 小圖示組件 ---
         const Icon = ({ name, className }) => {
             const icons = {
                 home: (
@@ -86,35 +95,35 @@
 
             const addBubble = useCallback(() => {
                 const id = Date.now() + Math.random();
-                const size = Math.random() * 60 + 80; 
+                const size = Math.random() * 50 + 70; 
                 const x = Math.random() * (window.innerWidth - size);
-                const y = Math.random() * (window.innerHeight - size - 100);
+                const y = Math.random() * (window.innerHeight - size - 120) + 60;
                 const colors = ['bg-blue-400', 'bg-pink-400', 'bg-yellow-400', 'bg-green-400', 'bg-purple-400'];
                 const color = colors[Math.floor(Math.random() * colors.length)];
-                setBubbles(prev => [...prev.slice(-10), { id, x, y, size, color }]);
+                setBubbles(prev => [...prev.slice(-8), { id, x, y, size, color }]);
             }, []);
 
             useEffect(() => {
-                const interval = setInterval(addBubble, 1500);
+                const interval = setInterval(addBubble, 1400);
                 return () => clearInterval(interval);
             }, [addBubble]);
 
             return (
-                <div className="relative w-full h-screen bg-blue-50 overflow-hidden select-none">
+                <div className="relative w-full full-h bg-blue-50 overflow-hidden select-none">
                     <div className="absolute top-4 left-4 z-10 flex gap-4 items-center">
-                        <button onClick={onBack} className="p-4 bg-white rounded-full shadow-lg active:scale-90 transition">
-                            <Icon name="home" className="w-8 h-8 text-blue-600" />
+                        <button onClick={onBack} className="p-3 bg-white rounded-full shadow-lg active:scale-90 transition">
+                            <Icon name="home" className="w-6 h-6 text-blue-600" />
                         </button>
-                        <span className="text-2xl font-bold text-blue-800 bg-white/80 px-6 py-2 rounded-full shadow-sm">得分: {score}</span>
+                        <span className="text-xl font-bold text-blue-800 bg-white/80 px-5 py-2 rounded-full shadow-sm">得分: {score}</span>
                     </div>
                     {bubbles.map(b => (
                         <div
                             key={b.id}
-                            onClick={() => { setBubbles(prev => prev.filter(x => x.id !== b.id)); setScore(s => s + 1); }}
+                            onPointerDown={() => { setBubbles(prev => prev.filter(x => x.id !== b.id)); setScore(s => s + 1); }}
                             className={`absolute rounded-full shadow-xl bubble-float cursor-pointer transition-all duration-300 opacity-80 border-4 border-white ${b.color}`}
                             style={{ left: b.x, top: b.y, width: b.size, height: b.size }}
                         >
-                            <div className="absolute top-4 left-4 w-1/4 h-1/4 bg-white/40 rounded-full" />
+                            <div className="absolute top-3 left-3 w-1/4 h-1/4 bg-white/40 rounded-full" />
                         </div>
                     ))}
                 </div>
@@ -145,22 +154,22 @@
             };
 
             return (
-                <div className="flex flex-col items-center justify-center min-h-screen bg-orange-50 p-6 select-none">
-                    <button onClick={onBack} className="absolute top-4 left-4 p-4 bg-white rounded-full shadow-lg">
-                        <Icon name="home" className="w-8 h-8 text-orange-600" />
+                <div className="flex flex-col items-center justify-between full-h bg-orange-50 p-6 select-none">
+                    <button onClick={onBack} className="self-start p-3 bg-white rounded-full shadow-lg">
+                        <Icon name="home" className="w-6 h-6 text-orange-600" />
                     </button>
-                    <div className="mb-8 text-center">
-                        <h2 className="text-4xl font-bold mb-4">請找出「{target.name}」</h2>
-                        <div className={`w-36 h-36 rounded-3xl shadow-inner mx-auto ${target.value} border-8 border-white flex items-center justify-center text-6xl`}>
+                    <div className="text-center flex-1 flex flex-col justify-center">
+                        <h2 className="text-3xl font-bold mb-4">請找出「{target.name}」</h2>
+                        <div className={`w-32 h-32 rounded-3xl shadow-inner mx-auto ${target.value} border-8 border-white flex items-center justify-center text-5xl mb-6`}>
                             {target.emoji}
                         </div>
+                        <div className="grid grid-cols-2 gap-4 w-full max-w-sm mx-auto">
+                            {COLORS.map(c => (
+                                <button key={c.name} onClick={() => checkColor(c)} className={`h-24 rounded-3xl shadow-xl active:scale-95 transition-transform ${c.value} border-4 border-white`} />
+                            ))}
+                        </div>
+                        <div className="h-12 mt-6 text-2xl font-bold text-orange-600">{feedback}</div>
                     </div>
-                    <div className="grid grid-cols-2 gap-6 w-full max-w-md">
-                        {COLORS.map(c => (
-                            <button key={c.name} onClick={() => checkColor(c)} className={`h-32 rounded-3xl shadow-xl active:scale-95 transition-transform ${c.value} border-4 border-white`} />
-                        ))}
-                    </div>
-                    <div className="h-12 mt-8 text-3xl font-bold text-orange-600">{feedback}</div>
                 </div>
             );
         };
@@ -178,25 +187,25 @@
             const [active, setActive] = useState(null);
 
             return (
-                <div className="flex flex-col items-center justify-center min-h-screen bg-green-50 p-6 select-none">
-                    <button onClick={onBack} className="absolute top-4 left-4 p-4 bg-white rounded-full shadow-lg">
-                        <Icon name="home" className="w-8 h-8 text-green-600" />
+                <div className="flex flex-col items-center full-h bg-green-50 p-6 select-none overflow-y-auto">
+                    <button onClick={onBack} className="self-start p-3 bg-white rounded-full shadow-lg mb-4">
+                        <Icon name="home" className="w-6 h-6 text-green-600" />
                     </button>
-                    <h2 className="text-3xl font-bold mb-8 text-green-800">點一下動物喔！</h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 w-full max-w-2xl">
+                    <h2 className="text-2xl font-bold mb-6 text-green-800">點一下動物喔！</h2>
+                    <div className="grid grid-cols-2 gap-4 w-full max-w-md pb-10">
                         {ANIMALS.map(a => (
-                            <button key={a.name} onClick={() => setActive(a)} className={`flex flex-col items-center justify-center p-6 rounded-3xl shadow-md active:scale-110 transition ${a.color} border-4 border-transparent hover:border-white`}>
-                                <span className="text-7xl mb-2">{a.emoji}</span>
-                                <span className="text-xl font-bold text-gray-700">{a.name}</span>
+                            <button key={a.name} onClick={() => setActive(a)} className={`flex flex-col items-center justify-center p-4 rounded-3xl shadow-md active:scale-105 transition ${a.color} border-4 border-transparent`}>
+                                <span className="text-6xl mb-1">{a.emoji}</span>
+                                <span className="text-lg font-bold text-gray-700">{a.name}</span>
                             </button>
                         ))}
                     </div>
                     {active && (
-                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-8 z-50" onClick={() => setActive(null)}>
-                            <div className={`p-12 rounded-[3rem] shadow-2xl text-center animate-bounce ${active.color} border-8 border-white`}>
-                                <div className="text-9xl mb-6">{active.emoji}</div>
-                                <div className="text-5xl font-black text-gray-800 mb-4">{active.sound}</div>
-                                <div className="text-xl text-gray-500 font-bold">點一下關閉</div>
+                        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-6 z-50" onClick={() => setActive(null)}>
+                            <div className={`p-10 rounded-[2.5rem] shadow-2xl text-center animate-bounce ${active.color} border-8 border-white w-full max-w-xs`}>
+                                <div className="text-8xl mb-4">{active.emoji}</div>
+                                <div className="text-4xl font-black text-gray-800 mb-2">{active.sound}</div>
+                                <div className="text-lg text-gray-500 font-bold">點一下關閉</div>
                             </div>
                         </div>
                     )}
@@ -209,34 +218,34 @@
             const [count, setCount] = useState(0);
             const target = 5;
             return (
-                <div className="flex flex-col items-center justify-center min-h-screen bg-purple-50 p-8 select-none">
-                    <button onClick={onBack} className="absolute top-4 left-4 p-4 bg-white rounded-full shadow-lg">
-                        <Icon name="home" className="w-8 h-8 text-purple-600" />
+                <div className="flex flex-col items-center justify-between full-h bg-purple-50 p-8 select-none">
+                    <button onClick={onBack} className="self-start p-3 bg-white rounded-full shadow-lg">
+                        <Icon name="home" className="w-6 h-6 text-purple-600" />
                     </button>
-                    <div className="text-center mb-12">
-                        <h2 className="text-4xl font-bold text-purple-800 mb-4">數一數：共有幾個？</h2>
-                        <div className="text-8xl font-black text-purple-600">{count}</div>
+                    <div className="text-center flex-1 flex flex-col justify-center">
+                        <h2 className="text-3xl font-bold text-purple-800 mb-2">數一數：共有幾個？</h2>
+                        <div className="text-7xl font-black text-purple-600 mb-4">{count}</div>
+                        <div className="flex flex-wrap justify-center gap-4 mb-10 min-h-[80px]">
+                            {Array.from({ length: count }).map((_, i) => (
+                                <div key={i} className="text-5xl animate-bounce">🍎</div>
+                            ))}
+                        </div>
+                        <button onClick={() => setCount(c => c < target ? c + 1 : 0)} className="px-10 py-5 bg-purple-500 text-white rounded-full text-2xl font-bold shadow-2xl active:scale-90 transition mx-auto">
+                            {count < target ? '增加一個 🍎' : '重新開始'}
+                        </button>
                     </div>
-                    <div className="flex flex-wrap justify-center gap-6 mb-12 min-h-[120px]">
-                        {Array.from({ length: count }).map((_, i) => (
-                            <div key={i} className="text-7xl animate-bounce">🍎</div>
-                        ))}
-                    </div>
-                    <button onClick={() => setCount(c => c < target ? c + 1 : 0)} className="px-12 py-6 bg-purple-500 text-white rounded-full text-3xl font-bold shadow-2xl active:scale-90 transition">
-                        {count < target ? '增加一個 🍎' : '重新開始'}
-                    </button>
                 </div>
             );
         };
 
-        // --- 主程式進入點 ---
+        // --- 主程式介面 ---
         const App = () => {
             const [view, setView] = useState('menu');
             const MenuButton = ({ icon, title, sub, color, onClick }) => (
-                <button onClick={onClick} className={`flex flex-col items-center justify-center p-8 rounded-[2.5rem] shadow-xl transition active:scale-95 ${color} text-white w-full`}>
-                    <Icon name={icon} className="w-16 h-16 mb-4" />
-                    <span className="text-2xl font-bold">{title}</span>
-                    <span className="text-sm opacity-90 mt-1">{sub}</span>
+                <button onClick={onClick} className={`flex flex-col items-center justify-center py-5 px-4 rounded-[2rem] shadow-lg transition active:scale-95 ${color} text-white w-full`}>
+                    <Icon name={icon} className="w-10 h-10 mb-2" />
+                    <span className="text-xl font-bold">{title}</span>
+                    <span className="text-xs opacity-90 mt-0.5">{sub}</span>
                 </button>
             );
 
@@ -246,19 +255,19 @@
             if (view === 'counting') return <CountingGame onBack={() => setView('menu')} />;
 
             return (
-                <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-slate-50">
-                    <div className="text-center mb-12">
-                        <h1 className="text-5xl font-black text-slate-800 mb-2">啟蒙探索小遊戲</h1>
-                        <p className="text-xl text-slate-500">適合 3 歲幼兒的快樂學習時光</p>
+                <div className="full-h flex flex-col items-center p-6 bg-slate-50 overflow-y-auto">
+                    <div className="text-center mt-4 mb-8">
+                        <h1 className="text-3xl font-black text-slate-800 mb-1">啟蒙探索小遊戲</h1>
+                        <p className="text-lg text-slate-500">快樂學習時光</p>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 w-full max-w-2xl">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-sm">
                         <MenuButton icon="target" title="泡泡派對" sub="手眼協調" color="bg-blue-500" onClick={() => setView('bubble')} />
                         <MenuButton icon="grid" title="色彩樂園" sub="認識顏色" color="bg-orange-500" onClick={() => setView('color')} />
                         <MenuButton icon="volume" title="動物點點名" sub="動物認知" color="bg-green-500" onClick={() => setView('animal')} />
                         <MenuButton icon="calc" title="數字跳跳糖" sub="基礎數感" color="bg-purple-500" onClick={() => setView('counting')} />
                     </div>
-                    <div className="mt-16 text-slate-400 font-medium text-center">
-                        💡 家長小撇步：陪孩子一起讀出動物和顏色的名字吧！
+                    <div className="mt-auto py-6 text-slate-400 font-medium text-center text-sm">
+                        💡 貼心提醒：陪孩子一起玩效果更好喔！
                     </div>
                 </div>
             );
@@ -269,3 +278,4 @@
     </script>
 </body>
 </html>
+
