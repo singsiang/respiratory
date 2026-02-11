@@ -1,0 +1,350 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Sparkles, Keyboard, Trophy, Music, Volume2, RotateCcw, Home } from 'lucide-react';
+
+const HappyTyper = () => {
+  const [mode, setMode] = useState('menu'); // menu, free, challenge
+  const [currentKey, setCurrentKey] = useState(null);
+  const [targetKey, setTargetKey] = useState(null);
+  const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [pressedKeyDisplay, setPressedKeyDisplay] = useState([]);
+  const [feedback, setFeedback] = useState(null); // 'correct', 'wrong', null
+  const lastInteraction = useRef(Date.now());
+
+  // 鍵盤佈局資料
+  const keyboardLayout = [
+    ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'Back'],
+    ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+    ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'Enter'],
+    ['Z', 'X', 'C', 'V', 'B', 'N', 'M']
+  ];
+
+  // 語音合成功能
+  const speak = (text) => {
+    if ('speechSynthesis' in window) {
+      // 取消之前的發音以避免堆疊
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US'; // 預設唸英文
+      utterance.rate = 0.9;
+      utterance.pitch = 1.1;
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  // 播放音效 (簡單的 Web Audio API)
+  const playSound = (type) => {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    const now = ctx.currentTime;
+    
+    if (type === 'correct') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(500, now);
+      osc.frequency.exponentialRampToValueAtTime(1000, now + 0.1);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    } else if (type === 'wrong') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(150, now);
+      osc.frequency.linearRampToValueAtTime(100, now + 0.2);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    } else if (type === 'click') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(300, now);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+      osc.start(now);
+      osc.stop(now + 0.1);
+    }
+  };
+
+  // 產生隨機字母
+  const generateTarget = useCallback(() => {
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const randomChar = letters[Math.floor(Math.random() * letters.length)];
+    setTargetKey(randomChar);
+    setFeedback(null);
+    speak(`Find ${randomChar}`);
+  }, []);
+
+  // 處理按鍵事件
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // 忽略系統按鍵 (除了 Backspace 和 Enter)
+      if (e.key.length > 1 && e.key !== 'Backspace' && e.key !== 'Enter') return;
+      
+      const key = e.key.toUpperCase();
+      let displayKey = key;
+      
+      if (e.key === 'Backspace') displayKey = 'Back';
+      if (e.key === 'Enter') displayKey = 'Enter';
+
+      setCurrentKey(displayKey);
+      
+      // 自由模式邏輯
+      if (mode === 'free') {
+        playSound('click');
+        if (displayKey.length === 1 && /[A-Z0-9]/.test(displayKey)) {
+          speak(displayKey);
+          // 隨機顏色
+          const colors = ['text-red-500', 'text-blue-500', 'text-green-500', 'text-yellow-500', 'text-purple-500', 'text-pink-500'];
+          const randomColor = colors[Math.floor(Math.random() * colors.length)];
+          
+          setPressedKeyDisplay(prev => [
+            { id: Date.now(), char: displayKey, color: randomColor },
+            ...prev
+          ].slice(0, 5)); // 只保留最後 5 個
+        }
+      }
+
+      // 挑戰模式邏輯
+      if (mode === 'challenge') {
+        if (displayKey === targetKey) {
+          // 答對了
+          setScore(s => s + 10);
+          setStreak(s => s + 1);
+          setFeedback('correct');
+          playSound('correct');
+          speak(`Good job!`);
+          setTimeout(generateTarget, 1000);
+        } else {
+          // 答錯了
+          if (displayKey.length === 1 && /[A-Z0-9]/.test(displayKey)) {
+             setStreak(0);
+             setFeedback('wrong');
+             playSound('wrong');
+          }
+        }
+      }
+    };
+
+    const handleKeyUp = () => {
+      setTimeout(() => setCurrentKey(null), 100);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [mode, targetKey, generateTarget]);
+
+  // 模式切換初始化
+  useEffect(() => {
+    if (mode === 'challenge') {
+      setScore(0);
+      setStreak(0);
+      setPressedKeyDisplay([]);
+      generateTarget();
+    } else if (mode === 'free') {
+      setPressedKeyDisplay([]);
+      setTargetKey(null);
+    }
+  }, [mode, generateTarget]);
+
+  // 渲染鍵盤
+  const renderKeyboard = () => {
+    return (
+      <div className="bg-gray-800 p-4 rounded-2xl shadow-xl max-w-4xl mx-auto mt-8 border-b-8 border-gray-900">
+        {keyboardLayout.map((row, rowIndex) => (
+          <div key={rowIndex} className="flex justify-center gap-2 mb-2">
+            {row.map((key) => {
+              const isActive = currentKey === key;
+              const isTarget = mode === 'challenge' && targetKey === key;
+              
+              let widthClass = "w-12 sm:w-16";
+              if (key === 'Back') widthClass = "w-20 sm:w-24";
+              if (key === 'Enter') widthClass = "w-20 sm:w-24";
+
+              let bgClass = "bg-gray-100 text-gray-800 border-b-4 border-gray-300";
+              if (isActive) bgClass = "bg-yellow-400 text-white border-b-0 translate-y-1 border-t-4 border-yellow-600";
+              if (isTarget && mode === 'challenge') bgClass = "bg-blue-200 animate-pulse border-b-4 border-blue-300";
+
+              return (
+                <div
+                  key={key}
+                  className={`${widthClass} h-12 sm:h-16 flex items-center justify-center rounded-lg font-bold text-lg sm:text-xl transition-all duration-75 ${bgClass}`}
+                >
+                  {key === 'Back' ? '←' : key}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // 渲染主選單
+  if (mode === 'menu') {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-400 to-purple-500 flex flex-col items-center justify-center p-4">
+        <div className="bg-white/90 backdrop-blur-sm p-8 rounded-3xl shadow-2xl text-center max-w-2xl w-full border-4 border-white">
+          <h1 className="text-5xl font-black text-blue-600 mb-2 flex items-center justify-center gap-3">
+            <Keyboard size={48} /> 快樂打字員
+          </h1>
+          <p className="text-gray-500 text-xl mb-10">專為小朋友設計的鍵盤練習遊戲</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <button 
+              onClick={() => setMode('free')}
+              className="group relative overflow-hidden bg-green-400 hover:bg-green-500 text-white p-8 rounded-2xl transition-all hover:scale-105 shadow-lg border-b-8 border-green-600 active:border-b-0 active:translate-y-2"
+            >
+              <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+              <Sparkles className="mx-auto mb-4 w-12 h-12" />
+              <div className="text-3xl font-bold">自由探索</div>
+              <div className="text-green-100 mt-2">隨意按鍵聽聲音</div>
+            </button>
+
+            <button 
+              onClick={() => setMode('challenge')}
+              className="group relative overflow-hidden bg-orange-400 hover:bg-orange-500 text-white p-8 rounded-2xl transition-all hover:scale-105 shadow-lg border-b-8 border-orange-600 active:border-b-0 active:translate-y-2"
+            >
+              <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+              <Trophy className="mx-auto mb-4 w-12 h-12" />
+              <div className="text-3xl font-bold">字母挑戰</div>
+              <div className="text-orange-100 mt-2">找出指定的字母</div>
+            </button>
+          </div>
+        </div>
+        <p className="mt-8 text-white/80 font-medium">請在電腦上使用實體鍵盤遊玩喔！</p>
+      </div>
+    );
+  }
+
+  // 遊戲畫面
+  return (
+    <div className="min-h-screen bg-slate-100 flex flex-col">
+      {/* 頂部導航 */}
+      <div className="bg-white p-4 shadow-md flex justify-between items-center px-8">
+        <button 
+          onClick={() => setMode('menu')}
+          className="flex items-center gap-2 text-gray-600 hover:text-blue-500 font-bold text-lg transition-colors bg-gray-100 px-4 py-2 rounded-full"
+        >
+          <Home size={20} /> 回首頁
+        </button>
+        
+        {mode === 'challenge' && (
+          <div className="flex gap-6">
+            <div className="flex items-center gap-2 bg-yellow-100 text-yellow-700 px-4 py-1 rounded-full border border-yellow-200">
+              <Trophy size={20} />
+              <span className="font-bold text-xl">{score}</span>
+            </div>
+            <div className="flex items-center gap-2 bg-orange-100 text-orange-700 px-4 py-1 rounded-full border border-orange-200">
+              <span className="text-sm font-bold">連對</span>
+              <span className="font-bold text-xl">{streak}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 主要互動區 */}
+      <div className="flex-1 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        
+        {/* 背景裝飾 */}
+        <div className="absolute inset-0 pointer-events-none opacity-10 flex flex-wrap content-center justify-center gap-12 overflow-hidden">
+          {Array.from({ length: 20 }).map((_, i) => (
+             <div key={i} className="text-6xl font-black transform rotate-12">
+               {String.fromCharCode(65 + i)}
+             </div>
+          ))}
+        </div>
+
+        {/* 自由模式顯示 */}
+        {mode === 'free' && (
+          <div className="text-center z-10 h-64 flex flex-col items-center justify-center">
+            {pressedKeyDisplay.length > 0 ? (
+              <>
+                <div className={`text-[150px] font-black leading-none transition-all transform scale-100 ${pressedKeyDisplay[0].color} animate-bounce`}>
+                  {pressedKeyDisplay[0].char}
+                </div>
+                <div className="flex gap-4 mt-8 opacity-50">
+                  {pressedKeyDisplay.slice(1).map((item, idx) => (
+                    <span key={item.id} className={`text-4xl font-bold ${item.color} transform scale-${90 - idx * 10}`}>
+                      {item.char}
+                    </span>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="text-gray-400 text-3xl font-bold animate-pulse">
+                試試看按鍵盤上的任何按鍵！
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 挑戰模式顯示 */}
+        {mode === 'challenge' && (
+          <div className="text-center z-10 h-64 flex flex-col items-center justify-center">
+            <div className="text-gray-500 text-xl font-bold mb-4 bg-white/80 px-6 py-2 rounded-full backdrop-blur-sm">
+              請按下這個字母：
+            </div>
+            <div className={`relative transition-all duration-300 ${feedback === 'correct' ? 'scale-125' : ''} ${feedback === 'wrong' ? 'shake-animation' : ''}`}>
+              <div className="text-[140px] font-black text-gray-800 drop-shadow-xl bg-white w-48 h-48 rounded-3xl flex items-center justify-center border-b-8 border-gray-300">
+                {targetKey}
+              </div>
+              
+              {feedback === 'correct' && (
+                <>
+                  <Sparkles className="absolute -top-12 -right-12 text-yellow-400 w-24 h-24 animate-spin-slow" />
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-8xl opacity-30 animate-ping text-green-500">
+                    O
+                  </div>
+                </>
+              )}
+              {feedback === 'wrong' && (
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-9xl text-red-500/50">
+                  X
+                </div>
+              )}
+            </div>
+            <div className="mt-8 h-8 text-xl font-bold text-blue-600">
+              {feedback === 'correct' ? "太棒了！" : feedback === 'wrong' ? "再試一次！" : " "}
+            </div>
+          </div>
+        )}
+
+        {/* 虛擬鍵盤 */}
+        <div className="mt-8 w-full z-10">
+          {renderKeyboard()}
+        </div>
+
+        {/* 提示與說明 */}
+        <div className="mt-6 text-gray-400 text-sm flex gap-4">
+           <span className="flex items-center gap-1"><Volume2 size={16}/> 開啟音效體驗更佳</span>
+           {mode === 'challenge' && <span className="flex items-center gap-1"><RotateCcw size={16}/> 按任意鍵繼續</span>}
+        </div>
+      </div>
+      
+      <style jsx global>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-10px) rotate(-5deg); }
+          75% { transform: translateX(10px) rotate(5deg); }
+        }
+        .shake-animation {
+          animation: shake 0.4s ease-in-out;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default HappyTyper;
