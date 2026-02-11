@@ -1,33 +1,24 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>快樂打字員 - 小朋友的鍵盤練習遊戲</title>
-    <!-- React & Babel -->
+    <title>快樂打字員 - 小朋友的打電腦遊戲</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; overflow: hidden; user-select: none; background-color: #f0f9ff; }
+        .key-active { transform: translateY(4px); background-color: #fbbf24 !important; border-bottom-width: 0px !important; }
+        .shake { animation: shake 0.3s ease-in-out; }
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-10px) rotate(-5deg); }
-            75% { transform: translateX(10px) rotate(5deg); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
         }
-        .shake-animation {
-            animation: shake 0.4s ease-in-out;
-        }
-        .animate-spin-slow {
-            animation: spin 3s linear infinite;
-        }
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
+        canvas { display: block; max-width: 100%; max-height: 400px; border-radius: 20px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); }
     </style>
 </head>
 <body>
@@ -36,142 +27,222 @@
     <script type="text/babel">
         const { useState, useEffect, useRef, useCallback } = React;
 
-        // 模擬 Lucide Icon 元件 (因為 CDN 版使用方式不同)
-        const Icon = ({ name, size = 24, className = "" }) => {
-            const ref = useRef(null);
-            useEffect(() => {
-                if (ref.current) {
-                    ref.current.innerHTML = lucide.createIcons({
-                        icons: { [name]: lucide[name] }
-                    });
-                    const svg = ref.current.querySelector('svg');
-                    if (svg) {
-                        svg.setAttribute('width', size);
-                        svg.setAttribute('height', size);
-                        svg.setAttribute('class', className);
-                    }
-                }
-            }, [name, size, className]);
-            return <span ref={ref} className="inline-block"></span>;
+        const SvgIcon = ({ name, className = "w-6 h-6" }) => {
+            const icons = {
+                keyboard: <path d="M20 5H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V7a2 2 0 00-2-2zM7 8h2v2H7V8zm0 4h2v2H7v-2zm4-4h2v2h-2V8zm0 4h2v2h-2v-2zm4-4h2v2h-2V8zm0 4h2v2h-2v-2zM4 17V7h16v10H4z" />,
+                trophy: <path d="M8 2v2H5a2 2 0 00-2 2v2c0 1.1.9 2 2 2h2a4 4 0 004 4v2H9v4h6v-4h-2v-2a4 4 0 004-4h2a2 2 0 002-2V6a2 2 0 00-2-2h-3V2H8zm0 2h8v2H8V4zM5 6h3v4H5V6zm11 0h3v4h-3V6z" />,
+                sparkles: <path d="M5 3L4 6L1 7L4 8L5 11L6 8L9 7L6 6L5 3zM19 13L18 16L15 17L18 18L19 21L20 18L23 17L20 16L19 13zM14 4L12.5 8.5L8 10L12.5 11.5L14 16L15.5 11.5L20 10L15.5 8.5L14 4z" />,
+                home: <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />,
+                bird: <path d="M12 21c-4.418 0-8-3.582-8-8 0-4.418 3.582-8 8-8s8 3.582 8 8c0 4.418-3.582 8-8 8zm0-2c3.314 0 6-2.686 6-6s-2.686-6-6-6-6 2.686-6 6 2.686 6 6 6zm1-7h2v2h-2v-2zm-4 0h2v2H9v-2z" />
+            };
+            return (
+                <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    {icons[name]}
+                </svg>
+            );
         };
 
-        const HappyTyper = () => {
+        const App = () => {
             const [mode, setMode] = useState('menu');
             const [currentKey, setCurrentKey] = useState(null);
             const [targetKey, setTargetKey] = useState(null);
             const [score, setScore] = useState(0);
             const [streak, setStreak] = useState(0);
-            const [pressedKeyDisplay, setPressedKeyDisplay] = useState([]);
             const [feedback, setFeedback] = useState(null);
+            const [displayKey, setDisplayKey] = useState({ char: '', color: 'text-blue-500' });
+            
+            // 遊戲物理 (Happy Bird)
+            const [birdPos, setBirdPos] = useState({ y: 200, velocity: 0 });
+            const [pipes, setPipes] = useState([]);
+            const [gameStatus, setGameStatus] = useState('waiting'); // waiting, playing, gameOver
+            const gameLoopRef = useRef();
+            const canvasRef = useRef();
+            const audioCtx = useRef(null);
 
-            const keyboardLayout = [
-                ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'Back'],
-                ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
-                ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'Enter'],
-                ['Z', 'X', 'C', 'V', 'B', 'N', 'M']
-            ];
-
-            const speak = (text) => {
-                if ('speechSynthesis' in window) {
-                    window.speechSynthesis.cancel();
-                    const utterance = new SpeechSynthesisUtterance(text);
-                    utterance.lang = 'en-US';
-                    utterance.rate = 0.9;
-                    window.speechSynthesis.speak(utterance);
+            const initAudio = () => {
+                if (!audioCtx.current) {
+                    audioCtx.current = new (window.AudioContext || window.webkitAudioContext)();
                 }
             };
 
-            const playSound = (type) => {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return;
-                const ctx = new AudioContext();
+            const playSound = (type, pitch = 1) => {
+                if (!audioCtx.current) return;
+                const ctx = audioCtx.current;
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
                 osc.connect(gain);
                 gain.connect(ctx.destination);
                 const now = ctx.currentTime;
-                if (type === 'correct') {
-                    osc.frequency.setValueAtTime(500, now);
-                    osc.frequency.exponentialRampToValueAtTime(1000, now + 0.1);
-                    gain.gain.setValueAtTime(0.3, now);
-                    osc.start(now);
-                    osc.stop(now + 0.3);
-                } else if (type === 'wrong') {
+
+                if (type === 'flap') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(150 * pitch, now);
+                    osc.frequency.exponentialRampToValueAtTime(400 * pitch, now + 0.1);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                    osc.start(); osc.stop(now + 0.1);
+                } else if (type === 'score') {
+                    osc.frequency.setValueAtTime(600 * pitch, now);
+                    osc.frequency.setValueAtTime(800 * pitch, now + 0.1);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 0.3);
+                    osc.start(); osc.stop(now + 0.3);
+                } else if (type === 'hit') {
                     osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(150, now);
-                    gain.gain.setValueAtTime(0.3, now);
-                    osc.start(now);
-                    osc.stop(now + 0.2);
+                    osc.frequency.setValueAtTime(100, now);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 0.5);
+                    osc.start(); osc.stop(now + 0.5);
+                } else if (type === 'correct') {
+                    osc.frequency.setValueAtTime(500, now);
+                    osc.frequency.setValueAtTime(700, now + 0.1);
+                    gain.gain.setValueAtTime(0.1, now);
+                    osc.start(); osc.stop(now + 0.2);
                 }
             };
 
-            const generateTarget = useCallback(() => {
-                const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-                const randomChar = letters[Math.floor(Math.random() * letters.length)];
-                setTargetKey(randomChar);
-                setFeedback(null);
-                speak(`Find ${randomChar}`);
-            }, []);
+            const speak = (text) => {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    const msg = new SpeechSynthesisUtterance(text);
+                    msg.lang = 'en-US';
+                    window.speechSynthesis.speak(msg);
+                }
+            };
+
+            const handleAction = (key) => {
+                initAudio();
+                const k = key.toUpperCase();
+                setCurrentKey(k);
+                setTimeout(() => setCurrentKey(null), 100);
+
+                if (mode === 'free') {
+                    if (k.length === 1) {
+                        setDisplayKey({ char: k, color: 'text-blue-500' });
+                        playSound('flap', 1.5);
+                        speak(k);
+                    }
+                } else if (mode === 'challenge') {
+                    if (k === targetKey) {
+                        setScore(s => s + 10);
+                        setFeedback('correct');
+                        playSound('score');
+                        setTimeout(() => {
+                            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                            const next = chars[Math.floor(Math.random() * chars.length)];
+                            setTargetKey(next);
+                            setFeedback(null);
+                            speak(next);
+                        }, 800);
+                    } else if (k.length === 1) {
+                        setFeedback('wrong');
+                        playSound('hit');
+                    }
+                } else if (mode === 'bird') {
+                    if (gameStatus === 'waiting') {
+                        setGameStatus('playing');
+                        setScore(0);
+                        setPipes([{ x: 600, gapTop: 150 }]);
+                    }
+                    if (gameStatus === 'playing' && k.length === 1) {
+                        setBirdPos(prev => ({ ...prev, velocity: -7 }));
+                        setDisplayKey({ char: k, color: 'text-white' });
+                        playSound('flap');
+                    }
+                    if (gameStatus === 'gameOver') {
+                        setGameStatus('waiting');
+                        setBirdPos({ y: 200, velocity: 0 });
+                        setPipes([]);
+                    }
+                }
+            };
+
+            // Happy Bird 遊戲循環
+            useEffect(() => {
+                if (mode !== 'bird' || gameStatus !== 'playing') return;
+
+                const update = () => {
+                    setBirdPos(prev => {
+                        const newY = prev.y + prev.velocity;
+                        const newVel = prev.velocity + 0.4; // 重力
+                        
+                        // 邊界檢查
+                        if (newY > 380 || newY < 0) {
+                            setGameStatus('gameOver');
+                            playSound('hit');
+                        }
+                        return { y: newY, velocity: newVel };
+                    });
+
+                    setPipes(prev => {
+                        let newPipes = prev.map(p => ({ ...p, x: p.x - 3 }));
+                        
+                        // 生成新水管
+                        if (newPipes.length > 0 && newPipes[newPipes.length - 1].x < 350) {
+                            newPipes.push({ x: 600, gapTop: Math.random() * 200 + 50 });
+                        }
+                        
+                        // 移除舊水管並得分
+                        if (newPipes[0].x < -50) {
+                            newPipes.shift();
+                            setScore(s => s + 1);
+                            playSound('score');
+                        }
+
+                        // 碰撞檢查
+                        const birdX = 100;
+                        const birdY = birdPos.y;
+                        newPipes.forEach(p => {
+                            if (birdX + 20 > p.x && birdX - 20 < p.x + 50) {
+                                if (birdY - 15 < p.gapTop || birdY + 15 > p.gapTop + 120) {
+                                    setGameStatus('gameOver');
+                                    playSound('hit');
+                                }
+                            }
+                        });
+
+                        return newPipes;
+                    });
+                    gameLoopRef.current = requestAnimationFrame(update);
+                };
+
+                gameLoopRef.current = requestAnimationFrame(update);
+                return () => cancelAnimationFrame(gameLoopRef.current);
+            }, [mode, gameStatus, birdPos.y]);
 
             useEffect(() => {
-                const handleKeyDown = (e) => {
-                    if (e.key.length > 1 && e.key !== 'Backspace' && e.key !== 'Enter') return;
-                    const key = e.key.toUpperCase();
-                    let displayKey = key === 'BACKSPACE' ? 'Back' : key === 'ENTER' ? 'Enter' : key;
-                    setCurrentKey(displayKey);
-                    
-                    if (mode === 'free') {
-                        if (displayKey.length === 1 && /[A-Z0-9]/.test(displayKey)) {
-                            speak(displayKey);
-                            const colors = ['text-red-500', 'text-blue-500', 'text-green-500', 'text-yellow-500', 'text-purple-500'];
-                            setPressedKeyDisplay(prev => [{ id: Date.now(), char: displayKey, color: colors[Math.floor(Math.random() * colors.length)] }, ...prev].slice(0, 5));
-                        }
-                    }
+                const onKey = (e) => handleAction(e.key.toUpperCase());
+                window.addEventListener('keydown', onKey);
+                return () => window.removeEventListener('keydown', onKey);
+            }, [mode, targetKey, gameStatus]);
 
-                    if (mode === 'challenge') {
-                        if (displayKey === targetKey) {
-                            setScore(s => s + 10);
-                            setStreak(s => s + 1);
-                            setFeedback('correct');
-                            playSound('correct');
-                            speak(`Good job!`);
-                            setTimeout(generateTarget, 1000);
-                        } else if (displayKey.length === 1) {
-                            setStreak(0);
-                            setFeedback('wrong');
-                            playSound('wrong');
-                        }
-                    }
-                };
-                const handleKeyUp = () => setCurrentKey(null);
-                window.addEventListener('keydown', handleKeyDown);
-                window.addEventListener('keyup', handleKeyUp);
-                return () => {
-                    window.removeEventListener('keydown', handleKeyDown);
-                    window.removeEventListener('keyup', handleKeyUp);
-                };
-            }, [mode, targetKey, generateTarget]);
-
-            useEffect(() => {
-                if (mode === 'challenge') { setScore(0); setStreak(0); generateTarget(); }
-            }, [mode, generateTarget]);
+            const rows = [
+                ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
+                ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+                ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+                ['Z', 'X', 'C', 'V', 'B', 'N', 'M']
+            ];
 
             if (mode === 'menu') {
                 return (
-                    <div className="min-h-screen bg-gradient-to-b from-blue-400 to-purple-500 flex flex-col items-center justify-center p-4 font-sans">
-                        <div className="bg-white/90 p-8 rounded-3xl shadow-2xl text-center max-w-2xl w-full border-4 border-white">
-                            <h1 className="text-5xl font-black text-blue-600 mb-2 flex items-center justify-center gap-3">
-                                <Icon name="Keyboard" size={48} /> 快樂打字員
+                    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-br from-blue-400 to-indigo-600">
+                        <div className="bg-white p-10 rounded-[40px] shadow-2xl text-center max-w-2xl w-full border-8 border-white/50">
+                            <h1 className="text-5xl font-black text-indigo-600 mb-2 flex items-center justify-center gap-3">
+                                <SvgIcon name="keyboard" className="w-12 h-12" /> 快樂打字員
                             </h1>
-                            <p className="text-gray-500 text-xl mb-10">專為小朋友設計的鍵盤練習遊戲</p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <button onClick={() => setMode('free')} className="bg-green-400 hover:bg-green-500 text-white p-8 rounded-2xl shadow-lg border-b-8 border-green-600 active:translate-y-2 active:border-b-0 transition-all">
-                                    <Icon name="Sparkles" size={48} className="mb-4" />
-                                    <div className="text-3xl font-bold">自由探索</div>
+                            <p className="text-gray-400 font-bold mb-10">專為小朋友設計的啟蒙App</p>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <button onClick={() => { initAudio(); setMode('free'); }} className="bg-green-400 hover:bg-green-500 text-white p-6 rounded-3xl shadow-[0_6px_0_#16a34a] active:shadow-none active:translate-y-1 transition-all">
+                                    <SvgIcon name="sparkles" className="mx-auto mb-2 w-10 h-10" />
+                                    <div className="font-black text-xl">自由模式</div>
                                 </button>
-                                <button onClick={() => setMode('challenge')} className="bg-orange-400 hover:bg-orange-500 text-white p-8 rounded-2xl shadow-lg border-b-8 border-orange-600 active:translate-y-2 active:border-b-0 transition-all">
-                                    <Icon name="Trophy" size={48} className="mb-4" />
-                                    <div className="text-3xl font-bold">字母挑戰</div>
+                                <button onClick={() => { initAudio(); setMode('challenge'); setTargetKey('A'); speak('A'); }} className="bg-orange-400 hover:bg-orange-500 text-white p-6 rounded-3xl shadow-[0_6px_0_#ea580c] active:shadow-none active:translate-y-1 transition-all">
+                                    <SvgIcon name="trophy" className="mx-auto mb-2 w-10 h-10" />
+                                    <div className="font-black text-xl">字母挑戰</div>
+                                </button>
+                                <button onClick={() => { initAudio(); setMode('bird'); setGameStatus('waiting'); }} className="bg-blue-400 hover:bg-blue-500 text-white p-6 rounded-3xl shadow-[0_6px_0_#2563eb] active:shadow-none active:translate-y-1 transition-all">
+                                    <SvgIcon name="bird" className="mx-auto mb-2 w-10 h-10" />
+                                    <div className="font-black text-xl">打字飛行</div>
                                 </button>
                             </div>
                         </div>
@@ -180,42 +251,74 @@
             }
 
             return (
-                <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
-                    <div className="bg-white p-4 shadow-md flex justify-between items-center px-8">
-                        <button onClick={() => setMode('menu')} className="flex items-center gap-2 text-gray-600 font-bold bg-gray-100 px-4 py-2 rounded-full">
-                            <Icon name="Home" size={20} /> 回首頁
+                <div className="h-screen flex flex-col bg-sky-50">
+                    <div className="bg-white p-4 shadow flex justify-between items-center px-10">
+                        <button onClick={() => setMode('menu')} className="bg-gray-100 px-6 py-2 rounded-xl font-bold text-gray-600 flex items-center gap-2">
+                            <SvgIcon name="home" /> 返回首頁
                         </button>
-                        {mode === 'challenge' && (
-                            <div className="flex gap-4">
-                                <div className="bg-yellow-100 text-yellow-700 px-4 py-1 rounded-full font-bold">得分: {score}</div>
-                                <div className="bg-orange-100 text-orange-700 px-4 py-1 rounded-full font-bold">連對: {streak}</div>
+                        <div className="font-black text-xl text-blue-600">
+                            {mode === 'free' ? '自由練習' : mode === 'challenge' ? '字母挑戰' : '打字飛行員'}
+                            { (mode === 'challenge' || mode === 'bird') && <span className="ml-4 bg-yellow-400 text-white px-4 py-1 rounded-full">分數: {score}</span>}
+                        </div>
+                    </div>
+
+                    <div className="flex-1 flex flex-col items-center justify-center p-4">
+                        {mode === 'bird' ? (
+                            <div className="relative w-full max-w-[600px] h-[400px] bg-sky-300 rounded-[30px] overflow-hidden border-8 border-white shadow-2xl">
+                                {/* 水管 */}
+                                {pipes.map((p, i) => (
+                                    <React.Fragment key={i}>
+                                        <div className="absolute bg-green-500 border-x-4 border-green-700" style={{ left: p.x, top: 0, width: 50, height: p.gapTop, borderRadius: '0 0 10px 10px' }} />
+                                        <div className="absolute bg-green-500 border-x-4 border-green-700" style={{ left: p.x, top: p.gapTop + 120, width: 50, height: 400 - (p.gapTop + 120), borderRadius: '10px 10px 0 0' }} />
+                                    </React.Fragment>
+                                ))}
+                                {/* 小鳥 */}
+                                <div className="absolute transition-transform duration-100" style={{ left: 100, top: birdPos.y, transform: `rotate(${birdPos.velocity * 3}deg)` }}>
+                                    <div className="w-10 h-10 bg-yellow-400 rounded-full border-4 border-white flex items-center justify-center shadow-lg">
+                                        <span className="text-white font-black text-xl">{displayKey.char || "🐤"}</span>
+                                    </div>
+                                    <div className="absolute -left-2 top-2 w-4 h-3 bg-white rounded-full opacity-60" /> {/* 翅膀 */}
+                                </div>
+                                
+                                {gameStatus === 'waiting' && (
+                                    <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center text-white">
+                                        <div className="text-4xl font-black mb-4">準備好了嗎？</div>
+                                        <div className="text-xl font-bold animate-pulse">按下鍵盤任何字母開始飛行！</div>
+                                    </div>
+                                )}
+                                {gameStatus === 'gameOver' && (
+                                    <div className="absolute inset-0 bg-red-500/40 flex flex-col items-center justify-center text-white">
+                                        <div className="text-5xl font-black mb-2">哎呀！</div>
+                                        <div className="text-2xl font-bold mb-6">得分：{score}</div>
+                                        <div className="bg-white text-red-500 px-8 py-3 rounded-full font-black text-xl animate-bounce">按任意鍵重新開始</div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="h-64 flex items-center justify-center">
+                                {mode === 'free' ? (
+                                    <div className={`text-[180px] font-black ${displayKey.color} ${currentKey ? 'pop-effect' : ''}`}>{displayKey.char || "?"}</div>
+                                ) : (
+                                    <div className={`flex flex-col items-center gap-4 ${feedback === 'wrong' ? 'shake' : ''}`}>
+                                        <div className="w-56 h-56 rounded-[50px] bg-white shadow-xl flex items-center justify-center text-[130px] font-black border-b-[12px] border-gray-200">
+                                            {targetKey}
+                                        </div>
+                                        {feedback === 'correct' && <div className="text-3xl font-black text-green-500">🌟 太棒了！ 🌟</div>}
+                                    </div>
+                                )}
                             </div>
                         )}
-                    </div>
-                    <div className="flex-1 flex flex-col items-center justify-center p-4">
-                        <div className="h-64 flex flex-col items-center justify-center mb-8">
-                            {mode === 'free' ? (
-                                pressedKeyDisplay.length > 0 ? (
-                                    <div className={`text-[150px] font-black ${pressedKeyDisplay[0].color} animate-bounce`}>{pressedKeyDisplay[0].char}</div>
-                                ) : <div className="text-gray-400 text-2xl font-bold">敲敲鍵盤試試看！</div>
-                            ) : (
-                                <div className={`relative ${feedback === 'wrong' ? 'shake-animation' : ''}`}>
-                                    <div className="text-[140px] font-black text-gray-800 bg-white w-48 h-48 rounded-3xl flex items-center justify-center border-b-8 border-gray-300 shadow-xl">
-                                        {targetKey}
-                                    </div>
-                                    {feedback === 'correct' && <div className="absolute -top-10 -right-10 text-6xl animate-bounce">🌟</div>}
-                                </div>
-                            )}
-                        </div>
-                        <div className="bg-gray-800 p-4 rounded-2xl shadow-xl max-w-4xl w-full border-b-8 border-gray-900">
-                            {keyboardLayout.map((row, i) => (
-                                <div key={i} className="flex justify-center gap-2 mb-2">
+
+                        <div className="mt-8 bg-gray-800 p-6 rounded-[35px] shadow-2xl border-b-[10px] border-gray-900 w-full max-w-4xl">
+                            {rows.map((row, rIdx) => (
+                                <div key={rIdx} className="flex justify-center gap-2 mb-3">
                                     {row.map(key => (
                                         <div key={key} className={`
-                                            ${key.length > 1 ? 'w-24' : 'w-14'} h-14 flex items-center justify-center rounded-lg font-bold text-xl transition-all
-                                            ${currentKey === key ? 'bg-yellow-400 text-white translate-y-1' : (mode === 'challenge' && targetKey === key ? 'bg-blue-200 animate-pulse text-gray-800' : 'bg-gray-100 text-gray-800 border-b-4 border-gray-300')}
+                                            w-14 sm:w-16 h-14 sm:h-16 flex items-center justify-center rounded-2xl text-xl font-black transition-all
+                                            ${currentKey === key ? 'key-active' : (mode === 'challenge' && targetKey === key ? 'bg-blue-300 text-blue-800 animate-pulse' : 'bg-gray-100 text-gray-700')}
+                                            border-b-4 border-gray-300
                                         `}>
-                                            {key === 'Back' ? '←' : key}
+                                            {key}
                                         </div>
                                     ))}
                                 </div>
@@ -227,320 +330,8 @@
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<HappyTyper />);
+        root.render(<App />);
     </script>
 </body>
-</html>    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    
-    const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    
-    const now = ctx.currentTime;
-    
-    if (type === 'correct') {
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(500, now);
-      osc.frequency.exponentialRampToValueAtTime(1000, now + 0.1);
-      gain.gain.setValueAtTime(0.3, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-      osc.start(now);
-      osc.stop(now + 0.3);
-    } else if (type === 'wrong') {
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(150, now);
-      osc.frequency.linearRampToValueAtTime(100, now + 0.2);
-      gain.gain.setValueAtTime(0.3, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-      osc.start(now);
-      osc.stop(now + 0.2);
-    } else if (type === 'click') {
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(300, now);
-      gain.gain.setValueAtTime(0.1, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-      osc.start(now);
-      osc.stop(now + 0.1);
-    }
-  };
+</html>
 
-  // 產生隨機字母
-  const generateTarget = useCallback(() => {
-    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    const randomChar = letters[Math.floor(Math.random() * letters.length)];
-    setTargetKey(randomChar);
-    setFeedback(null);
-    speak(`Find ${randomChar}`);
-  }, []);
-
-  // 處理按鍵事件
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      // 忽略系統按鍵 (除了 Backspace 和 Enter)
-      if (e.key.length > 1 && e.key !== 'Backspace' && e.key !== 'Enter') return;
-      
-      const key = e.key.toUpperCase();
-      let displayKey = key;
-      
-      if (e.key === 'Backspace') displayKey = 'Back';
-      if (e.key === 'Enter') displayKey = 'Enter';
-
-      setCurrentKey(displayKey);
-      
-      // 自由模式邏輯
-      if (mode === 'free') {
-        playSound('click');
-        if (displayKey.length === 1 && /[A-Z0-9]/.test(displayKey)) {
-          speak(displayKey);
-          // 隨機顏色
-          const colors = ['text-red-500', 'text-blue-500', 'text-green-500', 'text-yellow-500', 'text-purple-500', 'text-pink-500'];
-          const randomColor = colors[Math.floor(Math.random() * colors.length)];
-          
-          setPressedKeyDisplay(prev => [
-            { id: Date.now(), char: displayKey, color: randomColor },
-            ...prev
-          ].slice(0, 5)); // 只保留最後 5 個
-        }
-      }
-
-      // 挑戰模式邏輯
-      if (mode === 'challenge') {
-        if (displayKey === targetKey) {
-          // 答對了
-          setScore(s => s + 10);
-          setStreak(s => s + 1);
-          setFeedback('correct');
-          playSound('correct');
-          speak(`Good job!`);
-          setTimeout(generateTarget, 1000);
-        } else {
-          // 答錯了
-          if (displayKey.length === 1 && /[A-Z0-9]/.test(displayKey)) {
-             setStreak(0);
-             setFeedback('wrong');
-             playSound('wrong');
-          }
-        }
-      }
-    };
-
-    const handleKeyUp = () => {
-      setTimeout(() => setCurrentKey(null), 100);
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [mode, targetKey, generateTarget]);
-
-  // 模式切換初始化
-  useEffect(() => {
-    if (mode === 'challenge') {
-      setScore(0);
-      setStreak(0);
-      setPressedKeyDisplay([]);
-      generateTarget();
-    } else if (mode === 'free') {
-      setPressedKeyDisplay([]);
-      setTargetKey(null);
-    }
-  }, [mode, generateTarget]);
-
-  // 渲染鍵盤
-  const renderKeyboard = () => {
-    return (
-      <div className="bg-gray-800 p-4 rounded-2xl shadow-xl max-w-4xl mx-auto mt-8 border-b-8 border-gray-900">
-        {keyboardLayout.map((row, rowIndex) => (
-          <div key={rowIndex} className="flex justify-center gap-2 mb-2">
-            {row.map((key) => {
-              const isActive = currentKey === key;
-              const isTarget = mode === 'challenge' && targetKey === key;
-              
-              let widthClass = "w-12 sm:w-16";
-              if (key === 'Back') widthClass = "w-20 sm:w-24";
-              if (key === 'Enter') widthClass = "w-20 sm:w-24";
-
-              let bgClass = "bg-gray-100 text-gray-800 border-b-4 border-gray-300";
-              if (isActive) bgClass = "bg-yellow-400 text-white border-b-0 translate-y-1 border-t-4 border-yellow-600";
-              if (isTarget && mode === 'challenge') bgClass = "bg-blue-200 animate-pulse border-b-4 border-blue-300";
-
-              return (
-                <div
-                  key={key}
-                  className={`${widthClass} h-12 sm:h-16 flex items-center justify-center rounded-lg font-bold text-lg sm:text-xl transition-all duration-75 ${bgClass}`}
-                >
-                  {key === 'Back' ? '←' : key}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  // 渲染主選單
-  if (mode === 'menu') {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-400 to-purple-500 flex flex-col items-center justify-center p-4">
-        <div className="bg-white/90 backdrop-blur-sm p-8 rounded-3xl shadow-2xl text-center max-w-2xl w-full border-4 border-white">
-          <h1 className="text-5xl font-black text-blue-600 mb-2 flex items-center justify-center gap-3">
-            <Keyboard size={48} /> 快樂打字員
-          </h1>
-          <p className="text-gray-500 text-xl mb-10">專為小朋友設計的鍵盤練習遊戲</p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <button 
-              onClick={() => setMode('free')}
-              className="group relative overflow-hidden bg-green-400 hover:bg-green-500 text-white p-8 rounded-2xl transition-all hover:scale-105 shadow-lg border-b-8 border-green-600 active:border-b-0 active:translate-y-2"
-            >
-              <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-              <Sparkles className="mx-auto mb-4 w-12 h-12" />
-              <div className="text-3xl font-bold">自由探索</div>
-              <div className="text-green-100 mt-2">隨意按鍵聽聲音</div>
-            </button>
-
-            <button 
-              onClick={() => setMode('challenge')}
-              className="group relative overflow-hidden bg-orange-400 hover:bg-orange-500 text-white p-8 rounded-2xl transition-all hover:scale-105 shadow-lg border-b-8 border-orange-600 active:border-b-0 active:translate-y-2"
-            >
-              <div className="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-              <Trophy className="mx-auto mb-4 w-12 h-12" />
-              <div className="text-3xl font-bold">字母挑戰</div>
-              <div className="text-orange-100 mt-2">找出指定的字母</div>
-            </button>
-          </div>
-        </div>
-        <p className="mt-8 text-white/80 font-medium">請在電腦上使用實體鍵盤遊玩喔！</p>
-      </div>
-    );
-  }
-
-  // 遊戲畫面
-  return (
-    <div className="min-h-screen bg-slate-100 flex flex-col">
-      {/* 頂部導航 */}
-      <div className="bg-white p-4 shadow-md flex justify-between items-center px-8">
-        <button 
-          onClick={() => setMode('menu')}
-          className="flex items-center gap-2 text-gray-600 hover:text-blue-500 font-bold text-lg transition-colors bg-gray-100 px-4 py-2 rounded-full"
-        >
-          <Home size={20} /> 回首頁
-        </button>
-        
-        {mode === 'challenge' && (
-          <div className="flex gap-6">
-            <div className="flex items-center gap-2 bg-yellow-100 text-yellow-700 px-4 py-1 rounded-full border border-yellow-200">
-              <Trophy size={20} />
-              <span className="font-bold text-xl">{score}</span>
-            </div>
-            <div className="flex items-center gap-2 bg-orange-100 text-orange-700 px-4 py-1 rounded-full border border-orange-200">
-              <span className="text-sm font-bold">連對</span>
-              <span className="font-bold text-xl">{streak}</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 主要互動區 */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 relative overflow-hidden">
-        
-        {/* 背景裝飾 */}
-        <div className="absolute inset-0 pointer-events-none opacity-10 flex flex-wrap content-center justify-center gap-12 overflow-hidden">
-          {Array.from({ length: 20 }).map((_, i) => (
-             <div key={i} className="text-6xl font-black transform rotate-12">
-               {String.fromCharCode(65 + i)}
-             </div>
-          ))}
-        </div>
-
-        {/* 自由模式顯示 */}
-        {mode === 'free' && (
-          <div className="text-center z-10 h-64 flex flex-col items-center justify-center">
-            {pressedKeyDisplay.length > 0 ? (
-              <>
-                <div className={`text-[150px] font-black leading-none transition-all transform scale-100 ${pressedKeyDisplay[0].color} animate-bounce`}>
-                  {pressedKeyDisplay[0].char}
-                </div>
-                <div className="flex gap-4 mt-8 opacity-50">
-                  {pressedKeyDisplay.slice(1).map((item, idx) => (
-                    <span key={item.id} className={`text-4xl font-bold ${item.color} transform scale-${90 - idx * 10}`}>
-                      {item.char}
-                    </span>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div className="text-gray-400 text-3xl font-bold animate-pulse">
-                試試看按鍵盤上的任何按鍵！
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 挑戰模式顯示 */}
-        {mode === 'challenge' && (
-          <div className="text-center z-10 h-64 flex flex-col items-center justify-center">
-            <div className="text-gray-500 text-xl font-bold mb-4 bg-white/80 px-6 py-2 rounded-full backdrop-blur-sm">
-              請按下這個字母：
-            </div>
-            <div className={`relative transition-all duration-300 ${feedback === 'correct' ? 'scale-125' : ''} ${feedback === 'wrong' ? 'shake-animation' : ''}`}>
-              <div className="text-[140px] font-black text-gray-800 drop-shadow-xl bg-white w-48 h-48 rounded-3xl flex items-center justify-center border-b-8 border-gray-300">
-                {targetKey}
-              </div>
-              
-              {feedback === 'correct' && (
-                <>
-                  <Sparkles className="absolute -top-12 -right-12 text-yellow-400 w-24 h-24 animate-spin-slow" />
-                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-8xl opacity-30 animate-ping text-green-500">
-                    O
-                  </div>
-                </>
-              )}
-              {feedback === 'wrong' && (
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-9xl text-red-500/50">
-                  X
-                </div>
-              )}
-            </div>
-            <div className="mt-8 h-8 text-xl font-bold text-blue-600">
-              {feedback === 'correct' ? "太棒了！" : feedback === 'wrong' ? "再試一次！" : " "}
-            </div>
-          </div>
-        )}
-
-        {/* 虛擬鍵盤 */}
-        <div className="mt-8 w-full z-10">
-          {renderKeyboard()}
-        </div>
-
-        {/* 提示與說明 */}
-        <div className="mt-6 text-gray-400 text-sm flex gap-4">
-           <span className="flex items-center gap-1"><Volume2 size={16}/> 開啟音效體驗更佳</span>
-           {mode === 'challenge' && <span className="flex items-center gap-1"><RotateCcw size={16}/> 按任意鍵繼續</span>}
-        </div>
-      </div>
-      
-      <style jsx global>{`
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-10px) rotate(-5deg); }
-          75% { transform: translateX(10px) rotate(5deg); }
-        }
-        .shake-animation {
-          animation: shake 0.4s ease-in-out;
-        }
-      `}</style>
-    </div>
-  );
-};
-
-export default HappyTyper;
