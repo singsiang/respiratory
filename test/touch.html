@@ -1,0 +1,278 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { Home, Volume2, Star, Target, LayoutGrid, Calculator } from 'lucide-react';
+
+// --- 子遊戲 1：泡泡派對 (手眼協調) ---
+const BubbleGame = ({ onBack }) => {
+  const [bubbles, setBubbles] = useState([]);
+  const [score, setScore] = useState(0);
+
+  const addBubble = useCallback(() => {
+    const id = Date.now() + Math.random();
+    const size = Math.random() * 40 + 60; // 較大的點擊目標
+    const x = Math.random() * (window.innerWidth - size);
+    const y = Math.random() * (window.innerHeight - size - 100);
+    const colors = ['bg-blue-400', 'bg-pink-400', 'bg-yellow-400', 'bg-green-400', 'bg-purple-400'];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    
+    setBubbles(prev => [...prev, { id, x, y, size, color }]);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(addBubble, 1200);
+    return () => clearInterval(interval);
+  }, [addBubble]);
+
+  const popBubble = (id) => {
+    setBubbles(prev => prev.filter(b => b.id !== id));
+    setScore(s => s + 1);
+  };
+
+  return (
+    <div className="relative w-full h-screen bg-blue-50 overflow-hidden select-none">
+      <div className="absolute top-4 left-4 z-10 flex gap-4 items-center">
+        <button onClick={onBack} className="p-4 bg-white rounded-full shadow-lg hover:scale-110 transition">
+          <Home className="w-8 h-8 text-blue-600" />
+        </button>
+        <span className="text-2xl font-bold text-blue-800 bg-white/80 px-4 py-2 rounded-full">點點泡泡: {score}</span>
+      </div>
+      
+      {bubbles.map(b => (
+        <button
+          key={b.id}
+          onClick={() => popBubble(b.id)}
+          className={`absolute rounded-full shadow-xl transform active:scale-150 transition-all duration-300 opacity-70 border-4 border-white ${b.color}`}
+          style={{
+            left: b.x,
+            top: b.y,
+            width: b.size,
+            height: b.size,
+            animation: 'float 4s infinite ease-in-out'
+          }}
+        >
+          <div className="absolute top-2 left-2 w-1/3 h-1/3 bg-white/30 rounded-full" />
+        </button>
+      ))}
+
+      <style>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-20px) rotate(5deg); }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+// --- 子遊戲 2：顏色樂園 (顏色分辨) ---
+const ColorGame = ({ onBack }) => {
+  const COLORS = [
+    { name: '紅色', value: 'bg-red-500', emoji: '🍎' },
+    { name: '藍色', value: 'bg-blue-500', emoji: '🦋' },
+    { name: '黃色', value: 'bg-yellow-400', emoji: '🍌' },
+    { name: '綠色', value: 'bg-green-500', emoji: '🌲' },
+  ];
+
+  const [target, setTarget] = useState(COLORS[0]);
+  const [feedback, setFeedback] = useState('');
+
+  const checkColor = (color) => {
+    if (color.name === target.name) {
+      setFeedback('好棒！答對了！🌟');
+      setTimeout(() => {
+        setTarget(COLORS[Math.floor(Math.random() * COLORS.length)]);
+        setFeedback('');
+      }, 1500);
+    } else {
+      setFeedback('再試一次看看喔！💪');
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-orange-50 p-8 select-none">
+      <button onClick={onBack} className="absolute top-4 left-4 p-4 bg-white rounded-full shadow-lg">
+        <Home className="w-8 h-8 text-orange-600" />
+      </button>
+
+      <div className="mb-8 text-center">
+        <h2 className="text-4xl font-bold mb-4">請找出「{target.name}」</h2>
+        <div className={`w-32 h-32 rounded-3xl shadow-inner mx-auto ${target.value} border-8 border-white flex items-center justify-center text-5xl`}>
+          {target.emoji}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-6 w-full max-w-md">
+        {COLORS.map(c => (
+          <button
+            key={c.name}
+            onClick={() => checkColor(c)}
+            className={`h-32 rounded-3xl shadow-xl transform active:scale-95 transition-transform ${c.value} border-4 border-white`}
+          />
+        ))}
+      </div>
+
+      {feedback && (
+        <div className="mt-8 text-3xl font-bold text-orange-600 animate-bounce">
+          {feedback}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- 子遊戲 3：動物點點名 (因果關係與認知) ---
+const AnimalGame = ({ onBack }) => {
+  const ANIMALS = [
+    { name: '小貓', emoji: '🐱', sound: '喵～喵～', color: 'bg-yellow-100' },
+    { name: '狗狗', emoji: '🐶', sound: '汪！汪！', color: 'bg-orange-100' },
+    { name: '小豬', emoji: '🐷', sound: '哼哼～', color: 'bg-pink-100' },
+    { name: '獅子', emoji: '🦁', sound: '吼～～', color: 'bg-red-100' },
+    { name: '青蛙', emoji: '🐸', sound: '呱！呱！', color: 'bg-green-100' },
+    { name: '大象', emoji: '🐘', sound: '哞～～', color: 'bg-blue-100' },
+  ];
+
+  const [active, setActive] = useState(null);
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-green-50 p-6 select-none">
+      <button onClick={onBack} className="absolute top-4 left-4 p-4 bg-white rounded-full shadow-lg">
+        <Home className="w-8 h-8 text-green-600" />
+      </button>
+
+      <h2 className="text-3xl font-bold mb-8 text-green-800">動物點點名：點一下動物喔！</h2>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 w-full max-w-2xl">
+        {ANIMALS.map(a => (
+          <button
+            key={a.name}
+            onClick={() => setActive(a)}
+            className={`flex flex-col items-center justify-center p-6 rounded-3xl shadow-md transform transition active:scale-110 ${a.color} hover:shadow-xl`}
+          >
+            <span className="text-7xl mb-2">{a.emoji}</span>
+            <span className="text-xl font-bold text-gray-700">{a.name}</span>
+          </button>
+        ))}
+      </div>
+
+      {active && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-8 z-50" onClick={() => setActive(null)}>
+          <div className={`p-12 rounded-[3rem] shadow-2xl text-center scale-125 animate-in zoom-in-50 duration-300 ${active.color} border-8 border-white`}>
+            <div className="text-9xl mb-6">{active.emoji}</div>
+            <div className="text-5xl font-black text-gray-800 mb-4">{active.sound}</div>
+            <div className="text-2xl text-gray-500 font-bold">點一下畫面關閉</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- 子遊戲 4：數字跳跳糖 (基礎數感) ---
+const CountingGame = ({ onBack }) => {
+  const [count, setCount] = useState(0);
+  const target = 5;
+
+  const handleAppleClick = () => {
+    if (count < target) {
+      setCount(prev => prev + 1);
+    } else {
+      setCount(0);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-purple-50 p-8 select-none">
+      <button onClick={onBack} className="absolute top-4 left-4 p-4 bg-white rounded-full shadow-lg">
+        <Home className="w-8 h-8 text-purple-600" />
+      </button>
+
+      <div className="text-center mb-12">
+        <h2 className="text-4xl font-bold text-purple-800 mb-4">數一數：共有幾個？</h2>
+        <div className="text-8xl font-black text-purple-600">{count}</div>
+      </div>
+
+      <div className="flex flex-wrap justify-center gap-6 mb-12 min-h-[160px]">
+        {Array.from({ length: count }).map((_, i) => (
+          <div key={i} className="text-7xl animate-bounce" style={{ animationDelay: `${i * 0.1}s` }}>
+            🍎
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={handleAppleClick}
+        className="px-12 py-6 bg-purple-500 text-white rounded-full text-3xl font-bold shadow-2xl hover:bg-purple-600 active:scale-90 transition transform"
+      >
+        {count < target ? '增加一個 🍎' : '重新開始'}
+      </button>
+    </div>
+  );
+};
+
+// --- 主介面 ---
+const App = () => {
+  const [view, setView] = useState('menu');
+
+  const MenuButton = ({ icon: Icon, title, sub, color, onClick }) => (
+    <button
+      onClick={onClick}
+      className={`flex flex-col items-center justify-center p-8 rounded-[2.5rem] shadow-xl transition transform hover:scale-105 active:scale-95 ${color} text-white w-full max-w-xs`}
+    >
+      <Icon className="w-16 h-16 mb-4" />
+      <span className="text-2xl font-bold">{title}</span>
+      <span className="text-sm opacity-90">{sub}</span>
+    </button>
+  );
+
+  switch (view) {
+    case 'bubble': return <BubbleGame onBack={() => setView('menu')} />;
+    case 'color': return <ColorGame onBack={() => setView('menu')} />;
+    case 'animal': return <AnimalGame onBack={() => setView('menu')} />;
+    case 'counting': return <CountingGame onBack={() => setView('menu')} />;
+    default:
+      return (
+        <div className="min-h-screen bg-gray-50 flex flex-col items-center py-12 px-6">
+          <div className="text-center mb-12">
+            <h1 className="text-5xl font-black text-gray-800 mb-2">啟蒙探索小遊戲</h1>
+            <p className="text-xl text-gray-500 font-medium">適合 3 歲幼兒的快樂學習時光</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-2xl">
+            <MenuButton
+              icon={Target}
+              title="泡泡派對"
+              sub="訓練手眼協調"
+              color="bg-blue-500"
+              onClick={() => setView('bubble')}
+            />
+            <MenuButton
+              icon={LayoutGrid}
+              title="色彩樂園"
+              sub="認識漂亮顏色"
+              color="bg-orange-500"
+              onClick={() => setView('color')}
+            />
+            <MenuButton
+              icon={Volume2}
+              title="動物點點名"
+              sub="學習動物詞彙"
+              color="bg-green-500"
+              onClick={() => setView('animal')}
+            />
+            <MenuButton
+              icon={Calculator}
+              title="數字跳跳糖"
+              sub="練習 123 數數"
+              color="bg-purple-500"
+              onClick={() => setView('counting')}
+            />
+          </div>
+
+          <div className="mt-16 text-center text-gray-400 text-sm">
+            💡 給家長的建議：請陪伴孩子一起點點看，並重複動物或顏色的名稱喔！
+          </div>
+        </div>
+      );
+  }
+};
+
+export default App;
