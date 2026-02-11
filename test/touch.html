@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>幼兒啟蒙小遊戲 - Toddler Learning App</title>
+    <title>幼兒啟蒙小遊戲 - Toddler Learning App (Audio)</title>
     <!-- 載入 React 與 Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -17,7 +17,6 @@
         }
         body {
             margin: 0;
-            /* 防止手機版網頁上下拉動的橡皮筋效果 */
             overflow: hidden;
             position: fixed;
             width: 100%;
@@ -28,7 +27,6 @@
         .bubble-float {
             animation: float 4s infinite ease-in-out;
         }
-        /* 針對現代瀏覽器的動態高度支援 */
         .full-h {
             height: 100vh;
             height: 100dvh;
@@ -39,7 +37,46 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useCallback } = React;
+        const { useState, useEffect, useCallback, useMemo } = React;
+
+        // --- 音效與語音工具 ---
+        const useAudio = () => {
+            const audioCtx = useMemo(() => new (window.AudioContext || window.webkitAudioContext)(), []);
+
+            const playTone = (freq, type, duration) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            };
+
+            const sounds = {
+                pop: () => playTone(600, 'sine', 0.1),
+                correct: () => {
+                    playTone(523.25, 'sine', 0.1); // C5
+                    setTimeout(() => playTone(659.25, 'sine', 0.1), 100); // E5
+                    setTimeout(() => playTone(783.99, 'sine', 0.1), 200); // G5
+                },
+                wrong: () => playTone(150, 'triangle', 0.3),
+                click: () => playTone(400, 'sine', 0.05)
+            };
+
+            const speak = (text) => {
+                window.speechSynthesis.cancel(); // 停止之前的播放
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'zh-TW';
+                utterance.rate = 0.9; // 稍微慢一點點
+                window.speechSynthesis.speak(utterance);
+            };
+
+            return { sounds, speak };
+        };
 
         // --- 小圖示組件 ---
         const Icon = ({ name, className }) => {
@@ -92,6 +129,7 @@
         const BubbleGame = ({ onBack }) => {
             const [bubbles, setBubbles] = useState([]);
             const [score, setScore] = useState(0);
+            const { sounds } = useAudio();
 
             const addBubble = useCallback(() => {
                 const id = Date.now() + Math.random();
@@ -119,7 +157,11 @@
                     {bubbles.map(b => (
                         <div
                             key={b.id}
-                            onPointerDown={() => { setBubbles(prev => prev.filter(x => x.id !== b.id)); setScore(s => s + 1); }}
+                            onPointerDown={() => { 
+                                sounds.pop();
+                                setBubbles(prev => prev.filter(x => x.id !== b.id)); 
+                                setScore(s => s + 1); 
+                            }}
                             className={`absolute rounded-full shadow-xl bubble-float cursor-pointer transition-all duration-300 opacity-80 border-4 border-white ${b.color}`}
                             style={{ left: b.x, top: b.y, width: b.size, height: b.size }}
                         >
@@ -140,16 +182,25 @@
             ];
             const [target, setTarget] = useState(COLORS[0]);
             const [feedback, setFeedback] = useState('');
+            const { sounds, speak } = useAudio();
+
+            useEffect(() => {
+                speak(`請找出${target.name}`);
+            }, [target]);
 
             const checkColor = (color) => {
                 if (color.name === target.name) {
+                    sounds.correct();
                     setFeedback('好棒！答對了！🌟');
+                    speak(`好棒！這是${color.name}`);
                     setTimeout(() => {
                         setTarget(COLORS[Math.floor(Math.random() * COLORS.length)]);
                         setFeedback('');
-                    }, 1200);
+                    }, 2000);
                 } else {
+                    sounds.wrong();
                     setFeedback('再試一次看看喔！💪');
+                    speak(`喔喔，再試試看喔`);
                 }
             };
 
@@ -160,7 +211,10 @@
                     </button>
                     <div className="text-center flex-1 flex flex-col justify-center">
                         <h2 className="text-3xl font-bold mb-4">請找出「{target.name}」</h2>
-                        <div className={`w-32 h-32 rounded-3xl shadow-inner mx-auto ${target.value} border-8 border-white flex items-center justify-center text-5xl mb-6`}>
+                        <div 
+                            onClick={() => speak(target.name)}
+                            className={`w-32 h-32 rounded-3xl shadow-inner mx-auto ${target.value} border-8 border-white flex items-center justify-center text-5xl mb-6 cursor-pointer active:scale-95 transition`}
+                        >
                             {target.emoji}
                         </div>
                         <div className="grid grid-cols-2 gap-4 w-full max-w-sm mx-auto">
@@ -177,14 +231,21 @@
         // --- 子遊戲 3：動物點點名 ---
         const AnimalGame = ({ onBack }) => {
             const ANIMALS = [
-                { name: '小貓', emoji: '🐱', sound: '喵～喵～', color: 'bg-yellow-100' },
-                { name: '狗狗', emoji: '🐶', sound: '汪！汪！', color: 'bg-orange-100' },
-                { name: '小豬', emoji: '🐷', sound: '哼哼～', color: 'bg-pink-100' },
-                { name: '獅子', emoji: '🦁', sound: '吼～～', color: 'bg-red-100' },
-                { name: '青蛙', emoji: '🐸', sound: '呱！呱！', color: 'bg-green-100' },
-                { name: '大象', emoji: '🐘', sound: '哞～～', color: 'bg-blue-100' },
+                { name: '小貓', emoji: '🐱', sound: '喵～喵～', color: 'bg-yellow-100', audio: '貓咪' },
+                { name: '狗狗', emoji: '🐶', sound: '汪！汪！', color: 'bg-orange-100', audio: '狗狗' },
+                { name: '小豬', emoji: '🐷', sound: '哼哼～', color: 'bg-pink-100', audio: '小豬' },
+                { name: '獅子', emoji: '🦁', sound: '吼～～', color: 'bg-red-100', audio: '獅子' },
+                { name: '青蛙', emoji: '🐸', sound: '呱！呱！', color: 'bg-green-100', audio: '青蛙' },
+                { name: '大象', emoji: '🐘', sound: '哞～～', color: 'bg-blue-100', audio: '大象' },
             ];
             const [active, setActive] = useState(null);
+            const { sounds, speak } = useAudio();
+
+            const handleClick = (a) => {
+                sounds.click();
+                setActive(a);
+                speak(`${a.audio}。${a.sound}`);
+            };
 
             return (
                 <div className="flex flex-col items-center full-h bg-green-50 p-6 select-none overflow-y-auto">
@@ -194,7 +255,7 @@
                     <h2 className="text-2xl font-bold mb-6 text-green-800">點一下動物喔！</h2>
                     <div className="grid grid-cols-2 gap-4 w-full max-w-md pb-10">
                         {ANIMALS.map(a => (
-                            <button key={a.name} onClick={() => setActive(a)} className={`flex flex-col items-center justify-center p-4 rounded-3xl shadow-md active:scale-105 transition ${a.color} border-4 border-transparent`}>
+                            <button key={a.name} onClick={() => handleClick(a)} className={`flex flex-col items-center justify-center p-4 rounded-3xl shadow-md active:scale-105 transition ${a.color} border-4 border-transparent`}>
                                 <span className="text-6xl mb-1">{a.emoji}</span>
                                 <span className="text-lg font-bold text-gray-700">{a.name}</span>
                             </button>
@@ -217,6 +278,27 @@
         const CountingGame = ({ onBack }) => {
             const [count, setCount] = useState(0);
             const target = 5;
+            const { sounds, speak } = useAudio();
+
+            const handleCount = () => {
+                if (count < target) {
+                    const next = count + 1;
+                    setCount(next);
+                    sounds.click();
+                    speak(next.toString());
+                    if (next === target) {
+                        setTimeout(() => {
+                            sounds.correct();
+                            speak(`好棒！總共有五個蘋果`);
+                        }, 600);
+                    }
+                } else {
+                    setCount(0);
+                    sounds.click();
+                    speak("重新開始");
+                }
+            };
+
             return (
                 <div className="flex flex-col items-center justify-between full-h bg-purple-50 p-8 select-none">
                     <button onClick={onBack} className="self-start p-3 bg-white rounded-full shadow-lg">
@@ -230,7 +312,7 @@
                                 <div key={i} className="text-5xl animate-bounce">🍎</div>
                             ))}
                         </div>
-                        <button onClick={() => setCount(c => c < target ? c + 1 : 0)} className="px-10 py-5 bg-purple-500 text-white rounded-full text-2xl font-bold shadow-2xl active:scale-90 transition mx-auto">
+                        <button onClick={handleCount} className="px-10 py-5 bg-purple-500 text-white rounded-full text-2xl font-bold shadow-2xl active:scale-90 transition mx-auto">
                             {count < target ? '增加一個 🍎' : '重新開始'}
                         </button>
                     </div>
@@ -241,6 +323,14 @@
         // --- 主程式介面 ---
         const App = () => {
             const [view, setView] = useState('menu');
+            const { sounds, speak } = useAudio();
+
+            const handleNavigate = (v, title) => {
+                sounds.click();
+                setView(v);
+                speak(`玩${title}`);
+            };
+
             const MenuButton = ({ icon, title, sub, color, onClick }) => (
                 <button onClick={onClick} className={`flex flex-col items-center justify-center py-5 px-4 rounded-[2rem] shadow-lg transition active:scale-95 ${color} text-white w-full`}>
                     <Icon name={icon} className="w-10 h-10 mb-2" />
@@ -258,16 +348,16 @@
                 <div className="full-h flex flex-col items-center p-6 bg-slate-50 overflow-y-auto">
                     <div className="text-center mt-4 mb-8">
                         <h1 className="text-3xl font-black text-slate-800 mb-1">啟蒙探索小遊戲</h1>
-                        <p className="text-lg text-slate-500">快樂學習時光</p>
+                        <p className="text-lg text-slate-500 font-bold">聲音互動版</p>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-sm">
-                        <MenuButton icon="target" title="泡泡派對" sub="手眼協調" color="bg-blue-500" onClick={() => setView('bubble')} />
-                        <MenuButton icon="grid" title="色彩樂園" sub="認識顏色" color="bg-orange-500" onClick={() => setView('color')} />
-                        <MenuButton icon="volume" title="動物點點名" sub="動物認知" color="bg-green-500" onClick={() => setView('animal')} />
-                        <MenuButton icon="calc" title="數字跳跳糖" sub="基礎數感" color="bg-purple-500" onClick={() => setView('counting')} />
+                        <MenuButton icon="target" title="泡泡派對" sub="手眼協調" color="bg-blue-500" onClick={() => handleNavigate('bubble', '泡泡派對')} />
+                        <MenuButton icon="grid" title="色彩樂園" sub="認識顏色" color="bg-orange-500" onClick={() => handleNavigate('color', '色彩樂園')} />
+                        <MenuButton icon="volume" title="動物點點名" sub="動物認知" color="bg-green-500" onClick={() => handleNavigate('animal', '動物點點名')} />
+                        <MenuButton icon="calc" title="數字跳跳糖" sub="基礎數感" color="bg-purple-500" onClick={() => handleNavigate('counting', '數字跳跳糖')} />
                     </div>
                     <div className="mt-auto py-6 text-slate-400 font-medium text-center text-sm">
-                        💡 貼心提醒：陪孩子一起玩效果更好喔！
+                        💡 貼心提醒：遊戲會說話喔！請開啟音量。
                     </div>
                 </div>
             );
