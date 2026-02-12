@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>寶寶音樂早教機 - 旋律增強版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .led-dot { transition: all 0.2s; }
+        .active-dot { background-color: #ff3333; box-shadow: 0 0 10px #ff3333; }
+        .music-playing { animation: pulse 0.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body class="bg-orange-50 min-h-screen flex items-center justify-center p-4">
+
+    <div id="app" class="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border-[12px] border-pink-200">
+        
+        <!-- 上螢幕區 -->
+        <div class="bg-pink-400 p-6 relative">
+            <div class="flex justify-between items-center mb-4">
+                <div class="text-white">
+                    <h1 class="font-bold text-xl drop-shadow-sm">音樂 5合1 早教機</h1>
+                    <p class="text-[10px] opacity-90 uppercase tracking-tighter">Electronic Melody Machine</p>
+                </div>
+                <button id="powerBtn" class="w-12 h-12 rounded-full bg-red-500 shadow-lg flex items-center justify-center transition-all active:scale-90 border-4 border-pink-300">
+                    <i data-lucide="power" class="text-white w-6 h-6"></i>
+                </button>
+            </div>
+
+            <!-- LED 螢幕 -->
+            <div class="bg-gray-900 rounded-2xl p-5 flex justify-center items-center aspect-square max-w-[180px] mx-auto border-8 border-gray-800 shadow-inner">
+                <div id="matrix" class="grid grid-cols-8 gap-1.5">
+                    <!-- JS 生成 64 點 -->
+                </div>
+            </div>
+            
+            <div class="mt-4 flex justify-center">
+                <span id="modeLabel" class="px-6 py-1 rounded-full text-sm font-bold bg-pink-300 text-white shadow-sm transition-all">
+                    請按電源開機
+                </span>
+            </div>
+        </div>
+
+        <!-- 鍵盤區 -->
+        <div class="p-5 bg-pink-50">
+            <!-- 數字鍵 -->
+            <div class="grid grid-cols-5 gap-2 mb-4" id="numberContainer"></div>
+
+            <!-- 字母鍵 -->
+            <div class="grid grid-cols-7 gap-1.5 mb-6" id="letterContainer"></div>
+
+            <!-- 功能鍵 -->
+            <div class="grid grid-cols-3 gap-3 border-t-2 border-pink-100 pt-5">
+                <button onclick="setMode('Letter')" class="flex flex-col items-center gap-1 bg-yellow-100 p-3 rounded-2xl text-yellow-700 shadow-sm active:translate-y-1">
+                    <i data-lucide="book-open"></i>
+                    <span class="text-xs font-bold">字母</span>
+                </button>
+                <button id="songBtn" onclick="playNurseryRhyme()" class="flex flex-col items-center gap-1 bg-green-100 p-3 rounded-2xl text-green-700 shadow-sm active:translate-y-1">
+                    <i data-lucide="music" id="musicIcon"></i>
+                    <span class="text-xs font-bold">聽音樂</span>
+                </button>
+                <button onclick="setMode('Piano')" class="flex flex-col items-center gap-1 bg-blue-100 p-3 rounded-2xl text-blue-700 shadow-sm active:translate-y-1">
+                    <i data-lucide="piano"></i>
+                    <span class="text-xs font-bold">小鋼琴</span>
+                </button>
+            </div>
+            
+            <!-- 音量控制 -->
+            <div class="mt-4 flex items-center bg-gray-100 rounded-full px-4 py-2">
+                <i data-lucide="volume-1" class="w-4 h-4 text-gray-400"></i>
+                <input type="range" id="volumeSlider" min="0" max="0.5" step="0.05" value="0.2" class="mx-3 w-full h-1 bg-pink-300 rounded-lg appearance-none cursor-pointer">
+                <i data-lucide="volume-2" class="w-4 h-4 text-gray-400"></i>
+            </div>
+        </div>
+
+        <!-- 底部喇叭孔 -->
+        <div class="px-6 py-4 flex justify-center items-center bg-pink-100 gap-4">
+            <div class="flex gap-1"><div class="w-1.5 h-1.5 bg-pink-300 rounded-full"></div><div class="w-1.5 h-1.5 bg-pink-300 rounded-full"></div></div>
+            <span class="text-[10px] text-pink-400 font-black tracking-widest">SPEAKER SYSTEM</span>
+            <div class="flex gap-1"><div class="w-1.5 h-1.5 bg-pink-300 rounded-full"></div><div class="w-1.5 h-1.5 bg-pink-300 rounded-full"></div></div>
+        </div>
+    </div>
+
+    <script>
+        // --- 音樂合成器引擎 ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let currentOscillator = null;
+
+        const NOTES = {
+            'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23, 
+            'G4': 392.00, 'A4': 440.00, 'B4': 493.88, 'C5': 523.25
+        };
+
+        const SONGS = [
+            {
+                name: "小星星",
+                notes: ["C4","C4","G4","G4","A4","A4","G4","F4","F4","E4","E4","D4","D4","C4"],
+                durations: [400, 400, 400, 400, 400, 400, 800, 400, 400, 400, 400, 400, 400, 800]
+            },
+            {
+                name: "兩隻老虎",
+                notes: ["C4","D4","E4","C4","C4","D4","E4","C4","E4","F4","G4","E4","F4","G4"],
+                durations: [400, 400, 400, 400, 400, 400, 400, 400, 400, 400, 800, 400, 400, 800]
+            }
+        ];
+
+        function playNote(freq, duration) {
+            if (!isOn) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'square'; // 類似復古玩具的聲音
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            
+            gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration/1000);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration/1000);
+        }
+
+        async function playMelody(song) {
+            isMusicPlaying = true;
+            document.getElementById('musicIcon').classList.add('music-playing');
+            drawMatrix('MUSIC');
+            
+            for (let i = 0; i < song.notes.length; i++) {
+                if (!isOn || !isMusicPlaying) break;
+                playNote(NOTES[song.notes[i]], song.durations[i]);
+                await new Promise(r => setTimeout(r, song.durations[i] + 50));
+            }
+            
+            document.getElementById('musicIcon').classList.remove('music-playing');
+            isMusicPlaying = false;
+        }
+
+        // --- 狀態控制 ---
+        let isOn = false;
+        let isMusicPlaying = false;
+        let currentMode = 'Letter';
+        let volume = 0.2;
+        let songIndex = 0;
+
+        const DOT_MAPS = {
+            'A': [0x18, 0x24, 0x42, 0x42, 0x7E, 0x42, 0x42, 0x42],
+            '1': [0x10, 0x30, 0x10, 0x10, 0x10, 0x10, 0x10, 0x38],
+            'SMILE': [0x00, 0x66, 0x00, 0x00, 0x81, 0x42, 0x3C, 0x00],
+            'MUSIC': [0x0C, 0x1E, 0x1B, 0x18, 0x18, 0x38, 0x78, 0x30],
+            'PIANO': [0x00, 0x44, 0x44, 0x44, 0x44, 0x7C, 0x00, 0x00]
+        };
+
+        // --- 初始化 UI ---
+        const matrixEl = document.getElementById('matrix');
+        for (let i = 0; i < 64; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'w-2.5 h-2.5 rounded-full bg-gray-800 led-dot';
+            matrixEl.appendChild(dot);
+        }
+
+        // 數字鍵 (1-10)
+        for (let i = 1; i <= 10; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'bg-purple-400 text-white font-black py-2 rounded-xl shadow-[0_4px_0_rgb(147,51,234)] active:shadow-none active:translate-y-1 text-sm';
+            btn.textContent = i;
+            btn.onclick = () => handleInput(i.toString(), 'number');
+            document.getElementById('numberContainer').appendChild(btn);
+        }
+
+        // 字母鍵 (A-Z)
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(char => {
+            const btn = document.createElement('button');
+            btn.className = 'bg-white text-pink-500 font-bold p-2 rounded-lg shadow-[0_3px_0_#eee] border border-pink-100 text-xs active:shadow-none active:translate-y-1';
+            btn.textContent = char;
+            btn.onclick = () => handleInput(char, 'letter');
+            document.getElementById('letterContainer').appendChild(btn);
+        });
+
+        // --- 互動邏輯 ---
+        function drawMatrix(char) {
+            const dots = matrixEl.children;
+            const map = DOT_MAPS[char.toUpperCase()] || DOT_MAPS['SMILE'];
+            for (let i = 0; i < 64; i++) {
+                const row = Math.floor(i / 8);
+                const col = i % 8;
+                const active = (map[row] >> (7 - col)) & 1;
+                dots[i].classList.toggle('active-dot', isOn && active);
+            }
+        }
+
+        function speak(text) {
+            if (!isOn) return;
+            window.speechSynthesis.cancel();
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.lang = 'zh-TW';
+            utter.volume = volume * 2;
+            window.speechSynthesis.speak(utter);
+        }
+
+        document.getElementById('powerBtn').onclick = () => {
+            isOn = !isOn;
+            if (isOn) {
+                audioCtx.resume();
+                document.getElementById('powerBtn').classList.replace('bg-red-500', 'bg-green-400');
+                document.getElementById('modeLabel').textContent = '歡迎來到音樂世界！';
+                document.getElementById('modeLabel').className = 'px-6 py-1 rounded-full text-sm font-bold bg-yellow-400 text-pink-800 shadow-sm';
+                speak("開機啦！");
+                drawMatrix('SMILE');
+            } else {
+                isMusicPlaying = false;
+                document.getElementById('powerBtn').classList.replace('bg-green-400', 'bg-red-500');
+                document.getElementById('modeLabel').textContent = '請按電源開機';
+                document.getElementById('modeLabel').className = 'px-6 py-1 rounded-full text-sm font-bold bg-pink-300 text-white shadow-sm';
+                Array.from(matrixEl.children).forEach(d => d.classList.remove('active-dot'));
+                window.speechSynthesis.cancel();
+            }
+        };
+
+        function setMode(mode) {
+            if (!isOn) return;
+            currentMode = mode;
+            isMusicPlaying = false;
+            const names = { 'Letter': '字母模式', 'Piano': '鋼琴模式' };
+            document.getElementById('modeLabel').textContent = names[mode] || '聽音樂';
+            speak(`切換到${names[mode] || '音樂'}`);
+            drawMatrix(mode === 'Piano' ? 'PIANO' : 'SMILE');
+        }
+
+        function handleInput(val, type) {
+            if (!isOn) return;
+            isMusicPlaying = false;
+            drawMatrix(val.length > 1 ? 'SMILE' : val);
+            
+            if (currentMode === 'Piano') {
+                const pianoNotes = ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'];
+                const noteIdx = (val.charCodeAt(0) - 65) % 8;
+                playNote(NOTES[pianoNotes[noteIdx]], 300);
+            } else {
+                speak(val);
+            }
+        }
+
+        function playNurseryRhyme() {
+            if (!isOn || isMusicPlaying) return;
+            const song = SONGS[songIndex];
+            speak(`我們來聽：${song.name}`);
+            setTimeout(() => playMelody(song), 1500);
+            songIndex = (songIndex + 1) % SONGS.length;
+        }
+
+        document.getElementById('volumeSlider').oninput = (e) => volume = parseFloat(e.target.value);
+
+        lucide.createIcons();
+    </script>
+</body>
+</html>
