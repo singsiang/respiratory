@@ -4,14 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>基隆長庚接駁車時刻表 (2026)</title>
+    
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self'; 
+                   script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; 
+                   style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; 
+                   font-src https://cdnjs.cloudflare.com data:;">
+    
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome with SRI -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" 
+          rel="stylesheet"
+          integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" 
+          crossorigin="anonymous" 
+          referrerpolicy="no-referrer">
+    
     <style>
         body {
             font-family: 'Noto Sans TC', sans-serif;
             background-color: #f3f4f6;
             -webkit-tap-highlight-color: transparent;
-            /* 確保填滿整個動態視窗高度 */
             height: 100dvh; 
         }
         .bus-card {
@@ -24,7 +39,6 @@
             background-color: #ecfdf5;
             border-left: 4px solid #10b981;
         }
-        /* Table Styles */
         .time-table {
             width: 100%;
             border-collapse: collapse;
@@ -97,6 +111,15 @@
         .minute-tag.next .emp-text {
             color: #fef3c7;
         }
+        .error-message {
+            padding: 1rem;
+            margin: 1rem;
+            background-color: #fee2e2;
+            border: 1px solid #fecaca;
+            border-radius: 0.5rem;
+            color: #991b1b;
+            text-align: center;
+        }
         
         ::-webkit-scrollbar {
             width: 6px;
@@ -127,10 +150,10 @@
         <!-- Direction Toggle -->
         <div class="max-w-md mx-auto px-2 pb-3">
             <div class="bg-teal-700 p-1 rounded-lg flex relative">
-                <button id="btn-to-main" onclick="setDirection('to-main')" class="flex-1 py-2 text-sm font-medium rounded-md text-center transition-colors duration-200 bg-white text-teal-700 shadow-sm">
+                <button id="btn-to-main" class="flex-1 py-2 text-sm font-medium rounded-md text-center transition-colors duration-200 bg-white text-teal-700 shadow-sm">
                     <i class="fas fa-hospital mr-1"></i> 往 基隆院區
                 </button>
-                <button id="btn-to-lover" onclick="setDirection('to-lover')" class="flex-1 py-2 text-sm font-medium rounded-md text-center transition-colors duration-200 text-teal-100 hover:bg-teal-600/50">
+                <button id="btn-to-lover" class="flex-1 py-2 text-sm font-medium rounded-md text-center transition-colors duration-200 text-teal-100 hover:bg-teal-600/50">
                     <i class="fas fa-heart mr-1"></i> 往 情人湖
                 </button>
             </div>
@@ -142,13 +165,13 @@
         
         <!-- Day Type Selector -->
         <div class="flex border-b border-gray-200 shrink-0 bg-gray-100">
-            <button onclick="setDayType('weekday')" id="tab-weekday" class="flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:bg-gray-50 transition-all duration-200">
+            <button id="tab-weekday" class="flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:bg-gray-50 transition-all duration-200">
                 週一至週五
             </button>
-            <button onclick="setDayType('saturday')" id="tab-saturday" class="flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:bg-gray-50 transition-all duration-200">
+            <button id="tab-saturday" class="flex-1 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:bg-gray-50 transition-all duration-200">
                 週六
             </button>
-            <button onclick="setDayType('sunday')" id="tab-sunday" class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:bg-gray-50 transition-all duration-200 flex flex-col items-center justify-center leading-tight">
+            <button id="tab-sunday" class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:bg-gray-50 transition-all duration-200 flex flex-col items-center justify-center leading-tight">
                 <span>週日 / 國定假日</span>
                 <span class="text-[10px] opacity-70 font-normal">※ 遇假日請點此</span>
             </button>
@@ -182,7 +205,7 @@
 
         <!-- Footer Info -->
         <div class="bg-gray-100 p-2 text-center text-xs text-gray-400 shrink-0 border-t pb-[env(safe-area-inset-bottom)]">
-            <p>※ 時間僅供參考，請提早候車</p>
+            <p>※ 時間僅供參考,請提早候車</p>
             <p>※ <span class="text-amber-600 font-bold">員</span> 代表員工專車</p>
         </div>
     </main>
@@ -191,18 +214,42 @@
         // --- Data Definitions ---
         
         const parseTimeStr = (str) => {
-            const isEmp = str.includes("員工專車");
-            const rawTime = str.replace(/\(.*\)/, "").trim();
-            const [h, m] = rawTime.split(":").map(Number);
-            const totalMinutes = h * 60 + m;
-            return {
-                display: str,
-                rawTime: rawTime,
-                h: h,
-                m: m,
-                totalMinutes: totalMinutes,
-                isEmployee: isEmp
-            };
+            try {
+                if (!str || typeof str !== 'string') {
+                    console.warn('無效的時間字串:', str);
+                    return null;
+                }
+                
+                const isEmp = str.includes("員工專車");
+                const rawTime = str.replace(/\(.*\)/, "").trim();
+                const parts = rawTime.split(":");
+                
+                if (parts.length !== 2) {
+                    console.warn('時間格式錯誤:', str);
+                    return null;
+                }
+                
+                const h = parseInt(parts[0], 10);
+                const m = parseInt(parts[1], 10);
+                
+                if (isNaN(h) || isNaN(m) || h < 0 || h > 24 || m < 0 || m > 59) {
+                    console.warn('時間數值無效:', str);
+                    return null;
+                }
+                
+                const totalMinutes = h * 60 + m;
+                return {
+                    display: str,
+                    rawTime: rawTime,
+                    h: h,
+                    m: m,
+                    totalMinutes: totalMinutes,
+                    isEmployee: isEmp
+                };
+            } catch (error) {
+                console.error('解析時間字串時發生錯誤:', error);
+                return null;
+            }
         };
 
         const rawData = {
@@ -262,222 +309,348 @@
         // --- Initialization ---
         
         function detectDayType() {
-            const day = new Date().getDay();
-            if (day === 0) return 'sunday';
-            if (day === 6) return 'saturday';
-            return 'weekday';
+            try {
+                const day = new Date().getDay();
+                if (day === 0) return 'sunday';
+                if (day === 6) return 'saturday';
+                return 'weekday';
+            } catch (error) {
+                console.error('偵測日期類型時發生錯誤:', error);
+                return 'weekday';
+            }
         }
 
         // --- Logic Functions ---
 
         function getScheduleData() {
-            const dirKey = state.direction === 'to-main' ? 'toMain' : 'toLover';
-            const rawList = rawData[state.dayType][dirKey];
-            return rawList.map(parseTimeStr);
+            try {
+                const dirKey = state.direction === 'to-main' ? 'toMain' : 'toLover';
+                const rawList = rawData[state.dayType][dirKey];
+                
+                if (!Array.isArray(rawList)) {
+                    throw new Error('時刻表資料格式錯誤');
+                }
+                
+                return rawList.map(parseTimeStr).filter(item => item !== null);
+            } catch (error) {
+                console.error('取得時刻表資料時發生錯誤:', error);
+                return [];
+            }
         }
 
         function setDirection(dir) {
-            state.direction = dir;
-            updateDirectionUI();
-            updateScheduleList();
-            updateNextBus();
+            try {
+                state.direction = dir;
+                updateDirectionUI();
+                updateScheduleList();
+                updateNextBus();
+            } catch (error) {
+                console.error('設定方向時發生錯誤:', error);
+                showError('切換方向時發生錯誤');
+            }
         }
 
         function setDayType(type) {
-            state.dayType = type;
-            updateDayTypeUI();
-            updateScheduleList();
-            updateNextBus();
+            try {
+                state.dayType = type;
+                updateDayTypeUI();
+                updateScheduleList();
+                updateNextBus();
+            } catch (error) {
+                console.error('設定日期類型時發生錯誤:', error);
+                showError('切換班表時發生錯誤');
+            }
         }
 
         function updateDirectionUI() {
-            const btnMain = document.getElementById('btn-to-main');
-            const btnLover = document.getElementById('btn-to-lover');
-            
-            const activeClasses = ['bg-white', 'text-teal-700', 'shadow-sm'];
-            const inactiveClasses = ['text-teal-100', 'hover:bg-teal-600/50'];
+            try {
+                const btnMain = document.getElementById('btn-to-main');
+                const btnLover = document.getElementById('btn-to-lover');
+                
+                if (!btnMain || !btnLover) {
+                    throw new Error('找不到方向按鈕元素');
+                }
+                
+                const activeClasses = ['bg-white', 'text-teal-700', 'shadow-sm'];
+                const inactiveClasses = ['text-teal-100', 'hover:bg-teal-600/50'];
 
-            if (state.direction === 'to-main') {
-                btnMain.classList.add(...activeClasses);
-                btnMain.classList.remove(...inactiveClasses);
-                btnLover.classList.remove(...activeClasses);
-                btnLover.classList.add(...inactiveClasses);
-            } else {
-                btnLover.classList.add(...activeClasses);
-                btnLover.classList.remove(...inactiveClasses);
-                btnMain.classList.remove(...activeClasses);
-                btnMain.classList.add(...inactiveClasses);
+                if (state.direction === 'to-main') {
+                    btnMain.classList.add(...activeClasses);
+                    btnMain.classList.remove(...inactiveClasses);
+                    btnLover.classList.remove(...activeClasses);
+                    btnLover.classList.add(...inactiveClasses);
+                } else {
+                    btnLover.classList.add(...activeClasses);
+                    btnLover.classList.remove(...inactiveClasses);
+                    btnMain.classList.remove(...activeClasses);
+                    btnMain.classList.add(...inactiveClasses);
+                }
+            } catch (error) {
+                console.error('更新方向UI時發生錯誤:', error);
             }
         }
 
         function updateDayTypeUI() {
-            const badge = document.getElementById('current-mode-badge');
-            const labels = { 'weekday': '平日班表', 'saturday': '週六班表', 'sunday': '假日班表' };
-            badge.textContent = labels[state.dayType];
-
-            ['weekday', 'saturday', 'sunday'].forEach(type => {
-                const btn = document.getElementById(`tab-${type}`);
-                if (state.dayType === type) {
-                    btn.classList.add('border-teal-500', 'text-teal-600', 'bg-white', 'font-bold');
-                    btn.classList.remove('border-transparent', 'text-gray-500', 'bg-gray-100');
-                } else {
-                    btn.classList.remove('border-teal-500', 'text-teal-600', 'bg-white', 'font-bold');
-                    btn.classList.add('border-transparent', 'text-gray-500', 'bg-gray-100');
+            try {
+                const badge = document.getElementById('current-mode-badge');
+                if (!badge) {
+                    throw new Error('找不到模式標籤元素');
                 }
-            });
+                
+                const labels = { 'weekday': '平日班表', 'saturday': '週六班表', 'sunday': '假日班表' };
+                badge.textContent = labels[state.dayType];
+
+                ['weekday', 'saturday', 'sunday'].forEach(type => {
+                    const btn = document.getElementById(`tab-${type}`);
+                    if (!btn) return;
+                    
+                    if (state.dayType === type) {
+                        btn.classList.add('border-teal-500', 'text-teal-600', 'bg-white', 'font-bold');
+                        btn.classList.remove('border-transparent', 'text-gray-500', 'bg-gray-100');
+                    } else {
+                        btn.classList.remove('border-teal-500', 'text-teal-600', 'bg-white', 'font-bold');
+                        btn.classList.add('border-transparent', 'text-gray-500', 'bg-gray-100');
+                    }
+                });
+            } catch (error) {
+                console.error('更新日期類型UI時發生錯誤:', error);
+            }
         }
 
         function updateScheduleList() {
-            const listData = getScheduleData();
-            const container = document.getElementById('schedule-container');
-            const now = new Date();
-            const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-            container.innerHTML = '';
-
-            const grouped = {};
-            let nextBusRowId = null;
-            let foundNext = false;
-
-            listData.forEach((bus, index) => {
-                const key = bus.h; 
-                if (!grouped[key]) grouped[key] = [];
+            try {
+                const listData = getScheduleData();
+                const container = document.getElementById('schedule-container');
                 
-                let isPast = false;
-                if (bus.totalMinutes < currentMinutes && bus.h < 24) {
-                    isPast = true;
+                if (!container) {
+                    throw new Error('找不到時刻表容器元素');
                 }
-                if (now.getHours() === 0 && bus.h >= 24) {
-                    isPast = (currentMinutes + 1440) > bus.totalMinutes; 
-                }
-
-                let isNext = false;
-                if (!foundNext && !isPast) {
-                    isNext = true;
-                    foundNext = true;
-                    nextBusRowId = `row-${key}`;
-                }
-
-                grouped[key].push({
-                    ...bus,
-                    isPast,
-                    isNext
-                });
-            });
-
-            const table = document.createElement('table');
-            table.className = 'time-table';
-            
-            const thead = document.createElement('thead');
-            thead.innerHTML = `<tr><th class="w-[60px] text-center">時</th><th class="text-left pl-4">分</th></tr>`;
-            table.appendChild(thead);
-
-            const tbody = document.createElement('tbody');
-            const sortedKeys = Object.keys(grouped).sort((a,b) => Number(a) - Number(b));
-
-            sortedKeys.forEach(key => {
-                const buses = grouped[key];
-                const tr = document.createElement('tr');
-                tr.id = `row-${key}`;
-                const displayHour = key >= 24 ? `00` : String(key).padStart(2, '0');
                 
-                let minutesHTML = buses.map(bus => {
-                    const minStr = String(bus.m).padStart(2, '0');
-                    let classes = 'minute-tag';
-                    if (bus.isPast) classes += ' past';
-                    if (bus.isNext) classes += ' next';
-                    if (bus.isEmployee) classes += ' employee';
+                if (listData.length === 0) {
+                    container.innerHTML = '<div class="error-message">無可用的時刻表資料</div>';
+                    return;
+                }
+                
+                const now = new Date();
+                const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+                container.innerHTML = '';
+
+                const grouped = {};
+                let nextBusRowId = null;
+                let foundNext = false;
+
+                listData.forEach((bus, index) => {
+                    const key = bus.h; 
+                    if (!grouped[key]) grouped[key] = [];
                     
-                    let content = minStr;
-                    if (bus.isEmployee) {
-                        content += `<span class="emp-text">員</span>`;
+                    let isPast = false;
+                    if (bus.totalMinutes < currentMinutes && bus.h < 24) {
+                        isPast = true;
                     }
-                    const idAttr = bus.isNext ? 'id="target-bus"' : '';
-                    return `<span class="${classes}" ${idAttr}>${content}</span>`;
-                }).join('');
-
-                tr.innerHTML = `
-                    <td class="hour-cell">${displayHour}</td>
-                    <td class="minute-cell">${minutesHTML}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-
-            table.appendChild(tbody);
-            container.appendChild(table);
-
-            if (nextBusRowId) {
-                setTimeout(() => {
-                    const target = document.getElementById('target-bus') || document.getElementById(nextBusRowId);
-                    if (target) {
-                        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (now.getHours() === 0 && bus.h >= 24) {
+                        isPast = (currentMinutes + 1440) > bus.totalMinutes; 
                     }
-                }, 100);
+
+                    let isNext = false;
+                    if (!foundNext && !isPast) {
+                        isNext = true;
+                        foundNext = true;
+                        nextBusRowId = `row-${key}`;
+                    }
+
+                    grouped[key].push({
+                        ...bus,
+                        isPast,
+                        isNext
+                    });
+                });
+
+                const table = document.createElement('table');
+                table.className = 'time-table';
+                
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                const th1 = document.createElement('th');
+                th1.className = 'w-[60px] text-center';
+                th1.textContent = '時';
+                const th2 = document.createElement('th');
+                th2.className = 'text-left pl-4';
+                th2.textContent = '分';
+                headerRow.appendChild(th1);
+                headerRow.appendChild(th2);
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+
+                const tbody = document.createElement('tbody');
+                const sortedKeys = Object.keys(grouped).sort((a,b) => Number(a) - Number(b));
+
+                sortedKeys.forEach(key => {
+                    const buses = grouped[key];
+                    const tr = document.createElement('tr');
+                    tr.id = `row-${key}`;
+                    
+                    const displayHour = key >= 24 ? `00` : String(key).padStart(2, '0');
+                    
+                    const tdHour = document.createElement('td');
+                    tdHour.className = 'hour-cell';
+                    tdHour.textContent = displayHour;
+                    
+                    const tdMinute = document.createElement('td');
+                    tdMinute.className = 'minute-cell';
+                    
+                    buses.forEach(bus => {
+                        const minStr = String(bus.m).padStart(2, '0');
+                        const span = document.createElement('span');
+                        span.className = 'minute-tag';
+                        
+                        if (bus.isPast) span.classList.add('past');
+                        if (bus.isNext) {
+                            span.classList.add('next');
+                            span.id = 'target-bus';
+                        }
+                        if (bus.isEmployee) span.classList.add('employee');
+                        
+                        span.textContent = minStr;
+                        
+                        if (bus.isEmployee) {
+                            const empSpan = document.createElement('span');
+                            empSpan.className = 'emp-text';
+                            empSpan.textContent = '員';
+                            span.appendChild(empSpan);
+                        }
+                        
+                        tdMinute.appendChild(span);
+                    });
+                    
+                    tr.appendChild(tdHour);
+                    tr.appendChild(tdMinute);
+                    tbody.appendChild(tr);
+                });
+
+                table.appendChild(tbody);
+                container.appendChild(table);
+
+                if (nextBusRowId) {
+                    setTimeout(() => {
+                        const target = document.getElementById('target-bus') || document.getElementById(nextBusRowId);
+                        if (target) {
+                            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }, 100);
+                }
+            } catch (error) {
+                console.error('更新時刻表列表時發生錯誤:', error);
+                showError('載入時刻表時發生錯誤，請重新整理頁面');
             }
         }
 
         function updateNextBus() {
-            const listData = getScheduleData();
-            const now = new Date();
-            let currentMinutes = now.getHours() * 60 + now.getMinutes();
-            let nextBus = null;
-            
-            for (let bus of listData) {
-                if (bus.totalMinutes > currentMinutes) {
-                    nextBus = bus;
-                    break;
+            try {
+                const listData = getScheduleData();
+                const now = new Date();
+                let currentMinutes = now.getHours() * 60 + now.getMinutes();
+                let nextBus = null;
+                
+                for (let bus of listData) {
+                    if (bus.totalMinutes > currentMinutes) {
+                        nextBus = bus;
+                        break;
+                    }
                 }
-            }
 
-            const timeDisplay = document.getElementById('next-bus-time');
-            const countdownDisplay = document.getElementById('next-bus-countdown');
+                const timeDisplay = document.getElementById('next-bus-time');
+                const countdownDisplay = document.getElementById('next-bus-countdown');
+                
+                if (!timeDisplay || !countdownDisplay) {
+                    throw new Error('找不到下一班車顯示元素');
+                }
 
-            if (nextBus) {
-                timeDisplay.textContent = nextBus.rawTime;
-                let diffMinutes = nextBus.totalMinutes - currentMinutes;
-                let hourStr = '';
-                if (diffMinutes >= 60) {
-                    const h = Math.floor(diffMinutes / 60);
-                    const m = diffMinutes % 60;
-                    hourStr = `${h} 小時 ${m} 分鐘`;
+                if (nextBus) {
+                    timeDisplay.textContent = nextBus.rawTime;
+                    let diffMinutes = nextBus.totalMinutes - currentMinutes;
+                    let hourStr = '';
+                    if (diffMinutes >= 60) {
+                        const h = Math.floor(diffMinutes / 60);
+                        const m = diffMinutes % 60;
+                        hourStr = `${h} 小時 ${m} 分鐘`;
+                    } else {
+                        hourStr = `${diffMinutes} 分鐘`;
+                    }
+                    countdownDisplay.textContent = `還有 ${hourStr}`;
+                    countdownDisplay.className = "text-sm text-teal-600 font-bold mt-1";
+                    if (diffMinutes <= 5) {
+                        countdownDisplay.classList.add("animate-pulse", "text-red-500");
+                    }
                 } else {
-                    hourStr = `${diffMinutes} 分鐘`;
+                    timeDisplay.textContent = "末班已過";
+                    countdownDisplay.textContent = "請查詢明日班次";
+                    countdownDisplay.className = "text-sm text-gray-400 mt-1";
                 }
-                countdownDisplay.textContent = `還有 ${hourStr}`;
-                countdownDisplay.className = "text-sm text-teal-600 font-bold mt-1";
-                if (diffMinutes <= 5) {
-                    countdownDisplay.classList.add("animate-pulse", "text-red-500");
-                }
-            } else {
-                timeDisplay.textContent = "末班已過";
-                countdownDisplay.textContent = "請查詢明日班次";
-                countdownDisplay.className = "text-sm text-gray-400 mt-1";
+            } catch (error) {
+                console.error('更新下一班車時發生錯誤:', error);
             }
         }
 
         function updateRealTimeClock() {
-            const now = new Date();
-            const h = String(now.getHours()).padStart(2, '0');
-            const m = String(now.getMinutes()).padStart(2, '0');
-            const s = String(now.getSeconds()).padStart(2, '0');
-            const timeEl = document.getElementById('current-time-display');
-            const secEl = document.getElementById('current-seconds');
-            if(timeEl) timeEl.textContent = `${h}:${m}`;
-            if(secEl) secEl.textContent = s;
+            try {
+                const now = new Date();
+                const h = String(now.getHours()).padStart(2, '0');
+                const m = String(now.getMinutes()).padStart(2, '0');
+                const s = String(now.getSeconds()).padStart(2, '0');
+                const timeEl = document.getElementById('current-time-display');
+                const secEl = document.getElementById('current-seconds');
+                if(timeEl) timeEl.textContent = `${h}:${m}`;
+                if(secEl) secEl.textContent = s;
+            } catch (error) {
+                console.error('更新時鐘時發生錯誤:', error);
+            }
+        }
+
+        function showError(message) {
+            const container = document.getElementById('schedule-container');
+            if (container) {
+                container.innerHTML = `<div class="error-message">${message}</div>`;
+            }
+        }
+
+        function initEventListeners() {
+            try {
+                const btnMain = document.getElementById('btn-to-main');
+                const btnLover = document.getElementById('btn-to-lover');
+                const tabWeekday = document.getElementById('tab-weekday');
+                const tabSaturday = document.getElementById('tab-saturday');
+                const tabSunday = document.getElementById('tab-sunday');
+
+                if (btnMain) btnMain.addEventListener('click', () => setDirection('to-main'));
+                if (btnLover) btnLover.addEventListener('click', () => setDirection('to-lover'));
+                if (tabWeekday) tabWeekday.addEventListener('click', () => setDayType('weekday'));
+                if (tabSaturday) tabSaturday.addEventListener('click', () => setDayType('saturday'));
+                if (tabSunday) tabSunday.addEventListener('click', () => setDayType('sunday'));
+            } catch (error) {
+                console.error('初始化事件監聽器時發生錯誤:', error);
+            }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            state.dayType = detectDayType();
-            updateDirectionUI();
-            updateDayTypeUI();
-            updateScheduleList();
-            updateNextBus();
-            updateRealTimeClock();
-            setInterval(updateRealTimeClock, 1000);
-            setInterval(() => {
-                updateScheduleList(); 
-                updateNextBus();      
-            }, 30000); 
+            try {
+                state.dayType = detectDayType();
+                initEventListeners();
+                updateDirectionUI();
+                updateDayTypeUI();
+                updateScheduleList();
+                updateNextBus();
+                updateRealTimeClock();
+                
+                setInterval(updateRealTimeClock, 1000);
+                setInterval(() => {
+                    updateScheduleList(); 
+                    updateNextBus();      
+                }, 30000); 
+            } catch (error) {
+                console.error('初始化應用程式時發生錯誤:', error);
+                showError('應用程式初始化失敗，請重新整理頁面');
+            }
         });
     </script>
 </body>
