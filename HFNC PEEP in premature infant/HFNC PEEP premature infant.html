@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'">
     <title>小兒HFNC PEEP計算器</title>
     <style>
         * {
@@ -209,10 +211,49 @@
             font-size: 13px;
             margin-top: 8px;
             display: none;
+            padding: 12px;
+            background: #ffebee;
+            border-radius: 6px;
+            border-left: 4px solid #d32f2f;
         }
 
         .error-message.show {
             display: block;
+        }
+
+        .warning-message {
+            color: #f57c00;
+            font-size: 13px;
+            margin-top: 12px;
+            padding: 12px;
+            background: #fff3e0;
+            border-radius: 6px;
+            border-left: 4px solid #f57c00;
+            text-align: left;
+        }
+
+        .disclaimer {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 12px;
+            margin-top: 20px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #555;
+            line-height: 1.5;
+        }
+
+        .disclaimer strong {
+            color: #f57c00;
+        }
+
+        .version-info {
+            text-align: center;
+            color: #999;
+            font-size: 11px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
         }
 
         @media (max-width: 480px) {
@@ -248,7 +289,8 @@
                         id="flow" 
                         placeholder="請輸入Flow數值" 
                         step="0.1"
-                        min="0"
+                        min="0.5"
+                        max="80"
                         required
                     >
                     <span class="unit">L/min</span>
@@ -262,8 +304,9 @@
                         type="number" 
                         id="weight" 
                         placeholder="請輸入體重" 
-                        step="0.1"
-                        min="0"
+                        step="10"
+                        min="500"
+                        max="50000"
                         required
                     >
                     <span class="unit">g</span>
@@ -306,56 +349,164 @@
                 </div>
             </div>
         </div>
+
+        <div class="disclaimer">
+            <strong>⚠️ 免責聲明：</strong>本計算器僅供臨床參考使用，實際臨床決策應由合格醫療人員依病人狀況判斷。計算結果不應作為唯一診斷或治療依據。
+        </div>
+
+        <div class="version-info">
+            版本 1.1.0 (安全強化版) | 最後更新: 2026-02-16
+        </div>
     </div>
 
     <script>
+        // 定義臨床合理範圍常數
+        const LIMITS = {
+            FLOW: { MIN: 0.5, MAX: 80 },      // L/min
+            WEIGHT: { MIN: 500, MAX: 50000 }, // g
+            PEEP: { MIN: 2, MAX: 12 }         // cmH₂O
+        };
+
+        /**
+         * 清理輸入字串，移除非數字字元
+         */
+        function sanitizeInput(value) {
+            if (!value) return '';
+            return value.toString().replace(/[^\d.-]/g, '');
+        }
+
+        /**
+         * 驗證數值是否在指定範圍內
+         */
+        function validateRange(value, min, max, fieldName) {
+            if (value < min || value > max) {
+                return `${fieldName} 應在 ${min}-${max} 範圍內`;
+            }
+            return null;
+        }
+
+        /**
+         * 計算 HFNC PEEP
+         */
         function calculatePEEP() {
             const flowInput = document.getElementById('flow').value;
             const weightInput = document.getElementById('weight').value;
             const errorMessage = document.getElementById('errorMessage');
             const resultContainer = document.getElementById('resultContainer');
 
-            // 清除錯誤訊息
+            // 清除舊的錯誤訊息和警告
             errorMessage.classList.remove('show');
             errorMessage.textContent = '';
+            
+            // 移除舊的警告訊息
+            const oldWarning = resultContainer.querySelector('.warning-message');
+            if (oldWarning) {
+                oldWarning.remove();
+            }
 
-            // 驗證輸入
+            // 驗證輸入存在
             if (!flowInput || !weightInput) {
-                errorMessage.textContent = '請輸入所有必填項目';
-                errorMessage.classList.add('show');
+                showError('請輸入所有必填項目');
                 resultContainer.classList.remove('show');
                 return;
             }
 
-            const flow = parseFloat(flowInput);
-            const weightG = parseFloat(weightInput);
+            // 清理和解析輸入
+            const flowCleaned = sanitizeInput(flowInput);
+            const weightCleaned = sanitizeInput(weightInput);
+            
+            const flow = parseFloat(flowCleaned);
+            const weightG = parseFloat(weightCleaned);
 
             // 驗證數值有效性
-            if (isNaN(flow) || isNaN(weightG) || flow < 0 || weightG < 0) {
-                errorMessage.textContent = '請輸入有效的正數值';
-                errorMessage.classList.add('show');
+            if (isNaN(flow) || isNaN(weightG)) {
+                showError('請輸入有效的數值');
                 resultContainer.classList.remove('show');
                 return;
             }
 
+            // 驗證 Flow 範圍
+            const flowError = validateRange(
+                flow, 
+                LIMITS.FLOW.MIN, 
+                LIMITS.FLOW.MAX, 
+                `Flow (${LIMITS.FLOW.MIN}-${LIMITS.FLOW.MAX} L/min)`
+            );
+            if (flowError) {
+                showError(flowError);
+                resultContainer.classList.remove('show');
+                return;
+            }
+
+            // 驗證體重範圍
+            const weightError = validateRange(
+                weightG, 
+                LIMITS.WEIGHT.MIN, 
+                LIMITS.WEIGHT.MAX, 
+                `體重 (${LIMITS.WEIGHT.MIN}-${LIMITS.WEIGHT.MAX} g)`
+            );
+            if (weightError) {
+                showError(weightError);
+                resultContainer.classList.remove('show');
+                return;
+            }
+
+            // 限制小數精確度
+            const flowRounded = Math.round(flow * 10) / 10;
+            const weightRounded = Math.round(weightG * 10) / 10;
+
             // 將公克轉換為公斤
-            const weightKg = weightG / 1000;
+            const weightKg = weightRounded / 1000;
 
             // 計算 HFNC PEEP
-            // HFNC PEEP = 0.8*Flow - 1.4*BW(kg) + 2.6
-            const peep = (0.8 * flow) - (1.4 * weightKg) + 2.6;
+            // 公式: HFNC PEEP = 0.8*Flow - 1.4*BW(kg) + 2.6
+            const peep = (0.8 * flowRounded) - (1.4 * weightKg) + 2.6;
+            const peepRounded = Math.round(peep * 100) / 100;
 
             // 顯示結果
-            document.getElementById('resultValue').textContent = peep.toFixed(2);
-            document.getElementById('detailFlow').textContent = `Flow = ${flow} L/min`;
-            document.getElementById('detailWeight').textContent = `體重 = ${weightG} g (${weightKg.toFixed(3)} kg)`;
+            document.getElementById('resultValue').textContent = peepRounded.toFixed(2);
+            document.getElementById('detailFlow').textContent = `Flow = ${flowRounded.toFixed(1)} L/min`;
+            document.getElementById('detailWeight').textContent = `體重 = ${weightRounded.toFixed(0)} g (${weightKg.toFixed(3)} kg)`;
             
-            const calculation = `0.8 × ${flow} - 1.4 × ${weightKg.toFixed(3)} + 2.6 = ${peep.toFixed(2)} cmH₂O`;
+            const calculation = `0.8 × ${flowRounded.toFixed(1)} - 1.4 × ${weightKg.toFixed(3)} + 2.6 = ${peepRounded.toFixed(2)} cmH₂O`;
             document.getElementById('detailCalculation').textContent = calculation;
 
             resultContainer.classList.add('show');
+
+            // 檢查結果合理性並顯示警告
+            if (peepRounded < LIMITS.PEEP.MIN || peepRounded > LIMITS.PEEP.MAX) {
+                showWarning(
+                    `⚠️ 計算結果 (${peepRounded.toFixed(2)} cmH₂O) 超出典型臨床範圍 (${LIMITS.PEEP.MIN}-${LIMITS.PEEP.MAX} cmH₂O)，請確認輸入數值是否正確，並諮詢臨床醫師判斷。`
+                );
+            }
         }
 
+        /**
+         * 顯示錯誤訊息
+         */
+        function showError(message) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+        }
+
+        /**
+         * 顯示警告訊息
+         */
+        function showWarning(message) {
+            const resultContainer = document.getElementById('resultContainer');
+            const calcDetails = resultContainer.querySelector('.calculation-details');
+            
+            const warningDiv = document.createElement('div');
+            warningDiv.className = 'warning-message';
+            warningDiv.textContent = message;
+            
+            calcDetails.appendChild(warningDiv);
+        }
+
+        /**
+         * 重置表單
+         */
         function resetForm() {
             document.getElementById('calculatorForm').reset();
             document.getElementById('resultContainer').classList.remove('show');
@@ -375,6 +526,11 @@
         // 頁面載入時聚焦到 Flow 輸入框
         window.addEventListener('load', function() {
             document.getElementById('flow').focus();
+        });
+
+        // 防止表單提交
+        document.getElementById('calculatorForm').addEventListener('submit', function(event) {
+            event.preventDefault();
         });
     </script>
 </body>
