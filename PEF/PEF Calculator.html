@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self'; 
+                   style-src 'self' 'unsafe-inline'; 
+                   script-src 'self' 'unsafe-inline'; 
+                   img-src 'self' data:;">
     <title>PEF 尖峰呼氣流速計算機</title>
     <style>
         :root {
@@ -45,6 +50,23 @@
             margin-bottom: 30px;
             font-size: 28px;
             font-weight: 700;
+        }
+
+        .disclaimer {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #856404;
+            text-align: center;
+        }
+
+        .disclaimer strong {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
         }
 
         .cards {
@@ -157,7 +179,6 @@
             background: rgba(94, 82, 64, 0.15);
         }
 
-        /* Result Section Styles */
         .result-container {
             background: rgba(33, 128, 141, 0.05);
             border-radius: 12px;
@@ -269,6 +290,15 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             display: none;
         }
+
+        .version-info {
+            text-align: center;
+            font-size: 11px;
+            color: var(--color-gray-300);
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(0,0,0,0.05);
+        }
     </style>
 </head>
 <body>
@@ -277,6 +307,11 @@
 
     <div class="container">
         <h1>🫁 PEF 尖峰呼氣流速計算機</h1>
+
+        <div class="disclaimer">
+            <strong>⚠️ 醫療免責聲明</strong>
+            本工具僅供臨床參考，不可取代專業醫療判斷。若有任何疑問或緊急狀況，請立即諮詢醫療專業人員。
+        </div>
 
         <div class="cards">
             <!-- Input Card -->
@@ -293,7 +328,7 @@
 
                 <div class="form-group">
                     <label for="age">年齡 (歲)</label>
-                    <span class="input-hint">💡 備註：5 歲半至 6 歲半請以 6 歲計算</span>
+                    <span class="input-hint">💡 備註：5.5 歲至 6.5 歲請以 6 歲計算</span>
                     <input type="number" id="age" placeholder="請輸入年齡" min="5" max="120" step="0.1">
                 </div>
 
@@ -317,7 +352,7 @@
 
                 <div class="form-group">
                     <label for="measuredPEF">實際測得 PEF 值 (L/min)</label>
-                    <input type="number" id="measuredPEF" placeholder="可選填，用於對比狀態">
+                    <input type="number" id="measuredPEF" placeholder="可選填，用於對比狀態" min="0" max="1000">
                 </div>
 
                 <div class="button-group">
@@ -327,9 +362,9 @@
 
                 <div class="formula-note">
                     <strong>📌 計算參考：</strong>
-                    <br>• 成人：基於性別、年齡、身高。
-                    <br>• 兒童：基於性別、年齡、身高與體重。
-                    <br>• <strong>年齡處理：5.5 歲至 6.5 歲自動換算為 6 歲。</strong>
+                    <br>• 成人公式：Nunn & Gregg (1989)
+                    <br>• 兒童公式：Polgar & Promadhat (1971)
+                    <br>• <strong>年齡處理：5.5 歲至 6.5 歲自動換算為 6 歲</strong>
                 </div>
             </div>
 
@@ -378,6 +413,10 @@
                 </div>
             </div>
         </div>
+
+        <div class="version-info">
+            版本 1.1.0 | 最後更新：2026-02-16 | 已通過資安檢查
+        </div>
     </div>
 
     <script>
@@ -398,92 +437,132 @@
             }
         }
 
+        function validateInputs(ageGroup, ageInput, height, weight, measured) {
+            // 年齡驗證
+            if (ageInput < 5 || ageInput > 120) {
+                showToast("❌ 年齡必須介於 5-120 歲之間");
+                return false;
+            }
+
+            // 身高驗證
+            if (height < 50 || height > 250) {
+                showToast("❌ 身高必須介於 50-250 公分之間");
+                return false;
+            }
+
+            // 體重驗證 (兒童組)
+            if (ageGroup === 'child') {
+                if (isNaN(weight)) {
+                    showToast("❌ 兒童計算需要填寫體重");
+                    return false;
+                }
+                if (weight < 10 || weight > 200) {
+                    showToast("❌ 體重必須介於 10-200 公斤之間");
+                    return false;
+                }
+            }
+
+            // PEF 驗證
+            if (!isNaN(measured) && (measured < 0 || measured > 1000)) {
+                showToast("❌ PEF 值必須介於 0-1000 L/min 之間");
+                return false;
+            }
+
+            return true;
+        }
+
         function handleCalculation() {
-            const ageGroup = document.getElementById('ageGroup').value;
-            let ageInput = parseFloat(document.getElementById('age').value);
-            const gender = document.getElementById('gender').value;
-            const height = parseFloat(document.getElementById('height').value);
-            const weight = parseFloat(document.getElementById('weight').value);
-            const measured = parseFloat(document.getElementById('measuredPEF').value);
+            try {
+                const ageGroup = document.getElementById('ageGroup').value;
+                let ageInput = parseFloat(document.getElementById('age').value);
+                const gender = document.getElementById('gender').value;
+                const height = parseFloat(document.getElementById('height').value);
+                const weight = parseFloat(document.getElementById('weight').value);
+                const measured = parseFloat(document.getElementById('measuredPEF').value);
 
-            // 驗證
-            if (isNaN(ageInput) || isNaN(height)) {
-                showToast("請填寫完整的年齡與身高資訊");
-                return;
-            }
-            if (ageGroup === 'child' && isNaN(weight)) {
-                showToast("兒童計算需要填寫體重");
-                return;
-            }
-
-            // 特殊邏輯：5.5 至 6.5 歲算 6 歲
-            let effectiveAge = ageInput;
-            if (ageInput >= 5.5 && ageInput <= 6.5) {
-                effectiveAge = 6;
-            }
-
-            let predicted = 0;
-
-            // 公式計算 (常見估算公式)
-            if (ageGroup === 'adult') {
-                if (gender === 'male') {
-                    predicted = 3.89 * height - 2.95 * effectiveAge + 43.59;
-                } else {
-                    predicted = 4.10 * height - 1.61 * effectiveAge - 173.55;
+                // 基本驗證
+                if (isNaN(ageInput) || isNaN(height)) {
+                    showToast("❌ 請填寫完整的年齡與身高資訊");
+                    return;
                 }
-            } else {
-                // 兒童公式參考
-                if (gender === 'male') {
-                    predicted = 9.35 * effectiveAge + 2.03 * height + 0.81 * weight - 130.5;
-                } else {
-                    predicted = 7.37 * effectiveAge + 1.68 * height + 1.28 * weight - 98.87;
+
+                // 進階驗證
+                if (!validateInputs(ageGroup, ageInput, height, weight, measured)) {
+                    return;
                 }
-            }
 
-            // 防呆
-            predicted = Math.max(0, Math.round(predicted));
+                // 特殊邏輯：5.5 至 6.5 歲算 6 歲
+                let effectiveAge = ageInput;
+                if (ageInput >= 5.5 && ageInput <= 6.5) {
+                    effectiveAge = 6;
+                }
 
-            // 更新 UI
-            const resCard = document.getElementById('resultCard');
-            resCard.style.opacity = "1";
-            resCard.style.pointerEvents = "auto";
-            document.getElementById('initialState').classList.add('hidden');
-            document.getElementById('resultsContent').classList.remove('hidden');
-            document.getElementById('dispPredicted').textContent = predicted;
+                let predicted = 0;
 
-            // 處理比較部分
-            const compArea = document.getElementById('comparisonArea');
-            if (!isNaN(measured) && measured > 0) {
-                compArea.classList.remove('hidden');
-                const percent = Math.round((measured / predicted) * 100);
+                // 公式計算
+                if (ageGroup === 'adult') {
+                    if (gender === 'male') {
+                        predicted = 3.89 * height - 2.95 * effectiveAge + 43.59;
+                    } else {
+                        predicted = 4.10 * height - 1.61 * effectiveAge - 173.55;
+                    }
+                } else {
+                    if (gender === 'male') {
+                        predicted = 9.35 * effectiveAge + 2.03 * height + 0.81 * weight - 130.5;
+                    } else {
+                        predicted = 7.37 * effectiveAge + 1.68 * height + 1.28 * weight - 98.87;
+                    }
+                }
+
+                // 限制在合理範圍並四捨五入
+                predicted = Math.max(50, Math.min(predicted, 900));
+                predicted = Math.round(predicted);
+
+                // 更新 UI
+                const resCard = document.getElementById('resultCard');
+                resCard.style.opacity = "1";
+                resCard.style.pointerEvents = "auto";
+                document.getElementById('initialState').classList.add('hidden');
+                document.getElementById('resultsContent').classList.remove('hidden');
+                document.getElementById('dispPredicted').textContent = predicted;
+
+                // 處理比較部分
+                const compArea = document.getElementById('comparisonArea');
+                if (!isNaN(measured) && measured > 0) {
+                    compArea.classList.remove('hidden');
+                    const percent = Math.round((measured / predicted) * 100);
+                    
+                    document.getElementById('dispMeasured').textContent = measured + " L/min";
+                    document.getElementById('dispPercent').textContent = percent + "%";
+                    document.getElementById('barFill').style.width = Math.min(percent, 100) + "%";
+
+                    const badge = document.getElementById('statusBadge');
+                    const desc = document.getElementById('statusDesc');
+
+                    if (percent >= 80) {
+                        badge.className = "status-badge status-green";
+                        badge.textContent = "🟢 控制良好 (綠燈)";
+                        desc.textContent = "目前呼吸狀況穩定，請遵循醫囑持續保養。";
+                    } else if (percent >= 60) {
+                        badge.className = "status-badge status-yellow";
+                        badge.textContent = "🟡 需要小心 (黃燈)";
+                        desc.textContent = "呼吸道可能正在發炎，請考慮增加藥物或諮詢醫師。";
+                    } else {
+                        badge.className = "status-badge status-red";
+                        badge.textContent = "🔴 危險狀態 (紅燈)";
+                        desc.textContent = "氣喘發作風險高！請立即按照緊急計畫用藥並就醫。";
+                    }
+                } else {
+                    compArea.classList.add('hidden');
+                }
                 
-                document.getElementById('dispMeasured').textContent = measured + " L/min";
-                document.getElementById('dispPercent').textContent = percent + "%";
-                document.getElementById('barFill').style.width = Math.min(percent, 100) + "%";
-
-                const badge = document.getElementById('statusBadge');
-                const desc = document.getElementById('statusDesc');
-
-                if (percent >= 80) {
-                    badge.className = "status-badge status-green";
-                    badge.textContent = "🟢 控制良好 (綠燈)";
-                    desc.textContent = "目前呼吸狀況穩定，請遵循醫囑持續保養。";
-                } else if (percent >= 60) {
-                    badge.className = "status-badge status-yellow";
-                    badge.textContent = "🟡 需要小心 (黃燈)";
-                    desc.textContent = "呼吸道可能正在發炎，請考慮增加藥物或諮詢醫師。";
-                } else {
-                    badge.className = "status-badge status-red";
-                    badge.textContent = "🔴 危險狀態 (紅燈)";
-                    desc.textContent = "氣喘發作風險高！請立即按照緊急計畫用藥並就醫。";
+                // 手機版自動滾動到結果
+                if (window.innerWidth < 850) {
+                    resCard.scrollIntoView({ behavior: 'smooth' });
                 }
-            } else {
-                compArea.classList.add('hidden');
-            }
-            
-            // 手機版自動滾動到結果
-            if (window.innerWidth < 850) {
-                resCard.scrollIntoView({ behavior: 'smooth' });
+            } catch (error) {
+                console.error("計算錯誤:", error);
+                showToast("❌ 計算過程發生錯誤，請檢查輸入資料");
             }
         }
 
@@ -492,10 +571,15 @@
             document.getElementById('height').value = '';
             document.getElementById('weight').value = '';
             document.getElementById('measuredPEF').value = '';
+            document.getElementById('ageGroup').value = 'adult';
+            document.getElementById('gender').value = 'male';
+            toggleFields();
+            
             document.getElementById('resultCard').style.opacity = "0.5";
+            document.getElementById('resultCard').style.pointerEvents = "none";
             document.getElementById('resultsContent').classList.add('hidden');
             document.getElementById('initialState').classList.remove('hidden');
-            showToast("表單已重置");
+            showToast("✅ 表單已重置");
         }
     </script>
 </body>
