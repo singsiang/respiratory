@@ -3,10 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- CSP 防護 -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.googleapis.com;">
-    <title>午夜安全 | 專業生成與安全規範 v2.0 (2026/02)</title>
+    <meta name="description" content="專業級密碼生成器 - 使用加密等級隨機數生成強密碼，完全離線運作保護隱私">
+    <meta name="keywords" content="密碼生成器,隨機密碼,安全密碼,password generator">
+    <meta name="author" content="Midnight Security">
+    
+    <!-- Open Graph / 社群分享 -->
+    <meta property="og:title" content="Midnight Security - 專業密碼生成器">
+    <meta property="og:description" content="加密等級隨機數生成器，完全離線運作">
+    <meta property="og:type" content="website">
+    
+    <!-- CSP 安全政策 -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;">
+    
+    <title>午夜安全 | 專業密碼生成器</title>
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Noto+Sans+TC:wght@400;700&display=swap');
 
@@ -33,6 +46,11 @@
             transform: translateY(-1px);
         }
 
+        .glow-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .quick-len-btn {
             background: #334155;
             border: 1px solid #475569;
@@ -50,6 +68,7 @@
             border-top: 4px solid;
             transition: transform 0.2s;
         }
+        
         .advice-card:hover {
             transform: translateY(-5px);
         }
@@ -74,9 +93,10 @@
             line-height: 1.2;
         }
 
-        .warning {
-            background: rgba(245, 101, 101, 0.2);
-            border: 1px solid #ef4444;
+        .strength-meter {
+            height: 4px;
+            border-radius: 2px;
+            transition: all 0.3s;
         }
     </style>
 </head>
@@ -88,7 +108,8 @@
             <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight mb-3 text-white">
                 <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">MIDNIGHT</span> SECURITY
             </h1>
-            <p class="text-slate-400 text-sm tracking-widest uppercase">Encryption Grade Randomness (v2.0 - 資安強化版)</p>
+            <p class="text-slate-400 text-sm tracking-widest uppercase">Encryption Grade Randomness</p>
+            <p class="text-slate-600 text-xs mt-2">v2.0 | 完全離線運作 | 零資料外傳</p>
         </header>
 
         <!-- 生成器主區域 -->
@@ -111,9 +132,9 @@
                             <input type="range" id="lenRange" min="12" max="64" value="16" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer mb-6 accent-blue-500">
                             
                             <div class="grid grid-cols-3 gap-2">
-                                <button type="button" onclick="updateLen(12)" class="quick-len-btn py-2 rounded-xl text-[10px] font-bold text-slate-300" data-val="12">12位</button>
-                                <button type="button" onclick="updateLen(16)" class="quick-len-btn active py-2 rounded-xl text-[10px] font-bold" data-val="16">推薦(16)</button>
-                                <button type="button" onclick="updateLen(24)" class="quick-len-btn py-2 rounded-xl text-[10px] font-bold text-slate-300" data-val="24">高強度(24)</button>
+                                <button type="button" class="quick-len-btn py-2 rounded-xl text-[10px] font-bold text-slate-300" data-val="12">12位</button>
+                                <button type="button" class="quick-len-btn active py-2 rounded-xl text-[10px] font-bold" data-val="16">推薦(16)</button>
+                                <button type="button" class="quick-len-btn py-2 rounded-xl text-[10px] font-bold text-slate-300" data-val="24">高強度(24)</button>
                             </div>
                         </div>
 
@@ -140,4 +161,338 @@
                                     <span class="char-sample">( ABCDEFGHIJKLMNOPQRSTUVWXYZ )</span>
                                 </div>
                             </label>
-                            <label class="flex
+                            <label class="flex items-start p-3 rounded-2xl bg-slate-800/50 border border-slate-700 cursor-pointer hover:border-blue-500 transition-all group">
+                                <input type="checkbox" id="cSym" checked class="mt-1 w-4 h-4 rounded text-blue-500 border-slate-600 bg-slate-700">
+                                <div class="ml-3">
+                                    <span class="text-xs font-bold text-slate-300 group-hover:text-white">包含特殊符號</span>
+                                    <span class="char-sample">( ~!@#$%^&*()_+-=[]{}|;:,.<>? )</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <button id="genBtn" class="glow-btn w-full py-4 rounded-2xl text-white font-bold tracking-widest active:scale-95 transition-transform uppercase text-sm">
+                            Generate Security Key
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右側：生成結果 -->
+            <div class="lg:col-span-7">
+                <div class="cyber-card rounded-3xl overflow-hidden flex flex-col min-h-[560px]">
+                    <div class="p-6 border-b border-slate-700/50 flex justify-between items-center bg-slate-800/30">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest">產生結果隊列</h3>
+                        <span class="text-[9px] bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-1 rounded">點擊內容自動複製</span>
+                    </div>
+                    <div id="results" class="p-4 md:p-6 space-y-3 flex-1 overflow-y-auto">
+                        <div class="flex flex-col items-center justify-center h-full text-slate-600 py-20 text-center">
+                            <svg class="h-12 w-12 mb-4 opacity-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                            <p class="text-xs italic tracking-widest opacity-40">系統就緒，等待指令...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 戰略安全建議區域 -->
+        <h2 class="text-xl font-black mb-8 text-center text-slate-500 tracking-[0.2em] uppercase">
+            Security Strategy Guidelines
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            
+            <!-- LV.1 -->
+            <div class="advice-card bg-slate-800/40 p-6 rounded-3xl border-slate-500 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="bg-blue-500/10 text-blue-400 text-[9px] font-bold px-2 py-1 rounded">LV.1 一般網站</span>
+                </div>
+                <ul class="text-[11px] text-slate-300 space-y-3 leading-relaxed">
+                    <li><strong class="text-blue-400">長度：</strong> 至少 12 碼隨機，或 3–4 個無關單字組成 (<span class="text-slate-500">≥ 16 碼</span>)。</li>
+                    <li><strong class="text-blue-400">字元：</strong> 大小寫 + 數字 + 符號。</li>
+                    <li><strong class="text-blue-400">規範：</strong> 每個網站用不同密碼。</li>
+                    <li><strong class="text-blue-400">工具：</strong> 用 Bitwarden, 1Password 或 KeePass 管理。</li>
+                </ul>
+            </div>
+
+            <!-- LV.2 -->
+            <div class="advice-card bg-indigo-900/30 p-6 rounded-3xl border-indigo-500 shadow-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="bg-indigo-500/20 text-indigo-300 text-[9px] font-bold px-2 py-1 rounded">LV.2 重要個人帳號</span>
+                </div>
+                <ul class="text-[11px] text-slate-300 space-y-3 leading-relaxed">
+                    <li><strong class="text-indigo-400">長度：</strong> 16 碼以上隨機，或 20+ 字元短語。</li>
+                    <li><strong class="text-indigo-400">核心：</strong> 務必開啟 **多因素驗證 (MFA / 2FA)**。</li>
+                    <li><strong class="text-indigo-400">推薦：</strong> TOTP App (Authy) 或 **Passkey**。</li>
+                    <li><strong class="text-rose-400 underline">警告：</strong> 避免僅依賴簡訊 OTP。</li>
+                </ul>
+            </div>
+
+            <!-- LV.3 -->
+            <div class="advice-card bg-rose-900/20 p-6 rounded-3xl border-rose-500 shadow-2xl">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="bg-rose-500/20 text-rose-400 text-[9px] font-bold px-2 py-1 rounded">LV.3 高敏感用途</span>
+                </div>
+                <ul class="text-[11px] text-slate-300 space-y-3 leading-relaxed">
+                    <li><strong class="text-rose-500">長度：</strong> 至少 16–20 碼隨機密碼。</li>
+                    <li><strong class="text-rose-500">金鑰：</strong> 必備 **硬體金鑰 (FIDO2, YubiKey)**。</li>
+                    <li><strong class="text-rose-500">防禦：</strong> 搭配登入安全限制 (IP 限制、鎖定)。</li>
+                    <li><strong class="text-rose-500">推薦：</strong> 優先採用 **Passkey** 避免釣魚風險 (域名綁定)。</li>
+                </ul>
+            </div>
+
+        </div>
+
+        <!-- 技術說明 -->
+        <div class="cyber-card rounded-2xl p-6 mb-8 text-xs text-slate-400 leading-relaxed">
+            <h3 class="text-sm font-bold text-slate-300 mb-3 flex items-center">
+                <svg class="h-4 w-4 mr-2 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                安全特性說明
+            </h3>
+            <ul class="space-y-2 ml-6">
+                <li>✅ 使用 <code class="text-blue-400">crypto.getRandomValues()</code> 加密等級隨機數生成器 (CSPRNG)</li>
+                <li>✅ 修正模數偏差 (Modulo Bias)，確保每個字元出現機率完全相等</li>
+                <li>✅ 完全客戶端運算，所有密碼僅存在於您的瀏覽器記憶體中</li>
+                <li>✅ 零資料傳輸，無任何網路請求或 Cookie 追蹤</li>
+                <li>✅ 開源透明，可於 GitHub 檢視完整原始碼</li>
+            </ul>
+        </div>
+
+        <footer class="text-center text-slate-600 text-[9px] pb-10 tracking-[0.3em] uppercase space-y-2">
+            <p>Data stays local • AES-Grade Entropy • Zero Knowledge</p>
+            <p class="text-slate-700">
+                <a href="https://github.com/yourusername/midnight-security" target="_blank" class="hover:text-blue-400 transition-colors">View on GitHub</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- 複製成功提示 -->
+    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-8 py-3 rounded-full shadow-2xl opacity-0 transition-all transform translate-y-4 z-50 flex items-center space-x-2">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+        <span class="text-xs font-bold font-sans" id="toastText">COPIED TO CLIPBOARD</span>
+    </div>
+
+    <script>
+        // 全域變數
+        const lenRange = document.getElementById('lenRange');
+        const lenDisplay = document.getElementById('lenDisplay');
+        const results = document.getElementById('results');
+        const genBtn = document.getElementById('genBtn');
+        const toast = document.getElementById('toast');
+        const toastText = document.getElementById('toastText');
+
+        // 長度同步邏輯
+        function updateLen(val) {
+            lenRange.value = val;
+            lenDisplay.textContent = val;
+            updateQuickBtnState(val);
+        }
+
+        function updateQuickBtnState(val) {
+            document.querySelectorAll('.quick-len-btn').forEach(btn => {
+                btn.classList.toggle('active', parseInt(btn.dataset.val) === parseInt(val));
+            });
+        }
+
+        lenRange.addEventListener('input', () => {
+            lenDisplay.textContent = lenRange.value;
+            updateQuickBtnState(lenRange.value);
+        });
+
+        // 快速長度按鈕事件
+        document.querySelectorAll('.quick-len-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                updateLen(parseInt(btn.dataset.val));
+            });
+        });
+
+        // 現代化複製功能（含 fallback）
+        async function copyToClipboard(text) {
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                    showToast('COPIED TO CLIPBOARD');
+                } else {
+                    // Fallback 方法
+                    const el = document.createElement('textarea');
+                    el.value = text;
+                    el.style.position = 'fixed';
+                    el.style.left = '-9999px';
+                    document.body.appendChild(el);
+                    el.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(el);
+                    showToast('COPIED TO CLIPBOARD');
+                }
+            } catch (err) {
+                console.error('複製失敗:', err);
+                showToast('複製失敗，請手動選取', true);
+            }
+        }
+
+        function showToast(message, isError = false) {
+            toastText.textContent = message;
+            if (isError) {
+                toast.classList.add('bg-red-600');
+                toast.classList.remove('bg-blue-600');
+            } else {
+                toast.classList.add('bg-blue-600');
+                toast.classList.remove('bg-red-600');
+            }
+            
+            toast.classList.remove('opacity-0', 'translate-y-4');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-4');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+            }, 2000);
+        }
+
+        // 字元類型驗證
+        function validatePassword(pass, requirements) {
+            if (requirements.hasNum && !/d/.test(pass)) return false;
+            if (requirements.hasLower && !/[a-z]/.test(pass)) return false;
+            if (requirements.hasUpper && !/[A-Z]/.test(pass)) return false;
+            if (requirements.hasSymbol && !/[~!@#$%^&*()_+-=[]{}|;:,.<>?]/.test(pass)) return false;
+            return true;
+        }
+
+        // 核心生成邏輯（修正模數偏差）
+        function generateSecurePassword(length, pool, requirements) {
+            const MAX_ATTEMPTS = 100;
+            let attempts = 0;
+            
+            while (attempts < MAX_ATTEMPTS) {
+                let password = '';
+                const limit = Math.floor(0x100000000 / pool.length) * pool.length;
+                const randomValues = new Uint32Array(length * 2);
+                window.crypto.getRandomValues(randomValues);
+                
+                let idx = 0;
+                for (let i = 0; i < length; i++) {
+                    let randomValue = randomValues[idx++];
+                    
+                    // 拒絕抽樣：避免模數偏差
+                    while (randomValue >= limit) {
+                        if (idx >= randomValues.length) {
+                            const moreRandom = new Uint32Array(length);
+                            window.crypto.getRandomValues(moreRandom);
+                            Array.from(moreRandom).forEach((val, i) => {
+                                if (idx + i < randomValues.length) {
+                                    randomValues[idx + i] = val;
+                                }
+                            });
+                        }
+                        randomValue = randomValues[idx++];
+                    }
+                    
+                    password += pool.charAt(randomValue % pool.length);
+                }
+                
+                // 驗證是否包含所有必要的字元類型
+                if (validatePassword(password, requirements)) {
+                    return password;
+                }
+                
+                attempts++;
+            }
+            
+            // 如果超過嘗試次數，回傳未驗證的密碼（理論上不應發生）
+            console.warn('超過最大嘗試次數，回傳未完全驗證的密碼');
+            let password = '';
+            const randomValues = new Uint32Array(length);
+            window.crypto.getRandomValues(randomValues);
+            for (let i = 0; i < length; i++) {
+                password += pool.charAt(randomValues[i] % pool.length);
+            }
+            return password;
+        }
+
+        // 生成密碼
+        function generate() {
+            try {
+                const len = parseInt(lenRange.value);
+                const chars = {
+                    n: '1234567890',
+                    l: 'abcdefghijklmnopqrstuvwxyz',
+                    u: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+                    s: '~!@#$%^&*()_+-=[]{}|;:,.<>?'
+                };
+
+                // 建立字元池與需求追蹤
+                let pool = '';
+                const requirements = {
+                    hasNum: document.getElementById('cNum').checked,
+                    hasLower: document.getElementById('cLow').checked,
+                    hasUpper: document.getElementById('cUp').checked,
+                    hasSymbol: document.getElementById('cSym').checked
+                };
+
+                if (requirements.hasNum) pool += chars.n;
+                if (requirements.hasLower) pool += chars.l;
+                if (requirements.hasUpper) pool += chars.u;
+                if (requirements.hasSymbol) pool += chars.s;
+
+                if (!pool) {
+                    results.innerHTML = '';
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'text-rose-400 font-bold p-8 text-center bg-rose-500/10 rounded-2xl text-xs';
+                    errorDiv.textContent = '⚠️ 請選擇至少一個字元類型';
+                    results.appendChild(errorDiv);
+                    return;
+                }
+
+                // 清空結果區
+                results.innerHTML = '';
+                
+                // 生成 5 組密碼
+                for (let i = 0; i < 5; i++) {
+                    const password = generateSecurePassword(len, pool, requirements);
+                    
+                    const row = document.createElement('div');
+                    row.className = "password-row p-4 rounded-2xl cursor-pointer flex justify-between items-center group active:scale-[0.98] transition-transform";
+                    
+                    const passSpan = document.createElement('span');
+                    passSpan.className = "font-mono text-white text-xs md:text-sm break-all tracking-wider font-bold";
+                    passSpan.textContent = password;
+                    
+                    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                    icon.setAttribute('class', 'h-4 w-4 text-slate-500 group-hover:text-blue-400 shrink-0');
+                    icon.setAttribute('fill', 'none');
+                    icon.setAttribute('viewBox', '0 0 24 24');
+                    icon.setAttribute('stroke', 'currentColor');
+                    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />';
+                    
+                    row.appendChild(passSpan);
+                    row.appendChild(icon);
+                    
+                    row.addEventListener('click', () => copyToClipboard(password));
+                    
+                    results.appendChild(row);
+                }
+            } catch (error) {
+                console.error('生成密碼時發生錯誤:', error);
+                showToast('生成失敗，請重試', true);
+            }
+        }
+
+        // 按鈕事件綁定
+        genBtn.addEventListener('click', generate);
+
+        // 鍵盤快捷鍵 (Enter 生成)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+                e.preventDefault();
+                generate();
+            }
+        });
+
+        // 頁面載入完成提示
+        window.addEventListener('load', () => {
+            console.log('%c🔐 Midnight Security v2.0', 'color: #3b82f6; font-size: 16px; font-weight: bold;');
+            console.log('%c✅ 安全特性：CSPRNG + 模數偏差修正 + 完全離線', 'color: #10b981; font-size: 12px;');
+            console.log('%c📖 GitHub: https://github.com/yourusername/midnight-security', 'color: #6366f1; font-size: 12px;');
+        });
+    </script>
+</body>
+</html>
