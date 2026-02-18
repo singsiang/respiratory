@@ -4,20 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="專業級密碼產生器 - 包含科學強度分析與全方位安全建議">
-    
-    <!-- Content Security Policy -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'none'; upgrade-insecure-requests;">
-    
-    <!-- 防止 MIME 類型嗅探 -->
+
+    <!-- CSP：移除 unsafe-inline，所有 script 來自可信來源 -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' https://cdn.tailwindcss.com;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src https://fonts.gstatic.com;
+        img-src 'self' data:;
+        connect-src 'none';
+        upgrade-insecure-requests;
+    ">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    
+
     <title>密碼產生器 | 專業隨機密碼與科學分析</title>
-    
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Noto+Sans+TC:wght@400;700;900&family=JetBrains+Mono:wght@700&display=swap');
-
         :root {
             --bg-light: #f8fafc;
             --card-bg: #ffffff;
@@ -26,469 +29,397 @@
             --accent-rose: #e11d48;
             --text-dark: #0f172a;
         }
-
         body {
             background-color: var(--bg-light);
             font-family: 'Inter', 'Noto Sans TC', sans-serif;
             color: var(--text-dark);
             -webkit-tap-highlight-color: transparent;
         }
-
         .white-card {
             background-color: var(--card-bg);
             border: 1px solid #e2e8f0;
             border-radius: 28px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
         }
-
         .btn-action {
             background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+            transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+            box-shadow: 0 4px 12px rgba(37,99,235,0.2);
         }
-
-        .btn-action:hover {
-            box-shadow: 0 6px 18px rgba(37, 99, 235, 0.3);
-            transform: translateY(-1px);
-        }
-
+        .btn-action:hover { box-shadow: 0 6px 18px rgba(37,99,235,0.3); transform: translateY(-1px); }
         .btn-action:active { transform: scale(0.98); }
-
         input[type="range"] {
             -webkit-appearance: none;
-            width: 100%;
-            height: 6px;
-            background: #e2e8f0;
-            border-radius: 3px;
-            outline: none;
+            width: 100%; height: 6px;
+            background: #e2e8f0; border-radius: 3px; outline: none;
         }
-
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 26px;
-            height: 26px;
-            background: #fff;
-            border-radius: 50%;
-            cursor: pointer;
+            width: 26px; height: 26px;
+            background: #fff; border-radius: 50%; cursor: pointer;
             border: 6px solid var(--accent-blue);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
-
         .option-box {
             background: #ffffff;
             border: 1.5px solid #f1f5f9;
             border-radius: 20px;
             transition: all 0.2s;
         }
-
         .checkbox-pro {
-            width: 22px;
-            height: 22px;
-            border-radius: 7px;
-            border: 2px solid #cbd5e1;
-            appearance: none;
-            display: grid;
-            place-content: center;
-            cursor: pointer;
-            background: white;
-            flex-shrink: 0;
+            width: 22px; height: 22px;
+            border-radius: 7px; border: 2px solid #cbd5e1;
+            appearance: none; display: grid; place-content: center;
+            cursor: pointer; background: white; flex-shrink: 0;
         }
-
-        .checkbox-pro:checked {
-            background-color: var(--accent-blue);
-            border-color: var(--accent-blue);
-        }
-
-        .checkbox-pro:checked::before {
-            content: "✓";
-            color: white;
-            font-size: 13px;
-            font-weight: bold;
-        }
-
+        .checkbox-pro:checked { background-color: var(--accent-blue); border-color: var(--accent-blue); }
+        .checkbox-pro:checked::before { content: "✓"; color: white; font-size: 13px; font-weight: bold; }
         .result-item {
-            background: #ffffff;
-            border: 1px solid #f1f5f9;
-            border-radius: 22px;
-            transition: all 0.3s ease;
+            background: #ffffff; border: 1px solid #f1f5f9;
+            border-radius: 22px; transition: all 0.3s ease;
         }
-
         .result-item:hover { border-color: #3b82f6; transform: scale(1.01); }
-
-        .strength-track {
-            height: 6px;
-            border-radius: 3px;
-            background: #f1f5f9;
-            overflow: hidden;
-        }
-
-        .strength-progress {
-            height: 100%;
-            transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
+        .strength-track { height: 6px; border-radius: 3px; background: #f1f5f9; overflow: hidden; }
+        .strength-progress { height: 100%; transition: width 0.8s cubic-bezier(0.34,1.56,0.64,1); }
         .font-mono-jb { font-family: 'JetBrains Mono', monospace; }
-
-        .guide-card {
-            border-radius: 24px;
-            background: #ffffff;
-            border-top: 5px solid #e2e8f0;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
-        }
-
+        .guide-card { border-radius: 24px; background: #ffffff; border-top: 5px solid #e2e8f0; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
         .guide-lv1 { border-top-color: var(--accent-blue); }
         .guide-lv2 { border-top-color: var(--accent-purple); }
         .guide-lv3 { border-top-color: var(--accent-rose); }
-
-        .char-example {
-            font-size: 8.5px;
-            color: #94a3b8;
-            font-family: 'JetBrains Mono', monospace;
-            word-break: break-all;
-            line-height: 1;
-            margin-top: 2px;
-            display: block;
-        }
-
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
+        .char-example { font-size: 8.5px; color: #94a3b8; font-family: 'JetBrains Mono',monospace; word-break: break-all; line-height: 1; margin-top: 2px; display: block; }
+        @keyframes fadeInUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
         .animate-list { animation: fadeInUp 0.4s ease forwards; }
     </style>
 </head>
 <body class="min-h-screen py-10 px-5">
 
-    <div class="max-w-4xl mx-auto space-y-10">
-        
-        <!-- 安全提醒 -->
-        <div class="bg-green-50 border border-green-200 rounded-2xl p-4">
-            <p class="text-xs text-green-800 leading-relaxed">
-                🔒 <strong>安全保證</strong>: 本工具完全在您的瀏覽器本地運行，使用密碼學安全的亂數產生器 (CSPRNG)。所有密碼產生過程均不會傳送到任何伺服器，請放心使用。
-            </p>
-        </div>
+<div class="max-w-4xl mx-auto space-y-10">
 
-        <!-- Header -->
-        <header class="text-center space-y-1">
-            <h1 class="text-4xl font-black tracking-tighter text-slate-900">
-                密碼產生器
-            </h1>
-            <p class="text-[10px] tracking-[0.4em] font-black text-slate-400 uppercase italic">Scientific Entropy Analyzer</p>
-        </header>
+    <!-- 安全提醒 -->
+    <div class="bg-green-50 border border-green-200 rounded-2xl p-4">
+        <p class="text-xs text-green-800 leading-relaxed">
+            🔒 <strong>安全保證</strong>：本工具完全在瀏覽器本地運行，使用 CSPRNG + Rejection Sampling 確保均勻分布。所有密碼均不會傳送至任何伺服器。
+        </p>
+    </div>
 
-        <!-- 設定與結果 -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <!-- 左側設定 -->
-            <section class="lg:col-span-5 white-card p-8 space-y-8">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-lg font-black tracking-tight text-slate-800">參數配置</h2>
-                    <span class="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
-                        CSPRNG
-                    </span>
+    <!-- Header -->
+    <header class="text-center space-y-1">
+        <h1 class="text-4xl font-black tracking-tighter text-slate-900">密碼產生器</h1>
+        <p class="text-[10px] tracking-[0.4em] font-black text-slate-400 uppercase italic">Scientific Entropy Analyzer</p>
+    </header>
+
+    <!-- 設定與結果 -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <!-- 左側設定 -->
+        <section class="lg:col-span-5 white-card p-8 space-y-8">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-black tracking-tight text-slate-800">參數配置</h2>
+                <span class="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">CSPRNG</span>
+            </div>
+
+            <div class="space-y-6">
+                <div class="flex justify-between items-end">
+                    <span class="text-slate-500 text-[10px] font-black uppercase">密碼位數 (L)</span>
+                    <span id="lenDisplay" class="text-5xl font-black text-slate-900 tracking-tighter leading-none">16</span>
                 </div>
-
-                <div class="space-y-6">
-                    <div class="flex justify-between items-end">
-                        <span class="text-slate-500 text-[10px] font-black uppercase">密碼位數 (L)</span>
-                        <span id="lenDisplay" class="text-5xl font-black text-slate-900 tracking-tighter leading-none">16</span>
-                    </div>
-                    <input type="range" id="lenRange" min="8" max="100" value="16">
-                    <div class="grid grid-cols-2 gap-2">
-                        <button onclick="setQuickLen(12)" class="py-2 bg-slate-50 rounded-xl text-[10px] font-black text-slate-500 hover:bg-slate-100 transition-colors">12位</button>
-                        <button onclick="setQuickLen(16)" class="py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black hover:bg-blue-100 transition-colors">推薦(16)</button>
-                        <button onclick="setQuickLen(32)" class="py-2 bg-slate-50 rounded-xl text-[10px] font-black text-slate-500 hover:bg-slate-100 transition-colors">32位</button>
-                        <button onclick="setQuickLen(64)" class="py-2 bg-slate-50 rounded-xl text-[10px] font-black text-slate-500 hover:bg-slate-100 transition-colors">長金鑰</button>
-                    </div>
-                </div>
-
-                <div class="space-y-3">
-                    <label class="option-box p-3 flex items-start cursor-pointer">
-                        <input type="checkbox" id="cNum" checked class="checkbox-pro mt-0.5">
-                        <div class="ml-3">
-                            <span class="text-xs font-bold text-slate-700">包含數字</span>
-                            <span class="char-example">0123456789</span>
-                        </div>
-                    </label>
-                    <label class="option-box p-3 flex items-start cursor-pointer">
-                        <input type="checkbox" id="cLow" checked class="checkbox-pro mt-0.5">
-                        <div class="ml-3">
-                            <span class="text-xs font-bold text-slate-700">包含小寫字母</span>
-                            <span class="char-example">abcdefghijklmnopqrstuvwxyz</span>
-                        </div>
-                    </label>
-                    <label class="option-box p-3 flex items-start cursor-pointer">
-                        <input type="checkbox" id="cUp" checked class="checkbox-pro mt-0.5">
-                        <div class="ml-3">
-                            <span class="text-xs font-bold text-slate-700">包含大寫字母</span>
-                            <span class="char-example">ABCDEFGHIJKLMNOPQRSTUVWXYZ</span>
-                        </div>
-                    </label>
-                    <label class="option-box p-3 flex items-start cursor-pointer">
-                        <input type="checkbox" id="cSym" checked class="checkbox-pro mt-0.5">
-                        <div class="ml-3">
-                            <span class="text-xs font-bold text-slate-700">包含特殊符號</span>
-                            <span class="char-example">!@#$%^&*()_+-=[]{}|;:,.<>?</span>
-                        </div>
-                    </label>
-                    <label class="option-box p-3 flex items-start cursor-pointer bg-blue-50/30 border-dashed border-blue-200">
-                        <input type="checkbox" id="cExcludeSimilar" class="checkbox-pro border-blue-200 mt-0.5">
-                        <div class="ml-3">
-                            <p class="text-[11px] font-black text-blue-700">排除易混淆字元</p>
-                            <span class="char-example text-blue-500/60">排除: i, l, 1, L, o, 0, O</span>
-                        </div>
-                    </label>
-                </div>
-
-                <button onclick="generate()" class="btn-action w-full py-4 rounded-2xl text-white text-[11px] font-black tracking-[0.2em] uppercase">
-                    產生密碼
-                </button>
-            </section>
-
-            <!-- 右側結果 -->
-            <section class="lg:col-span-7 space-y-4">
-                <div class="flex justify-between items-center px-4">
-                    <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">科學分析結果</h2>
-                    <div id="poolSize" class="text-[9px] font-mono font-bold text-slate-400">POOL: 0 CHARS</div>
-                </div>
-                <div id="results" class="space-y-4">
-                    <!-- JS 生成 -->
-                </div>
-            </section>
-        </div>
-
-        <!-- 安全策略指南 -->
-        <section class="space-y-6 pt-10 border-t border-slate-200">
-            <h2 class="text-center text-xs font-black tracking-[0.3em] text-slate-400 uppercase mb-8">Security Strategy Guidelines</h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- 1. 一般網站 -->
-                <div class="guide-card guide-lv1 p-6 flex flex-col">
-                    <div class="mb-4">
-                        <span class="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[9px] font-black uppercase">Lv.1 一般網站</span>
-                    </div>
-                    <ul class="text-[11px] text-slate-600 space-y-3 flex-1">
-                        <li><strong class="text-blue-600">長度：</strong> 至少 12 碼隨機，或 3–4 個無關單字組成 (總長 ≥ 16 碼)。</li>
-                        <li><strong class="text-blue-600">字元：</strong> 大小寫 + 數字 + 符號。</li>
-                        <li><strong class="text-blue-600">規範：</strong> 每個網站用不同密碼。</li>
-                        <li><strong class="text-blue-600">工具：</strong> 用密碼管理器 (Bitwarden, 1Password) 幫你記。</li>
-                    </ul>
-                </div>
-
-                <!-- 2. 重要個人帳號 -->
-                <div class="guide-card guide-lv2 p-6 flex flex-col">
-                    <div class="mb-4">
-                        <span class="bg-purple-50 text-purple-600 px-3 py-1 rounded-full text-[9px] font-black uppercase">Lv.2 重要個人帳號</span>
-                    </div>
-                    <ul class="text-[11px] text-slate-600 space-y-3 flex-1">
-                        <li><strong class="text-purple-600">長度：</strong> 16 碼以上隨機密碼，或 20+ 字元 passphrase。</li>
-                        <li><strong class="text-purple-600">二要素：</strong> 務必開啟 **多因素驗證 (MFA / 2FA)**。</li>
-                        <li><strong class="text-purple-600">推薦：</strong> TOTP App (Authy, Aegis)、硬體金鑰 (YubiKey)、Passkey。</li>
-                        <li><strong class="text-rose-500 underline">不建議：</strong> 僅靠簡訊 OTP。</li>
-                    </ul>
-                </div>
-
-                <!-- 3. 高敏感用途 -->
-                <div class="guide-card guide-lv3 p-6 flex flex-col">
-                    <div class="mb-4">
-                        <span class="bg-rose-50 text-rose-600 px-3 py-1 rounded-full text-[9px] font-black uppercase">Lv.3 高敏感用途</span>
-                    </div>
-                    <ul class="text-[11px] text-slate-600 space-y-3 flex-1">
-                        <li><strong class="text-rose-600">長度：</strong> 至少 16–20 碼隨機密碼。</li>
-                        <li><strong class="text-rose-600">必備：</strong> MFA / 硬體金鑰。</li>
-                        <li><strong class="text-rose-600">防禦：</strong> 搭配登入安全限制 (鎖定、CAPTCHA、IP 限制)。</li>
-                        <li><strong class="text-rose-600">趨勢：</strong> 優先採用 **Passkey** 或密碼less 登入，避免釣魚風險。</li>
-                    </ul>
+                <input type="range" id="lenRange" min="8" max="100" value="16">
+                <div class="grid grid-cols-2 gap-2">
+                    <!-- 移除 onclick，改由 JS addEventListener 綁定 -->
+                    <button id="btn12" class="py-2 bg-slate-50 rounded-xl text-[10px] font-black text-slate-500 hover:bg-slate-100 transition-colors">12位</button>
+                    <button id="btn16" class="py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black hover:bg-blue-100 transition-colors">推薦(16)</button>
+                    <button id="btn32" class="py-2 bg-slate-50 rounded-xl text-[10px] font-black text-slate-500 hover:bg-slate-100 transition-colors">32位</button>
+                    <button id="btn64" class="py-2 bg-slate-50 rounded-xl text-[10px] font-black text-slate-500 hover:bg-slate-100 transition-colors">長金鑰</button>
                 </div>
             </div>
+
+            <div class="space-y-3">
+                <label class="option-box p-3 flex items-start cursor-pointer">
+                    <input type="checkbox" id="cNum" checked class="checkbox-pro mt-0.5">
+                    <div class="ml-3">
+                        <span class="text-xs font-bold text-slate-700">包含數字</span>
+                        <span class="char-example">0123456789</span>
+                    </div>
+                </label>
+                <label class="option-box p-3 flex items-start cursor-pointer">
+                    <input type="checkbox" id="cLow" checked class="checkbox-pro mt-0.5">
+                    <div class="ml-3">
+                        <span class="text-xs font-bold text-slate-700">包含小寫字母</span>
+                        <span class="char-example">abcdefghijklmnopqrstuvwxyz</span>
+                    </div>
+                </label>
+                <label class="option-box p-3 flex items-start cursor-pointer">
+                    <input type="checkbox" id="cUp" checked class="checkbox-pro mt-0.5">
+                    <div class="ml-3">
+                        <span class="text-xs font-bold text-slate-700">包含大寫字母</span>
+                        <span class="char-example">ABCDEFGHIJKLMNOPQRSTUVWXYZ</span>
+                    </div>
+                </label>
+                <label class="option-box p-3 flex items-start cursor-pointer">
+                    <input type="checkbox" id="cSym" checked class="checkbox-pro mt-0.5">
+                    <div class="ml-3">
+                        <span class="text-xs font-bold text-slate-700">包含特殊符號</span>
+                        <span class="char-example">!@#$%^&*()_+-=[]{}|;:,.<>?</span>
+                    </div>
+                </label>
+                <label class="option-box p-3 flex items-start cursor-pointer bg-blue-50/30 border-dashed border-blue-200">
+                    <input type="checkbox" id="cExcludeSimilar" class="checkbox-pro border-blue-200 mt-0.5">
+                    <div class="ml-3">
+                        <p class="text-[11px] font-black text-blue-700">排除易混淆字元</p>
+                        <span class="char-example text-blue-500/60">排除: i, l, 1, L, o, 0, O</span>
+                    </div>
+                </label>
+            </div>
+
+            <button id="generateBtn" class="btn-action w-full py-4 rounded-2xl text-white text-[11px] font-black tracking-[0.2em] uppercase">
+                產生密碼
+            </button>
         </section>
 
-        <footer class="text-center py-10 opacity-40">
-            <p class="text-[9px] text-slate-500 font-black tracking-[0.5em] uppercase">Data Stays Local • AES-Grade Entropy • Client-Side Only</p>
-        </footer>
+        <!-- 右側結果 -->
+        <section class="lg:col-span-7 space-y-4">
+            <div class="flex justify-between items-center px-4">
+                <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">科學分析結果</h2>
+                <div id="poolSize" class="text-[9px] font-mono font-bold text-slate-400">POOL: 0 CHARS</div>
+            </div>
+            <div id="results" class="space-y-4"></div>
+        </section>
     </div>
 
-    <!-- Toast -->
-    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-3 rounded-2xl text-[10px] font-black tracking-[0.2em] opacity-0 transition-all duration-300 pointer-events-none z-50 shadow-2xl">
-        COPIED TO CLIPBOARD
-    </div>
+    <!-- 安全策略指南 -->
+    <section class="space-y-6 pt-10 border-t border-slate-200">
+        <h2 class="text-center text-xs font-black tracking-[0.3em] text-slate-400 uppercase mb-8">Security Strategy Guidelines</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="guide-card guide-lv1 p-6 flex flex-col">
+                <div class="mb-4">
+                    <span class="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[9px] font-black uppercase">Lv.1 一般網站</span>
+                </div>
+                <ul class="text-[11px] text-slate-600 space-y-3 flex-1">
+                    <li><strong class="text-blue-600">長度：</strong> 至少 12 碼隨機，或 3–4 個無關單字 (總長 ≥ 16 碼)。</li>
+                    <li><strong class="text-blue-600">字元：</strong> 大小寫 + 數字 + 符號。</li>
+                    <li><strong class="text-blue-600">規範：</strong> 每個網站用不同密碼。</li>
+                    <li><strong class="text-blue-600">工具：</strong> 密碼管理器 (Bitwarden, 1Password)。</li>
+                </ul>
+            </div>
+            <div class="guide-card guide-lv2 p-6 flex flex-col">
+                <div class="mb-4">
+                    <span class="bg-purple-50 text-purple-600 px-3 py-1 rounded-full text-[9px] font-black uppercase">Lv.2 重要個人帳號</span>
+                </div>
+                <ul class="text-[11px] text-slate-600 space-y-3 flex-1">
+                    <li><strong class="text-purple-600">長度：</strong> 16 碼以上，或 20+ 字元 passphrase。</li>
+                    <li><strong class="text-purple-600">二要素：</strong> 務必開啟 MFA / 2FA。</li>
+                    <li><strong class="text-purple-600">推薦：</strong> TOTP App (Authy, Aegis)、YubiKey、Passkey。</li>
+                    <li><strong class="text-rose-500 underline">不建議：</strong> 僅靠簡訊 OTP。</li>
+                </ul>
+            </div>
+            <div class="guide-card guide-lv3 p-6 flex flex-col">
+                <div class="mb-4">
+                    <span class="bg-rose-50 text-rose-600 px-3 py-1 rounded-full text-[9px] font-black uppercase">Lv.3 高敏感用途</span>
+                </div>
+                <ul class="text-[11px] text-slate-600 space-y-3 flex-1">
+                    <li><strong class="text-rose-600">長度：</strong> 至少 16–20 碼隨機密碼。</li>
+                    <li><strong class="text-rose-600">必備：</strong> MFA / 硬體金鑰。</li>
+                    <li><strong class="text-rose-600">防禦：</strong> 登入限制 (鎖定、CAPTCHA、IP 限制)。</li>
+                    <li><strong class="text-rose-600">趨勢：</strong> 優先採用 Passkey 避免釣魚風險。</li>
+                </ul>
+            </div>
+        </div>
+    </section>
 
-    <script>
-        // 檢查瀏覽器支援
-        if (!window.crypto || !window.crypto.getRandomValues) {
-            alert('您的瀏覽器不支援安全的密碼產生功能，請更新瀏覽器至最新版本。');
-        }
+    <footer class="text-center py-10 opacity-40">
+        <p class="text-[9px] text-slate-500 font-black tracking-[0.5em] uppercase">Data Stays Local • Rejection Sampling • Client-Side Only</p>
+    </footer>
+</div>
 
-        const lenRange = document.getElementById('lenRange');
-        const lenDisplay = document.getElementById('lenDisplay');
-        const results = document.getElementById('results');
-        const poolSizeLabel = document.getElementById('poolSize');
-        const toast = document.getElementById('toast');
+<!-- Toast -->
+<div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-3 rounded-2xl text-[10px] font-black tracking-[0.2em] opacity-0 transition-all duration-300 pointer-events-none z-50 shadow-2xl">
+    COPIED TO CLIPBOARD
+</div>
 
-        lenRange.addEventListener('input', (e) => {
-            lenDisplay.textContent = e.target.value;
-            updatePoolInfo();
-        });
+<script>
+    // CSPRNG 可用性檢查
+    if (!window.crypto || !window.crypto.getRandomValues) {
+        alert('您的瀏覽器不支援安全密碼產生功能，請更新瀏覽器。');
+    }
 
-        function setQuickLen(val) {
-            lenRange.value = val;
-            lenDisplay.textContent = val;
-            updatePoolInfo();
-        }
+    // ─── Rejection Sampling：修正 Modulo Bias ───────────────────────
+    function secureRandomIndex(poolSize) {
+        // 計算無偏差的有效上界
+        // limit = 2^32 - (2^32 % poolSize)
+        // 拒絕 >= limit 的值，確保均勻分布
+        const MAX = 0x100000000; // 2^32
+        const limit = MAX - (MAX % poolSize);
+        const arr = new Uint32Array(1);
+        let rand;
+        do {
+            window.crypto.getRandomValues(arr);
+            rand = arr[0];
+        } while (rand >= limit);
+        return rand % poolSize;
+    }
 
-        function getPool() {
-            const useNum = document.getElementById('cNum').checked;
-            const useLow = document.getElementById('cLow').checked;
-            const useUp = document.getElementById('cUp').checked;
-            const useSym = document.getElementById('cSym').checked;
-            const excludeSimilar = document.getElementById('cExcludeSimilar').checked;
+    // ─── DOM References ─────────────────────────────────────────────
+    const lenRange    = document.getElementById('lenRange');
+    const lenDisplay  = document.getElementById('lenDisplay');
+    const results     = document.getElementById('results');
+    const poolSizeEl  = document.getElementById('poolSize');
+    const toast       = document.getElementById('toast');
 
-            let pool = '';
-            if (useNum) pool += '0123456789';
-            if (useLow) pool += 'abcdefghijklmnopqrstuvwxyz';
-            if (useUp) pool += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-            if (useSym) pool += '!@#$%^&*()_+-=[]{}|;:,.<>?';
+    // ─── 移除 onclick，改用 addEventListener ────────────────────────
+    lenRange.addEventListener('input', (e) => {
+        lenDisplay.textContent = e.target.value;
+        updatePoolInfo();
+    });
 
-            if (excludeSimilar) pool = pool.replace(/[il1Lo0O]/g, '');
-            return pool;
-        }
+    document.getElementById('btn12').addEventListener('click', () => setQuickLen(12));
+    document.getElementById('btn16').addEventListener('click', () => setQuickLen(16));
+    document.getElementById('btn32').addEventListener('click', () => setQuickLen(32));
+    document.getElementById('btn64').addEventListener('click', () => setQuickLen(64));
+    document.getElementById('generateBtn').addEventListener('click', generate);
 
-        function updatePoolInfo() {
-            poolSizeLabel.textContent = `POOL SIZE: ${getPool().length} CHARS`;
-        }
+    // ─── Pool ────────────────────────────────────────────────────────
+    function setQuickLen(val) {
+        lenRange.value = val;
+        lenDisplay.textContent = val;
+        updatePoolInfo();
+    }
 
-        function getEntropy(len, poolSize) {
-            if (poolSize === 0) return 0;
-            return Math.floor(len * Math.log2(poolSize));
-        }
+    function getPool() {
+        let pool = '';
+        if (document.getElementById('cNum').checked)          pool += '0123456789';
+        if (document.getElementById('cLow').checked)          pool += 'abcdefghijklmnopqrstuvwxyz';
+        if (document.getElementById('cUp').checked)           pool += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        if (document.getElementById('cSym').checked)          pool += '!@#$%^&*()_+-=[]{}|;:,.<>?';
+        if (document.getElementById('cExcludeSimilar').checked) pool = pool.replace(/[il1Lo0O]/g, '');
+        return pool;
+    }
 
-        function getAnalysis(entropy) {
-            if (entropy < 45) return { label: '弱', color: '#f43f5e', pct: '25%' };
-            if (entropy < 70) return { label: '良好', color: '#f59e0b', pct: '55%' };
-            if (entropy < 100) return { label: '強', color: '#3b82f6', pct: '80%' };
-            return { label: '軍事級', color: '#10b981', pct: '100%' };
-        }
+    function updatePoolInfo() {
+        poolSizeEl.textContent = `POOL SIZE: ${getPool().length} CHARS`;
+    }
 
-        // 使用現代 Clipboard API，並有降級方案
-        async function copy(text) {
-            try {
-                // 優先使用 Clipboard API
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    await navigator.clipboard.writeText(text);
-                    showToast();
-                } else {
-                    // 降級方案
-                    fallbackCopy(text);
-                }
-            } catch (err) {
-                console.warn('現代剪貼簿 API 失敗，使用降級方案:', err);
+    // ─── Entropy ────────────────────────────────────────────────────
+    function getEntropy(len, poolSize) {
+        if (poolSize === 0) return 0;
+        return Math.floor(len * Math.log2(poolSize));
+    }
+
+    function getAnalysis(entropy) {
+        if (entropy < 45)  return { label: '弱',    color: '#f43f5e', pct: '25%' };
+        if (entropy < 70)  return { label: '良好',  color: '#f59e0b', pct: '55%' };
+        if (entropy < 100) return { label: '強',    color: '#3b82f6', pct: '80%' };
+        return               { label: '軍事級', color: '#10b981', pct: '100%' };
+    }
+
+    // ─── Clipboard ──────────────────────────────────────────────────
+    async function copy(text) {
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(text);
+                showToast();
+            } else {
                 fallbackCopy(text);
             }
+        } catch (err) {
+            fallbackCopy(text);
+        }
+    }
+
+    function fallbackCopy(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try {
+            document.execCommand('copy');
+            showToast();
+        } catch (e) {
+            alert('複製失敗，請手動選取密碼');
+        }
+        document.body.removeChild(ta);
+    }
+
+    function showToast() {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translate(-50%, -10px)';
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, 0)';
+        }, 2000);
+    }
+
+    // ─── Generate ────────────────────────────────────────────────────
+    function generate() {
+        const length = parseInt(lenRange.value);
+        const pool   = getPool();
+
+        results.textContent = ''; // 安全清空，避免 innerHTML
+
+        if (!pool) {
+            const err = document.createElement('div');
+            err.className = 'text-center py-10 text-red-400 font-bold text-xs uppercase';
+            err.textContent = '請選擇至少一種字元集';
+            results.appendChild(err);
+            return;
         }
 
-        function fallbackCopy(text) {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-9999px";
-            textArea.style.top = "-9999px";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            
-            try {
-                document.execCommand('copy');
-                showToast();
-            } catch (err) {
-                console.error('複製失敗:', err);
-                alert('複製失敗，請手動選取密碼');
+        const entropy  = getEntropy(length, pool.length);
+        const analysis = getAnalysis(entropy);
+
+        for (let i = 0; i < 4; i++) {
+            // ✅ 使用 Rejection Sampling 產生每個字元索引
+            let password = '';
+            for (let j = 0; j < length; j++) {
+                password += pool[secureRandomIndex(pool.length)];
             }
-            
-            document.body.removeChild(textArea);
+
+            const card = document.createElement('div');
+            card.className = 'result-item p-5 cursor-pointer animate-list';
+            card.style.animationDelay = `${i * 0.1}s`;
+
+            // 用 createElement + textContent，避免 innerHTML XSS
+            const header = document.createElement('div');
+            header.className = 'flex justify-between items-center mb-3';
+
+            const strengthSpan = document.createElement('span');
+            strengthSpan.className = 'text-[9px] font-black uppercase';
+            strengthSpan.style.color = analysis.color;
+            strengthSpan.textContent = `${analysis.label}強度`;
+
+            const entropySpan = document.createElement('span');
+            entropySpan.className = 'text-[9px] font-mono font-bold text-slate-400';
+            entropySpan.textContent = `${entropy} Bits (熵值)`;
+
+            header.appendChild(strengthSpan);
+            header.appendChild(entropySpan);
+
+            const pwDiv = document.createElement('div');
+            pwDiv.className = 'font-mono-jb text-slate-900 text-sm md:text-base break-all tracking-wider mb-4 leading-relaxed';
+            pwDiv.textContent = password; // ✅ textContent，無 XSS 風險
+
+            const track = document.createElement('div');
+            track.className = 'strength-track';
+            const bar = document.createElement('div');
+            bar.className = 'strength-progress';
+            bar.style.width = analysis.pct;
+            bar.style.backgroundColor = analysis.color;
+            track.appendChild(bar);
+
+            card.appendChild(header);
+            card.appendChild(pwDiv);
+            card.appendChild(track);
+
+            card.addEventListener('click', ((pw) => () => copy(pw))(password));
+            results.appendChild(card);
         }
+    }
 
-        function showToast() {
-            toast.style.opacity = '1';
-            toast.style.transform = 'translate(-50%, -10px)';
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translate(-50%, 0)';
-            }, 2000);
-        }
-
-        function generate() {
-            const length = parseInt(lenRange.value);
-            const pool = getPool();
-
-            if (!pool) {
-                results.textContent = '';
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'text-center py-10 text-red-400 font-bold text-xs uppercase';
-                errorDiv.textContent = '請選擇至少一種字元集';
-                results.appendChild(errorDiv);
-                return;
-            }
-
-            const entropy = getEntropy(length, pool.length);
-            const analysis = getAnalysis(entropy);
-            results.textContent = ''; // 清空內容
-            
-            // 生成 4 組
-            for (let i = 0; i < 4; i++) {
-                const randomValues = new Uint32Array(length);
-                window.crypto.getRandomValues(randomValues);
-                let password = '';
-                for (let j = 0; j < length; j++) {
-                    password += pool[randomValues[j] % pool.length];
-                }
-
-                const card = document.createElement('div');
-                card.className = "result-item p-5 cursor-pointer animate-list";
-                card.style.animationDelay = `${i * 0.1}s`;
-                
-                // 建立結構元素
-                const header = document.createElement('div');
-                header.className = 'flex justify-between items-center mb-3';
-                
-                const strengthLabel = document.createElement('span');
-                strengthLabel.className = 'text-[9px] font-black uppercase';
-                strengthLabel.style.color = analysis.color;
-                strengthLabel.textContent = `${analysis.label}強度`;
-                
-                const entropyLabel = document.createElement('span');
-                entropyLabel.className = 'text-[9px] font-mono font-bold text-slate-400';
-                entropyLabel.textContent = `${entropy} Bits (熵值)`;
-                
-                header.appendChild(strengthLabel);
-                header.appendChild(entropyLabel);
-                
-                const passwordDiv = document.createElement('div');
-                passwordDiv.className = 'font-mono-jb text-slate-900 text-sm md:text-base break-all tracking-wider mb-4 leading-relaxed';
-                passwordDiv.textContent = password; // 安全地設置文字內容
-                
-                const progressContainer = document.createElement('div');
-                progressContainer.className = 'strength-track';
-                
-                const progressBar = document.createElement('div');
-                progressBar.className = 'strength-progress';
-                progressBar.style.width = analysis.pct;
-                progressBar.style.backgroundColor = analysis.color;
-                
-                progressContainer.appendChild(progressBar);
-                
-                card.appendChild(header);
-                card.appendChild(passwordDiv);
-                card.appendChild(progressContainer);
-                
-                card.onclick = () => copy(password);
-                results.appendChild(card);
-            }
-        }
-
-        window.onload = () => {
-            updatePoolInfo();
-            generate();
-        };
-    </script>
+    // ─── Init ────────────────────────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', () => {
+        updatePoolInfo();
+        generate();
+    });
+</script>
 </body>
 </html>
