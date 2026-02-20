@@ -3,11 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <!-- ✅ [修正1] CSP：封鎖所有外部來源，僅允許 inline style/script 與 data: 圖片 -->
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; connect-src 'none'; font-src 'none';">
+
   <title>醫療用水庫存回報系統</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💧</text></svg>">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- ✅ [修正2] 移除 Google Fonts 外部 CDN，改用系統字型堆疊 -->
+  <!-- 原本：<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC..."> -->
+
   <style>
     :root {
       --bg: #0f1117;
@@ -26,8 +32,11 @@
       --red-glow: rgba(247,79,106,0.12);
       --green: #4ff7a0;
       --green-glow: rgba(79,247,160,0.1);
-      --font-body: 'Noto Sans TC', sans-serif;
-      --font-mono: 'JetBrains Mono', monospace;
+
+      /* ✅ [修正2] 系統字型堆疊：macOS/iOS → PingFang TC，Windows → 微軟正黑體，Android → Noto Sans TC */
+      --font-body: -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei",
+                   "Noto Sans TC", "Heiti TC", sans-serif;
+      --font-mono: "SF Mono", "Cascadia Code", "Consolas", "Courier New", monospace;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,7 +50,6 @@
       overflow-x: hidden;
     }
 
-    /* Background grid */
     body::before {
       content: '';
       position: fixed;
@@ -54,7 +62,6 @@
       z-index: 0;
     }
 
-    /* Glow blobs */
     body::after {
       content: '';
       position: fixed;
@@ -69,7 +76,6 @@
 
     #app { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; padding: 0 16px 80px; }
 
-    /* ── HEADER ── */
     header {
       position: sticky;
       top: 0;
@@ -85,12 +91,7 @@
       margin: 0 -16px;
     }
 
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
+    .header-left { display: flex; align-items: center; gap: 10px; }
     .header-icon {
       width: 34px; height: 34px;
       background: linear-gradient(135deg, #4f8ef7, #7b5ea7);
@@ -99,18 +100,8 @@
       font-size: 16px;
       box-shadow: 0 0 16px rgba(79,142,247,0.3);
     }
-
-    .header-title {
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-    }
-
-    .header-sub {
-      font-size: 11px;
-      color: var(--text-muted);
-      font-family: var(--font-mono);
-    }
+    .header-title { font-size: 16px; font-weight: 700; letter-spacing: 0.02em; }
+    .header-sub { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
 
     .btn-save {
       display: flex; align-items: center; gap: 6px;
@@ -127,10 +118,8 @@
     }
     .btn-save:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
 
-    /* ── TABS ── */
     .tabs {
-      display: flex;
-      gap: 4px;
+      display: flex; gap: 4px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -150,16 +139,13 @@
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.2s;
-      position: relative;
     }
-
     .tab-btn.active {
       background: var(--accent);
       color: #fff;
       box-shadow: 0 4px 16px rgba(79,142,247,0.4);
     }
 
-    /* ── SECTION HEADER ── */
     .section-header {
       display: flex; align-items: center; justify-content: space-between;
       padding: 14px 18px;
@@ -204,7 +190,6 @@
     .btn-export:hover { background: rgba(79,142,247,0.18); box-shadow: 0 0 12px rgba(79,142,247,0.2); }
     .btn-export:active { transform: scale(0.96); }
 
-    /* ── CARD ── */
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -213,11 +198,8 @@
       margin-top: 20px;
     }
 
-    /* ── PRODUCT ROW ── */
     .product-row {
-      display: flex;
-      align-items: center;
-      gap: 16px;
+      display: flex; align-items: center; gap: 16px;
       padding: 18px;
       border-bottom: 1px solid var(--border);
       transition: background 0.15s;
@@ -245,11 +227,9 @@
       flex-shrink: 0;
       overflow: hidden;
     }
-
     .product-visual svg { width: auto; height: 56px; }
 
     .product-info { flex: 1; min-width: 0; }
-
     .product-brand {
       font-size: 10px;
       font-family: var(--font-mono);
@@ -258,24 +238,11 @@
       text-transform: uppercase;
       margin-bottom: 4px;
     }
+    .product-name { font-size: 14px; font-weight: 700; line-height: 1.3; }
+    .product-unit { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-family: var(--font-mono); }
 
-    .product-name {
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1.3;
-    }
-
-    .product-unit {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 2px;
-      font-family: var(--font-mono);
-    }
-
-    /* ── STEPPER ── */
     .stepper {
-      display: flex;
-      align-items: center;
+      display: flex; align-items: center;
       background: var(--surface2);
       border: 1px solid var(--border-bright);
       border-radius: 10px;
@@ -285,8 +252,7 @@
 
     .stepper-btn {
       width: 40px; height: 48px;
-      border: none;
-      background: transparent;
+      border: none; background: transparent;
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       color: var(--text-muted);
@@ -298,11 +264,7 @@
     .stepper-btn.minus:hover { color: var(--red); background: var(--red-glow); }
     .stepper-btn:active { transform: scale(0.9); }
 
-    .stepper-divider {
-      width: 1px; height: 28px;
-      background: var(--border-bright);
-      flex-shrink: 0;
-    }
+    .stepper-divider { width: 1px; height: 28px; background: var(--border-bright); flex-shrink: 0; }
 
     .stepper-input {
       width: 62px;
@@ -319,22 +281,10 @@
     .stepper-input::-webkit-inner-spin-button,
     .stepper-input::-webkit-outer-spin-button { -webkit-appearance: none; }
 
-    /* ── SUMMARY TABLE ── */
-    .table-wrapper {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
+    .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-
-    thead tr {
-      background: var(--surface2);
-    }
-
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead tr { background: var(--surface2); }
     th {
       padding: 10px 14px;
       font-weight: 700;
@@ -354,18 +304,14 @@
       color: var(--text-muted);
       font-family: var(--font-mono);
     }
-    td:first-child { text-align: left; font-family: var(--font-body); font-weight: 600; color: var(--text); font-size: 12px; }
-    tr:last-child td { border-bottom: none; }
-
-    .td-total {
-      font-weight: 700;
-      color: var(--accent) !important;
-      font-size: 14px;
+    td:first-child {
+      text-align: left; font-family: var(--font-body);
+      font-weight: 600; color: var(--text); font-size: 12px;
     }
-
+    tr:last-child td { border-bottom: none; }
+    .td-total { font-weight: 700; color: var(--accent) !important; font-size: 14px; }
     .total-row td { background: rgba(79,142,247,0.05); }
 
-    /* ── TOAST ── */
     #toast {
       position: fixed;
       bottom: 24px;
@@ -378,34 +324,23 @@
       border-radius: 40px;
       font-size: 13px;
       font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      display: flex; align-items: center; gap: 8px;
       z-index: 9999;
       white-space: nowrap;
       transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
       opacity: 0;
       box-shadow: 0 8px 32px rgba(0,0,0,0.5);
     }
-
-    #toast.show {
-      transform: translateX(-50%) translateY(0);
-      opacity: 1;
-    }
-
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
     #toast .toast-icon { font-size: 16px; }
 
-    /* ── COLORS PER PRODUCT ── */
     .color-yellow .product-visual { background: var(--yellow-glow); border-color: rgba(247,201,79,0.2); }
     .color-yellow .product-name { color: var(--yellow); }
-
     .color-blue .product-visual { background: var(--accent-glow); border-color: rgba(79,142,247,0.2); }
     .color-blue .product-name { color: var(--accent); }
-
     .color-red .product-visual { background: var(--red-glow); border-color: rgba(247,79,106,0.2); }
     .color-red .product-name { color: var(--red); }
 
-    /* responsive */
     @media (max-width: 480px) {
       .product-row { flex-wrap: wrap; }
       .stepper { margin-left: auto; }
@@ -424,19 +359,21 @@
       <div class="header-icon">💧</div>
       <div>
         <div class="header-title">醫療用水庫存回報</div>
-        <div class="header-sub">INVENTORY TRACKER v2.0</div>
+        <div class="header-sub">INVENTORY TRACKER v2.1</div>
       </div>
     </div>
     <button class="btn-save" onclick="handleSave()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+        <polyline points="17 21 17 13 7 13 7 21"/>
+        <polyline points="7 3 7 8 15 8"/>
+      </svg>
       儲存
     </button>
   </header>
 
-  <!-- Tabs -->
   <div class="tabs" id="tabs"></div>
 
-  <!-- Editor Card -->
   <div class="card" id="editorCard">
     <div class="section-header">
       <div class="section-title">
@@ -444,18 +381,22 @@
         <span id="editorTitle">正在盤點：9樓</span>
       </div>
       <button class="btn-export" onclick="handleExport()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <rect x="9" y="9" width="13" height="13" rx="2"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
         匯出文字
       </button>
     </div>
     <div id="productList"></div>
   </div>
 
-  <!-- Summary Card -->
   <div class="card" style="margin-top:20px; margin-bottom:20px;">
     <div class="section-header">
       <div class="section-title">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--accent)"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--accent)">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
         全院即時總覽
       </div>
     </div>
@@ -465,14 +406,13 @@
   </div>
 </div>
 
-<!-- Toast -->
 <div id="toast">
   <span class="toast-icon">✓</span>
   <span id="toastMsg"></span>
 </div>
 
 <script>
-// ── SVG Icons ──
+// ── SVG Icons（硬編碼常數，無 XSS 風險）──
 const svgs = {
   '500ml': `<svg viewBox="0 0 100 200">
     <defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f1f5f9" stop-opacity="0.8"/><stop offset="50%" stop-color="#ffffff" stop-opacity="0.9"/><stop offset="100%" stop-color="#e2e8f0" stop-opacity="0.8"/></linearGradient></defs>
@@ -524,16 +464,34 @@ const STORAGE_KEY = 'medical-water-inventory-v2';
 let activeTab = '9樓';
 let inventory = loadInventory();
 
+// ✅ [修正3] loadInventory：嚴格驗證 localStorage 數值
+// 防範 Stored XSS：確保每個值都是合法的有限非負數，且在合理上限內
 function loadInventory() {
+  const defaults = {
+    '9樓':    { '500ml': 4.5, '1000ml': 2, '2000ml': 7 },
+    '13樓':   { '500ml': 10,  '1000ml': 5, '2000ml': 3 },
+    '情人湖': { '500ml': 9,   '1000ml': 3, '2000ml': 4 },
+  };
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch(e) {}
-  return {
-    '9樓':   { '500ml': 4.5, '1000ml': 2,   '2000ml': 7 },
-    '13樓':  { '500ml': 10,  '1000ml': 5,   '2000ml': 3 },
-    '情人湖': { '500ml': 9,   '1000ml': 3,   '2000ml': 4 },
-  };
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      const validated = {};
+      LOCATIONS.forEach(loc => {
+        validated[loc] = {};
+        PRODUCTS.forEach(p => {
+          const raw = parsed?.[loc]?.[p.id];
+          const val = parseFloat(raw);
+          // 必須是有限數、非負、不超過 9999，否則歸零
+          validated[loc][p.id] = (isFinite(val) && val >= 0 && val <= 9999) ? val : 0;
+        });
+      });
+      return validated;
+    }
+  } catch(e) {
+    // JSON 解析失敗時使用預設值
+  }
+  return defaults;
 }
 
 function saveInventory() {
@@ -565,7 +523,7 @@ function renderProducts() {
         <div class="stepper-divider"></div>
         <input
           class="stepper-input"
-          type="number" step="0.5" min="0"
+          type="number" step="0.5" min="0" max="9999"
           value="${inventory[activeTab][p.id]}"
           onchange="handleInput('${p.id}', this.value)"
           oninput="handleInput('${p.id}', this.value)"
@@ -575,6 +533,7 @@ function renderProducts() {
       </div>
     </div>
   `).join('');
+  // ✅ value="${...}" 填入的值已在 loadInventory 驗證為合法數字，無注入風險
 }
 
 function renderTable() {
@@ -603,6 +562,7 @@ function renderTable() {
       `).join('')}
     </tbody>
   `;
+  // ✅ inventory 值已在 loadInventory 驗證為數字，td 插入安全
 }
 
 function render() {
@@ -620,17 +580,20 @@ function switchTab(loc) {
 function adjust(productId, delta) {
   let val = (inventory[activeTab][productId] || 0) + delta;
   if (val < 0) val = 0;
+  if (val > 9999) val = 9999; // ✅ [修正4] 同步加上上限保護
   inventory[activeTab][productId] = val;
   saveInventory();
   render();
 }
 
+// ✅ [修正4] handleInput：加入上限 9999 驗證
 function handleInput(productId, value) {
   let val = parseFloat(value);
   if (isNaN(val) || val < 0) val = 0;
+  if (val > 9999) val = 9999;
   inventory[activeTab][productId] = val;
   saveInventory();
-  renderTable(); // only update table, keep focus
+  renderTable();
 }
 
 function handleSave() {
@@ -638,37 +601,26 @@ function handleSave() {
   showToast('✅ 已儲存至本機');
 }
 
+// ✅ [修正5] 移除已廢棄的 document.execCommand('copy')，僅使用現代 Clipboard API
 function handleExport() {
   const lines = PRODUCTS.map((p, i) =>
     `${i+1}. ${p.name}：${inventory[activeTab][p.id]} 箱`
   );
   const now = new Date();
   const dateStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-  const text = `【${activeTab} 庫存回報】${dateStr}\n\n${lines.join('\n')}`;
+  const text = `【${activeTab} 庫存回報】${dateStr}
 
-  // Try modern API first
+${lines.join('
+')}`;
+
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text)
       .then(() => showToast(`📋 已複製「${activeTab}」回報文`))
-      .catch(() => fallbackCopy(text));
+      .catch(() => showToast('⚠️ 複製失敗，請確認瀏覽器權限'));
   } else {
-    fallbackCopy(text);
+    // 不支援 Clipboard API（如舊版 HTTP 環境），提示改用 HTTPS
+    showToast('⚠️ 請在 HTTPS 環境下使用此功能');
   }
-}
-
-function fallbackCopy(text) {
-  const ta = document.createElement('textarea');
-  ta.value = text;
-  ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
-  document.body.appendChild(ta);
-  ta.focus(); ta.select();
-  try {
-    document.execCommand('copy');
-    showToast(`📋 已複製「${activeTab}」回報文`);
-  } catch(e) {
-    showToast('⚠️ 複製失敗，請手動選取');
-  }
-  document.body.removeChild(ta);
 }
 
 // ── Toast ──
@@ -676,7 +628,7 @@ let toastTimer;
 function showToast(msg) {
   const el = document.getElementById('toast');
   const msgEl = document.getElementById('toastMsg');
-  msgEl.textContent = msg;
+  msgEl.textContent = msg; // ✅ textContent，非 innerHTML，安全
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
