@@ -1,0 +1,358 @@
+import React, { useState, useEffect } from 'react';
+import { ClipboardList, Save, CheckCircle2, MapPin, Copy, Minus, Plus, BarChart2 } from 'lucide-react';
+
+// --- SVG Components (縮小版，適應列表) ---
+
+const InjectionWaterBottle = () => (
+    <svg viewBox="0 0 100 200" className="w-auto h-24 drop-shadow-md">
+        <defs>
+            <linearGradient id="bottleGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#f1f5f9" stopOpacity="0.8"/>
+                <stop offset="50%" stopColor="#ffffff" stopOpacity="0.9"/>
+                <stop offset="100%" stopColor="#e2e8f0" stopOpacity="0.8"/>
+            </linearGradient>
+        </defs>
+        {/* 瓶身 */}
+        <rect x="25" y="60" width="50" height="130" rx="10" fill="url(#bottleGrad1)" stroke="#cbd5e1" strokeWidth="1"/>
+        <path d="M 35 60 L 40 30 L 60 30 L 65 60 Z" fill="url(#bottleGrad1)" stroke="#cbd5e1" strokeWidth="1"/>
+        
+        {/* 瓶蓋改為紅色 */}
+        <path d="M 38 15 h 24 v 15 h -24 z" fill="#ef4444" rx="2" />
+        <rect x="37" y="14" width="26" height="4" rx="1" fill="#dc2626"/>
+        
+        {/* 標籤 */}
+        <rect x="25" y="90" width="50" height="70" fill="#facc15"/>
+        <rect x="25" y="100" width="50" height="50" fill="#ffffff"/>
+        <rect x="30" y="93" width="40" height="5" rx="2" fill="#573312" />
+        <text x="50" y="97" fontSize="3.5" textAnchor="middle" fill="#ffffff" fontWeight="bold">Water</text>
+        <text x="50" y="125" fontSize="8" textAnchor="middle" fill="#000" fontWeight="900">注射用水</text>
+        <text x="50" y="155" fontSize="4" textAnchor="middle" fill="#333" fontWeight="bold">500ml</text>
+        
+        {/* 水位線 */}
+        <path d="M 26 85 Q 50 87 74 85 L 74 180 Q 50 185 26 180 Z" fill="#bae6fd" opacity="0.2"/>
+    </svg>
+);
+
+const IrrigationWaterBag = () => (
+    <svg viewBox="0 0 100 200" className="w-auto h-24 drop-shadow-md">
+        <defs>
+            <linearGradient id="bagGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#f8fafc" stopOpacity="0.8"/>
+                <stop offset="50%" stopColor="#ffffff" stopOpacity="0.9"/>
+                <stop offset="100%" stopColor="#f1f5f9" stopOpacity="0.8"/>
+            </linearGradient>
+        </defs>
+        <path d="M 15 25 Q 15 15 25 15 L 75 15 Q 85 15 85 25 L 85 175 Q 85 185 75 185 L 25 185 Q 15 185 15 175 Z" fill="url(#bagGrad)" stroke="#94a3b8" strokeWidth="1.5"/>
+        <path d="M 15 30 Q 13 35 15 40 Q 13 45 15 50" fill="none" stroke="#94a3b8" strokeWidth="1"/>
+        <path d="M 85 30 Q 87 35 85 40 Q 87 45 85 50" fill="none" stroke="#94a3b8" strokeWidth="1"/>
+        <path d="M 35 15 Q 50 -5 65 15" fill="none" stroke="#94a3b8" strokeWidth="2"/>
+        <rect x="35" y="185" width="10" height="15" rx="2" fill="#f8fafc" stroke="#94a3b8"/>
+        <rect x="55" y="185" width="12" height="18" rx="2" fill="#3b82f6"/>
+        <text x="50" y="55" fontSize="6" textAnchor="middle" fill="#dc2626" fontWeight="bold">減菌沖洗用蒸餾水</text>
+        <text x="50" y="72" fontSize="5" textAnchor="middle" fill="#dc2626" fontWeight="bold">IRRIGATION</text>
+        <text x="80" y="40" fontSize="4" textAnchor="end" fill="#dc2626" fontWeight="bold">2.0L</text>
+    </svg>
+);
+
+const IrrigationBottleChiSheng = () => (
+    <svg viewBox="0 0 100 200" className="w-auto h-24 drop-shadow-md">
+        <defs>
+            <linearGradient id="bottleGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#f8fafc" stopOpacity="0.7"/>
+                <stop offset="50%" stopColor="#ffffff" stopOpacity="0.9"/>
+                <stop offset="100%" stopColor="#e2e8f0" stopOpacity="0.7"/>
+            </linearGradient>
+        </defs>
+        <rect x="20" y="60" width="60" height="130" rx="10" fill="url(#bottleGrad2)" stroke="#cbd5e1" strokeWidth="1"/>
+        <path d="M 20 65 Q 20 40 35 35 L 65 35 Q 80 40 80 65 Z" fill="url(#bottleGrad2)" stroke="#cbd5e1" strokeWidth="1"/>
+        <rect x="42" y="15" width="16" height="20" rx="2" fill="#ffffff" stroke="#cbd5e1"/>
+        <rect x="44" y="5" width="8" height="10" rx="1" fill="#f1f5f9" stroke="#cbd5e1"/>
+        <rect x="22" y="80" width="56" height="85" fill="#60a5fa" rx="2"/>
+        <g fill="#1e3a8a" textAnchor="middle">
+            <text x="50" y="90" fontSize="3" fontWeight="bold">Aqua Distillata</text>
+            <text x="50" y="110" fontSize="7" fontWeight="900">沖洗用蒸餾水</text>
+            <text x="50" y="155" fontSize="4" fontWeight="bold">1000ml</text>
+        </g>
+    </svg>
+);
+
+// --- Data Definitions ---
+
+const LOCATIONS = ['9樓', '13樓', '情人湖'];
+
+const PRODUCTS = [
+    { id: '500ml', name: '500ml蒸餾水瓶', brand: '信東', icon: InjectionWaterBottle, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+    { id: '1000ml', name: '1000ml蒸餾水瓶', brand: '濟生', icon: IrrigationBottleChiSheng, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { id: '2000ml', name: '2000ml蒸餾水袋', brand: '永豐', icon: IrrigationWaterBag, color: 'text-red-600', bg: 'bg-red-50' },
+];
+
+const INITIAL_DATA = {
+    '9樓': { '500ml': 4.5, '1000ml': 2, '2000ml': 7 },
+    '13樓': { '500ml': 10, '1000ml': 5, '2000ml': 3 },
+    '情人湖': { '500ml': 9, '1000ml': 3, '2000ml': 4 }
+};
+
+// --- Main App Component ---
+
+export default function App() {
+    const [inventory, setInventory] = useState(INITIAL_DATA);
+    const [activeTab, setActiveTab] = useState('9樓');
+    const [toast, setToast] = useState(null);
+
+    // 顯示提示訊息
+    const showToast = (msg) => {
+        setToast(msg);
+        setTimeout(() => setToast(null), 3000);
+    };
+
+    // 處理數字變更
+    const handleQuantityChange = (location, productId, value) => {
+        let numValue = parseFloat(value);
+        if (isNaN(numValue) || numValue < 0) numValue = 0;
+        
+        setInventory(prev => ({
+            ...prev,
+            [location]: {
+                ...prev[location],
+                [productId]: numValue
+            }
+        }));
+    };
+
+    // 處理 +/- 按鈕 (每次增減 0.5 箱)
+    const adjustQuantity = (location, productId, delta) => {
+        setInventory(prev => {
+            const currentVal = prev[location][productId] || 0;
+            let newVal = currentVal + delta;
+            if (newVal < 0) newVal = 0;
+            return {
+                ...prev,
+                [location]: {
+                    ...prev[location],
+                    [productId]: newVal
+                }
+            };
+        });
+    };
+
+    // 匯出文字 (複製到剪貼簿) 功能
+    const handleExportText = () => {
+        const lines = PRODUCTS.map((p, index) => 
+            `${index + 1}.${p.name}：${inventory[activeTab][p.id]}箱`
+        );
+        const exportText = `${activeTab}：\n\n${lines.join('\n\n')}`;
+
+        // 複製到剪貼簿
+        const textArea = document.createElement("textarea");
+        textArea.value = exportText;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
+        document.body.appendChild(textArea);
+        
+        textArea.focus();
+        textArea.select();
+
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                showToast(`已複製「${activeTab}」回報文！`);
+            } else {
+                showToast('複製失敗，請手動輸入');
+            }
+        } catch (err) {
+            console.error('Copy failed', err);
+            showToast('您的裝置不支援自動複製');
+        }
+
+        document.body.removeChild(textArea);
+    };
+
+    // 計算全院總和
+    const calculateTotals = () => {
+        const totals = { '500ml': 0, '1000ml': 0, '2000ml': 0 };
+        Object.values(inventory).forEach(locData => {
+            totals['500ml'] += (locData['500ml'] || 0);
+            totals['1000ml'] += (locData['1000ml'] || 0);
+            totals['2000ml'] += (locData['2000ml'] || 0);
+        });
+        return totals;
+    };
+
+    const totals = calculateTotals();
+
+    return (
+        <div className="min-h-screen flex flex-col bg-slate-100 font-sans pb-20 sm:pb-8">
+            <style dangerouslySetInnerHTML={{__html: `
+                input[type="number"]::-webkit-inner-spin-button,
+                input[type="number"]::-webkit-outer-spin-button {
+                    -webkit-appearance: none;
+                    margin: 0;
+                }
+                input[type="number"] {
+                    -moz-appearance: textfield;
+                }
+            `}} />
+
+            {/* Header */}
+            <header className="bg-blue-600 text-white shadow-md sticky top-0 z-20">
+                <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <ClipboardList className="w-6 h-6" />
+                        <h1 className="text-xl font-bold">醫療用水庫存回報</h1>
+                    </div>
+                    <button 
+                        onClick={() => showToast('資料已儲存（預覽模式）')}
+                        className="bg-white text-blue-600 px-4 py-1.5 rounded-full text-sm font-bold shadow hover:bg-blue-50 active:scale-95 transition-transform flex items-center gap-1"
+                    >
+                        <Save className="w-4 h-4" />
+                        儲存
+                    </button>
+                </div>
+            </header>
+
+            {/* Toast Notification */}
+            {toast && (
+                <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg z-50 flex items-center gap-2 text-sm w-max transition-all duration-300">
+                    <CheckCircle2 className="text-green-400 w-5 h-5" />
+                    {toast}
+                </div>
+            )}
+
+            <main className="flex-grow max-w-3xl mx-auto w-full px-4 pt-6">
+                
+                {/* Location Tabs */}
+                <div className="flex bg-gray-200 p-1 rounded-xl mb-6 shadow-inner">
+                    {LOCATIONS.map(loc => (
+                        <button
+                            key={loc}
+                            onClick={() => setActiveTab(loc)}
+                            className={`flex-1 py-2.5 text-center rounded-lg text-sm font-bold transition-all duration-200 ${
+                                activeTab === loc 
+                                ? 'bg-white text-blue-600 shadow-sm transform scale-[1.02]' 
+                                : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                            {loc}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Editor Section */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+                    
+                    {/* Editor Header & Export Button */}
+                    <div className="bg-slate-50 border-b border-gray-100 px-5 py-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <MapPin className="w-5 h-5 text-slate-400" />
+                            <h2 className="text-lg font-bold text-slate-700">正在盤點：{activeTab}</h2>
+                        </div>
+                        <button 
+                            onClick={handleExportText}
+                            className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 active:bg-indigo-300 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors flex items-center gap-1.5 shadow-sm"
+                        >
+                            <Copy className="w-4 h-4" />
+                            匯出文字
+                        </button>
+                    </div>
+                    
+                    <div className="divide-y divide-gray-100">
+                        {PRODUCTS.map((product, index) => {
+                            const Icon = product.icon;
+                            const currentValue = inventory[activeTab][product.id];
+                            
+                            return (
+                                <div key={product.id} className="p-4 sm:p-5 flex flex-col sm:flex-row items-center gap-4 hover:bg-slate-50 transition-colors">
+                                    
+                                    {/* Left: Icon & Info */}
+                                    <div className="flex items-center gap-4 w-full sm:w-1/2 relative">
+                                        {/* 編號 */}
+                                        <div className="absolute -top-1 -left-1 w-6 h-6 bg-slate-800 text-white rounded-full flex items-center justify-center text-xs font-bold z-10 shadow">
+                                            {index + 1}
+                                        </div>
+                                        <div className={`w-20 h-24 rounded-lg flex items-center justify-center border border-gray-100 shadow-inner ${product.bg} shrink-0`}>
+                                            <Icon />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="text-xs font-bold text-gray-400 mb-1">{product.brand}</div>
+                                            <div className={`text-base font-bold ${product.color}`}>{product.name}</div>
+                                            <div className="text-xs text-gray-500 mt-1">單位：箱</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Right: Stepper Control */}
+                                    <div className="w-full sm:w-1/2 flex justify-center sm:justify-end">
+                                        <div className="flex items-center bg-gray-100 rounded-xl p-1 shadow-inner w-full sm:w-auto max-w-[240px]">
+                                            <button 
+                                                onClick={() => adjustQuantity(activeTab, product.id, -0.5)}
+                                                className="w-12 h-12 flex items-center justify-center bg-white rounded-lg shadow-sm text-gray-600 active:bg-gray-50 active:scale-95 transition-transform"
+                                            >
+                                                <Minus className="w-5 h-5" />
+                                            </button>
+                                            
+                                            <input 
+                                                type="number"
+                                                step="0.5"
+                                                min="0"
+                                                value={currentValue === 0 ? "0" : currentValue}
+                                                onChange={(e) => handleQuantityChange(activeTab, product.id, e.target.value)}
+                                                className="w-20 text-center bg-transparent font-bold text-xl text-gray-800 focus:outline-none"
+                                            />
+                                            
+                                            <button 
+                                                onClick={() => adjustQuantity(activeTab, product.id, 0.5)}
+                                                className="w-12 h-12 flex items-center justify-center bg-white rounded-lg shadow-sm text-blue-600 active:bg-blue-50 active:scale-95 transition-transform"
+                                            >
+                                                <Plus className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Summary Table */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+                    <div className="bg-slate-800 text-white px-5 py-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <BarChart2 className="w-5 h-5" />
+                            <h2 className="text-md font-bold">全院即時總覽 (箱)</h2>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-center text-sm">
+                            <thead>
+                                <tr className="bg-slate-50 text-gray-500 border-b">
+                                    <th className="py-3 px-2 font-medium text-left pl-4">品項</th>
+                                    <th className="py-3 px-2 font-medium">9樓</th>
+                                    <th className="py-3 px-2 font-medium">13樓</th>
+                                    <th className="py-3 px-2 font-medium">情人湖</th>
+                                    <th className="py-3 px-2 font-bold text-blue-600 bg-blue-50/50">總計</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {PRODUCTS.map(product => (
+                                    <tr key={product.id} className="hover:bg-gray-50">
+                                        <td className="py-3 px-2 text-left pl-4 font-bold text-gray-700 whitespace-nowrap">
+                                            {product.name}
+                                        </td>
+                                        <td className="py-3 px-2 text-gray-600">{inventory['9樓'][product.id]}</td>
+                                        <td className="py-3 px-2 text-gray-600">{inventory['13樓'][product.id]}</td>
+                                        <td className="py-3 px-2 text-gray-600">{inventory['情人湖'][product.id]}</td>
+                                        <td className="py-3 px-2 font-bold text-blue-700 bg-blue-50/50">
+                                            {totals[product.id]}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    );
+}
