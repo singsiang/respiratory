@@ -1,337 +1,689 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="description" content="醫療用水庫存回報系統 - 管理並匯出各病區庫存數量">
-    <title>醫療用水庫存回報系統</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>醫療用水庫存回報系統</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💧</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #21253a;
+      --border: #2a2f47;
+      --border-bright: #3a4060;
+      --text: #e8ecf0;
+      --text-muted: #7a8199;
+      --text-dim: #4a5068;
+      --accent: #4f8ef7;
+      --accent-glow: rgba(79,142,247,0.15);
+      --yellow: #f7c94f;
+      --yellow-glow: rgba(247,201,79,0.12);
+      --red: #f74f6a;
+      --red-glow: rgba(247,79,106,0.12);
+      --green: #4ff7a0;
+      --green-glow: rgba(79,247,160,0.1);
+      --font-body: 'Noto Sans TC', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    <style>
-        body {
-            font-family: 'PingFang TC', 'Heiti TC', 'Microsoft JhengHei', sans-serif;
-            background-color: #f1f5f9;
-            -webkit-tap-highlight-color: transparent;
-        }
-        input[type="number"]::-webkit-inner-spin-button,
-        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type="number"] { -moz-appearance: textfield; }
-        @keyframes fadeInDown {
-            from { opacity: 0; transform: translate(-50%, -20px); }
-            to   { opacity: 1; transform: translate(-50%, 0); }
-        }
-        .animate-fade-in-down { animation: fadeInDown 0.3s ease-out forwards; }
-    </style>
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-tap-highlight-color: transparent;
+      overflow-x: hidden;
+    }
+
+    /* Background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(79,142,247,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(79,142,247,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Glow blobs */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -30vh;
+      left: -20vw;
+      width: 60vw;
+      height: 60vh;
+      background: radial-gradient(ellipse, rgba(79,142,247,0.06) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    #app { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; padding: 0 16px 80px; }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(15,17,23,0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0 -16px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, #4f8ef7, #7b5ea7);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      box-shadow: 0 0 16px rgba(79,142,247,0.3);
+    }
+
+    .header-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .header-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .btn-save {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--surface2);
+      border: 1px solid var(--border-bright);
+      color: var(--text-muted);
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: var(--font-body);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-save:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+
+    /* ── TABS ── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px;
+      margin-top: 20px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 700;
+      font-family: var(--font-body);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(79,142,247,0.4);
+    }
+
+    /* ── SECTION HEADER ── */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-title {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 14px; font-weight: 700; color: var(--text-muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+
+    .section-title .dot {
+      width: 8px; height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .btn-export {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(79,142,247,0.1);
+      border: 1px solid rgba(79,142,247,0.3);
+      color: var(--accent);
+      padding: 7px 12px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-family: var(--font-body);
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.02em;
+    }
+    .btn-export:hover { background: rgba(79,142,247,0.18); box-shadow: 0 0 12px rgba(79,142,247,0.2); }
+    .btn-export:active { transform: scale(0.96); }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-top: 20px;
+    }
+
+    /* ── PRODUCT ROW ── */
+    .product-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 18px;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    .product-row:last-child { border-bottom: none; }
+    .product-row:hover { background: rgba(255,255,255,0.02); }
+
+    .product-num {
+      width: 24px; height: 24px;
+      background: var(--surface2);
+      border: 1px solid var(--border-bright);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      flex-shrink: 0;
+    }
+
+    .product-visual {
+      width: 56px; height: 64px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .product-visual svg { width: auto; height: 56px; }
+
+    .product-info { flex: 1; min-width: 0; }
+
+    .product-brand {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .product-name {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .product-unit {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      font-family: var(--font-mono);
+    }
+
+    /* ── STEPPER ── */
+    .stepper {
+      display: flex;
+      align-items: center;
+      background: var(--surface2);
+      border: 1px solid var(--border-bright);
+      border-radius: 10px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .stepper-btn {
+      width: 40px; height: 48px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted);
+      transition: all 0.15s;
+      font-size: 18px;
+    }
+    .stepper-btn:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+    .stepper-btn.plus:hover { color: var(--accent); background: var(--accent-glow); }
+    .stepper-btn.minus:hover { color: var(--red); background: var(--red-glow); }
+    .stepper-btn:active { transform: scale(0.9); }
+
+    .stepper-divider {
+      width: 1px; height: 28px;
+      background: var(--border-bright);
+      flex-shrink: 0;
+    }
+
+    .stepper-input {
+      width: 62px;
+      text-align: center;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 20px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      outline: none;
+      -moz-appearance: textfield;
+    }
+    .stepper-input::-webkit-inner-spin-button,
+    .stepper-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    /* ── SUMMARY TABLE ── */
+    .table-wrapper {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    thead tr {
+      background: var(--surface2);
+    }
+
+    th {
+      padding: 10px 14px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    th:first-child { text-align: left; }
+
+    td {
+      padding: 12px 14px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+    td:first-child { text-align: left; font-family: var(--font-body); font-weight: 600; color: var(--text); font-size: 12px; }
+    tr:last-child td { border-bottom: none; }
+
+    .td-total {
+      font-weight: 700;
+      color: var(--accent) !important;
+      font-size: 14px;
+    }
+
+    .total-row td { background: rgba(79,142,247,0.05); }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface2);
+      border: 1px solid var(--border-bright);
+      color: var(--text);
+      padding: 12px 20px;
+      border-radius: 40px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 9999;
+      white-space: nowrap;
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
+      opacity: 0;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    #toast .toast-icon { font-size: 16px; }
+
+    /* ── COLORS PER PRODUCT ── */
+    .color-yellow .product-visual { background: var(--yellow-glow); border-color: rgba(247,201,79,0.2); }
+    .color-yellow .product-name { color: var(--yellow); }
+
+    .color-blue .product-visual { background: var(--accent-glow); border-color: rgba(79,142,247,0.2); }
+    .color-blue .product-name { color: var(--accent); }
+
+    .color-red .product-visual { background: var(--red-glow); border-color: rgba(247,79,106,0.2); }
+    .color-red .product-name { color: var(--red); }
+
+    /* responsive */
+    @media (max-width: 480px) {
+      .product-row { flex-wrap: wrap; }
+      .stepper { margin-left: auto; }
+    }
+
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    input[type="number"] { -moz-appearance: textfield; }
+  </style>
 </head>
 <body>
-    <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
+<div id="app">
+  <header>
+    <div class="header-left">
+      <div class="header-icon">💧</div>
+      <div>
+        <div class="header-title">醫療用水庫存回報</div>
+        <div class="header-sub">INVENTORY TRACKER v2.0</div>
+      </div>
+    </div>
+    <button class="btn-save" onclick="handleSave()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      儲存
+    </button>
+  </header>
 
-        /* ── 本機儲存 Key ── */
-        const STORAGE_KEY = 'medical-water-inventory-v1';
+  <!-- Tabs -->
+  <div class="tabs" id="tabs"></div>
 
-        /* ══════════════════════════════════
-           SVG 元件（保留原版設計）
-        ══════════════════════════════════ */
-        const InjectionWaterBottle = () => (
-            <svg viewBox="0 0 100 200" className="w-auto h-24 drop-shadow-md">
-                <defs>
-                    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%"   stopColor="#f1f5f9" stopOpacity="0.8"/>
-                        <stop offset="50%"  stopColor="#ffffff" stopOpacity="0.9"/>
-                        <stop offset="100%" stopColor="#e2e8f0" stopOpacity="0.8"/>
-                    </linearGradient>
-                </defs>
-                <rect x="25" y="60" width="50" height="130" rx="10" fill="url(#g1)" stroke="#cbd5e1" strokeWidth="1"/>
-                <path d="M 35 60 L 40 30 L 60 30 L 65 60 Z" fill="url(#g1)" stroke="#cbd5e1" strokeWidth="1"/>
-                <path d="M 38 15 h 24 v 15 h -24 z" fill="#ef4444"/>
-                <rect x="37" y="14" width="26" height="4" rx="1" fill="#dc2626"/>
-                <rect x="25" y="90"  width="50" height="70" fill="#facc15"/>
-                <rect x="25" y="100" width="50" height="50" fill="#ffffff"/>
-                <rect x="30" y="93"  width="40" height="5"  rx="2" fill="#573312"/>
-                <text x="50" y="97"  fontSize="3.5" textAnchor="middle" fill="#ffffff" fontWeight="bold">Water</text>
-                <text x="50" y="125" fontSize="8"   textAnchor="middle" fill="#000"     fontWeight="900">注射用水</text>
-                <text x="50" y="155" fontSize="4"   textAnchor="middle" fill="#333"     fontWeight="bold">500ml</text>
-                <path d="M 26 85 Q 50 87 74 85 L 74 180 Q 50 185 26 180 Z" fill="#bae6fd" opacity="0.2"/>
-            </svg>
-        );
+  <!-- Editor Card -->
+  <div class="card" id="editorCard">
+    <div class="section-header">
+      <div class="section-title">
+        <span class="dot"></span>
+        <span id="editorTitle">正在盤點：9樓</span>
+      </div>
+      <button class="btn-export" onclick="handleExport()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        匯出文字
+      </button>
+    </div>
+    <div id="productList"></div>
+  </div>
 
-        const IrrigationWaterBag = () => (
-            <svg viewBox="0 0 100 200" className="w-auto h-24 drop-shadow-md">
-                <defs>
-                    <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%"   stopColor="#f8fafc" stopOpacity="0.8"/>
-                        <stop offset="50%"  stopColor="#ffffff" stopOpacity="0.9"/>
-                        <stop offset="100%" stopColor="#f1f5f9" stopOpacity="0.8"/>
-                    </linearGradient>
-                </defs>
-                <path d="M 15 25 Q 15 15 25 15 L 75 15 Q 85 15 85 25 L 85 175 Q 85 185 75 185 L 25 185 Q 15 185 15 175 Z"
-                      fill="url(#g2)" stroke="#94a3b8" strokeWidth="1.5"/>
-                <path d="M 15 30 Q 13 35 15 40 Q 13 45 15 50" fill="none" stroke="#94a3b8" strokeWidth="1"/>
-                <path d="M 85 30 Q 87 35 85 40 Q 87 45 85 50" fill="none" stroke="#94a3b8" strokeWidth="1"/>
-                <path d="M 35 15 Q 50 -5 65 15" fill="none" stroke="#94a3b8" strokeWidth="2"/>
-                <rect x="35" y="185" width="10" height="15" rx="2" fill="#f8fafc" stroke="#94a3b8"/>
-                <rect x="55" y="185" width="12" height="18" rx="2" fill="#3b82f6"/>
-                <text x="50" y="55" fontSize="6" textAnchor="middle" fill="#dc2626" fontWeight="bold">減菌沖洗用蒸餾水</text>
-                <text x="50" y="72" fontSize="5" textAnchor="middle" fill="#dc2626" fontWeight="bold">IRRIGATION</text>
-                <text x="80" y="40" fontSize="4" textAnchor="end"    fill="#dc2626" fontWeight="bold">2.0L</text>
-            </svg>
-        );
+  <!-- Summary Card -->
+  <div class="card" style="margin-top:20px; margin-bottom:20px;">
+    <div class="section-header">
+      <div class="section-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--accent)"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        全院即時總覽
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table id="summaryTable"></table>
+    </div>
+  </div>
+</div>
 
-        const IrrigationBottleChiSheng = () => (
-            <svg viewBox="0 0 100 200" className="w-auto h-24 drop-shadow-md">
-                <defs>
-                    <linearGradient id="g3" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%"   stopColor="#f8fafc" stopOpacity="0.7"/>
-                        <stop offset="50%"  stopColor="#ffffff" stopOpacity="0.9"/>
-                        <stop offset="100%" stopColor="#e2e8f0" stopOpacity="0.7"/>
-                    </linearGradient>
-                </defs>
-                <rect x="20" y="60" width="60" height="130" rx="10" fill="url(#g3)" stroke="#cbd5e1" strokeWidth="1"/>
-                <path d="M 20 65 Q 20 40 35 35 L 65 35 Q 80 40 80 65 Z" fill="url(#g3)" stroke="#cbd5e1" strokeWidth="1"/>
-                <rect x="42" y="15" width="16" height="20" rx="2" fill="#ffffff" stroke="#cbd5e1"/>
-                <rect x="44" y="5"  width="8"  height="10" rx="1" fill="#f1f5f9" stroke="#cbd5e1"/>
-                <rect x="22" y="80" width="56" height="85" fill="#60a5fa" rx="2"/>
-                <text x="50" y="90"  fontSize="3" textAnchor="middle" fill="#1e3a8a" fontWeight="bold">Aqua Distillata</text>
-                <text x="50" y="110" fontSize="7" textAnchor="middle" fill="#1e3a8a" fontWeight="900">沖洗用蒸餾水</text>
-                <text x="50" y="155" fontSize="4" textAnchor="middle" fill="#1e3a8a" fontWeight="bold">1000ml</text>
-            </svg>
-        );
+<!-- Toast -->
+<div id="toast">
+  <span class="toast-icon">✓</span>
+  <span id="toastMsg"></span>
+</div>
 
-        /* ══════════════════════════════════
-           常數
-        ══════════════════════════════════ */
-        const LOCATIONS = ['9樓', '13樓', '情人湖'];
-        const PRODUCTS = [
-            { id: '500ml',  name: '500ml蒸餾水瓶',  brand: '信東', icon: InjectionWaterBottle,    color: 'text-yellow-600', bg: 'bg-yellow-50' },
-            { id: '1000ml', name: '1000ml蒸餾水瓶', brand: '濟生', icon: IrrigationBottleChiSheng, color: 'text-blue-600',   bg: 'bg-blue-50'   },
-            { id: '2000ml', name: '2000ml蒸餾水袋', brand: '永豐', icon: IrrigationWaterBag,       color: 'text-red-600',    bg: 'bg-red-50'    },
-        ];
+<script>
+// ── SVG Icons ──
+const svgs = {
+  '500ml': `<svg viewBox="0 0 100 200">
+    <defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f1f5f9" stop-opacity="0.8"/><stop offset="50%" stop-color="#ffffff" stop-opacity="0.9"/><stop offset="100%" stop-color="#e2e8f0" stop-opacity="0.8"/></linearGradient></defs>
+    <rect x="25" y="60" width="50" height="130" rx="10" fill="url(#g1)" stroke="#cbd5e1" stroke-width="1"/>
+    <path d="M 35 60 L 40 30 L 60 30 L 65 60 Z" fill="url(#g1)" stroke="#cbd5e1" stroke-width="1"/>
+    <path d="M 38 15 h 24 v 15 h -24 z" fill="#ef4444"/>
+    <rect x="37" y="14" width="26" height="4" rx="1" fill="#dc2626"/>
+    <rect x="25" y="90" width="50" height="70" fill="#facc15"/>
+    <rect x="25" y="100" width="50" height="50" fill="#ffffff"/>
+    <rect x="30" y="93" width="40" height="5" rx="2" fill="#573312"/>
+    <text x="50" y="125" font-size="8" text-anchor="middle" fill="#000" font-weight="900">注射用水</text>
+    <text x="50" y="155" font-size="4" text-anchor="middle" fill="#333" font-weight="bold">500ml</text>
+  </svg>`,
 
-        const makeEmptyInventory = () =>
-            LOCATIONS.reduce((a, loc) => ({
-                ...a,
-                [loc]: PRODUCTS.reduce((b, p) => ({ ...b, [p.id]: 0 }), {})
-            }), {});
+  '1000ml': `<svg viewBox="0 0 100 200">
+    <defs><linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f8fafc" stop-opacity="0.7"/><stop offset="50%" stop-color="#ffffff" stop-opacity="0.9"/><stop offset="100%" stop-color="#e2e8f0" stop-opacity="0.7"/></linearGradient></defs>
+    <rect x="20" y="60" width="60" height="130" rx="10" fill="url(#g2)" stroke="#cbd5e1" stroke-width="1"/>
+    <path d="M 20 65 Q 20 40 35 35 L 65 35 Q 80 40 80 65 Z" fill="url(#g2)" stroke="#cbd5e1" stroke-width="1"/>
+    <rect x="42" y="15" width="16" height="20" rx="2" fill="#ffffff" stroke="#cbd5e1"/>
+    <rect x="44" y="5" width="8" height="10" rx="1" fill="#f1f5f9" stroke="#cbd5e1"/>
+    <rect x="22" y="80" width="56" height="85" fill="#60a5fa" rx="2"/>
+    <text x="50" y="110" font-size="7" text-anchor="middle" fill="#1e3a8a" font-weight="900">沖洗用蒸餾水</text>
+    <text x="50" y="155" font-size="4" text-anchor="middle" fill="#1e3a8a" font-weight="bold">1000ml</text>
+  </svg>`,
 
-        /* ══════════════════════════════════
-           localStorage 工具
-        ══════════════════════════════════ */
-        const loadStorage = () => {
-            try {
-                const raw = localStorage.getItem(STORAGE_KEY);
-                return raw ? JSON.parse(raw) : null;
-            } catch { return null; }
-        };
+  '2000ml': `<svg viewBox="0 0 100 200">
+    <defs><linearGradient id="g3" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f8fafc" stop-opacity="0.8"/><stop offset="50%" stop-color="#ffffff" stop-opacity="0.9"/><stop offset="100%" stop-color="#f1f5f9" stop-opacity="0.8"/></linearGradient></defs>
+    <path d="M 15 25 Q 15 15 25 15 L 75 15 Q 85 15 85 25 L 85 175 Q 85 185 75 185 L 25 185 Q 15 185 15 175 Z" fill="url(#g3)" stroke="#94a3b8" stroke-width="1.5"/>
+    <path d="M 35 15 Q 50 -5 65 15" fill="none" stroke="#94a3b8" stroke-width="2"/>
+    <rect x="35" y="185" width="10" height="15" rx="2" fill="#f8fafc" stroke="#94a3b8"/>
+    <rect x="55" y="185" width="12" height="18" rx="2" fill="#3b82f6"/>
+    <text x="50" y="55" font-size="6" text-anchor="middle" fill="#dc2626" font-weight="bold">減菌沖洗用蒸餾水</text>
+    <text x="50" y="72" font-size="5" text-anchor="middle" fill="#dc2626" font-weight="bold">IRRIGATION</text>
+    <text x="80" y="40" font-size="4" text-anchor="end" fill="#dc2626" font-weight="bold">2.0L</text>
+  </svg>`
+};
 
-        const persistStorage = (payload) => {
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); return true; }
-            catch { return false; }
-        };
+// ── Constants ──
+const LOCATIONS = ['9樓', '13樓', '情人湖'];
+const PRODUCTS = [
+  { id: '500ml',  name: '500ml蒸餾水瓶',  brand: 'XINTONG / 信東', color: 'color-yellow' },
+  { id: '1000ml', name: '1000ml蒸餾水瓶', brand: 'JISENG / 濟生',   color: 'color-blue'  },
+  { id: '2000ml', name: '2000ml蒸餾水袋', brand: 'YONGFENG / 永豐', color: 'color-red'   },
+];
 
-        /* ══════════════════════════════════
-           主元件
-        ══════════════════════════════════ */
-        const App = () => {
-            const stored = loadStorage();
-            const [inventory, setInventory] = useState(stored?.inventory ?? makeEmptyInventory());
-            const [savedAt,   setSavedAt]   = useState(stored?.savedAt   ?? null);
-            const [activeTab, setActiveTab] = useState(LOCATIONS[0]);
-            const [toast,     setToast]     = useState(null);
+const STORAGE_KEY = 'medical-water-inventory-v2';
 
-            /* 每次 React 渲染後重新初始化 Lucide icons */
-            useEffect(() => { lucide.createIcons(); });
+// ── State ──
+let activeTab = '9樓';
+let inventory = loadInventory();
 
-            /* ── Toast ── */
-            const showToast = (msg, isError = false) => {
-                setToast({ msg, isError });
-                setTimeout(() => setToast(null), 3000);
-            };
+function loadInventory() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return {
+    '9樓':   { '500ml': 4.5, '1000ml': 2,   '2000ml': 7 },
+    '13樓':  { '500ml': 10,  '1000ml': 5,   '2000ml': 3 },
+    '情人湖': { '500ml': 9,   '1000ml': 3,   '2000ml': 4 },
+  };
+}
 
-            /* ── 儲存至 localStorage ── */
-            const handleSave = () => {
-                const now = new Date().toLocaleString('zh-TW', { hour12: false });
-                if (persistStorage({ inventory, savedAt: now })) {
-                    setSavedAt(now);
-                    showToast('已儲存至本機裝置 ✓');
-                } else {
-                    showToast('儲存失敗，請確認瀏覽器設定', true);
-                }
-            };
+function saveInventory() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(inventory)); } catch(e) {}
+}
 
-            /* ── 數量調整 ── */
-            const handleQuantityChange = (loc, pid, val) => {
-                let n = parseFloat(val);
-                if (isNaN(n) || n < 0) n = 0;
-                setInventory(prev => ({ ...prev, [loc]: { ...prev[loc], [pid]: n } }));
-            };
+// ── Render ──
+function renderTabs() {
+  const el = document.getElementById('tabs');
+  el.innerHTML = LOCATIONS.map(loc => `
+    <button class="tab-btn ${loc === activeTab ? 'active' : ''}" onclick="switchTab('${loc}')">${loc}</button>
+  `).join('');
+}
 
-            const adjustQuantity = (loc, pid, delta) => {
-                setInventory(prev => {
-                    const cur  = prev[loc][pid] || 0;
-                    const next = Math.max(0, Math.round((cur + delta) * 10) / 10);
-                    return { ...prev, [loc]: { ...prev[loc], [pid]: next } };
-                });
-            };
+function renderProducts() {
+  document.getElementById('editorTitle').textContent = `正在盤點：${activeTab}`;
+  const el = document.getElementById('productList');
+  el.innerHTML = PRODUCTS.map((p, i) => `
+    <div class="product-row ${p.color}">
+      <div class="product-num">${i+1}</div>
+      <div class="product-visual">${svgs[p.id]}</div>
+      <div class="product-info">
+        <div class="product-brand">${p.brand}</div>
+        <div class="product-name">${p.name}</div>
+        <div class="product-unit">UNIT / 箱</div>
+      </div>
+      <div class="stepper">
+        <button class="stepper-btn minus" onclick="adjust('${p.id}', -0.5)">−</button>
+        <div class="stepper-divider"></div>
+        <input
+          class="stepper-input"
+          type="number" step="0.5" min="0"
+          value="${inventory[activeTab][p.id]}"
+          onchange="handleInput('${p.id}', this.value)"
+          oninput="handleInput('${p.id}', this.value)"
+        >
+        <div class="stepper-divider"></div>
+        <button class="stepper-btn plus" onclick="adjust('${p.id}', 0.5)">+</button>
+      </div>
+    </div>
+  `).join('');
+}
 
-            /* ── 剪貼簿（HTTPS-aware，GitHub Pages 完整支援）── */
-            const copyToClipboard = async (text, successMsg) => {
-                try {
-                    if (navigator.clipboard && window.isSecureContext) {
-                        await navigator.clipboard.writeText(text);
-                    } else {
-                        /* HTTP 環境備援 */
-                        const ta = Object.assign(document.createElement('textarea'), {
-                            value: text,
-                            style: 'position:fixed;opacity:0;pointer-events:none'
-                        });
-                        document.body.appendChild(ta);
-                        ta.focus(); ta.select();
-                        document.execCommand('copy');
-                        document.body.removeChild(ta);
-                    }
-                    showToast(successMsg);
-                } catch {
-                    showToast('複製失敗，請手動選取文字', true);
-                }
-            };
+function renderTable() {
+  const totals = {};
+  PRODUCTS.forEach(p => { totals[p.id] = 0; });
+  LOCATIONS.forEach(loc => {
+    PRODUCTS.forEach(p => { totals[p.id] += (inventory[loc][p.id] || 0); });
+  });
 
-            /* ── 匯出單一地點 ── */
-            const buildText = (loc) => {
-                const now   = new Date().toLocaleString('zh-TW', { hour12: false });
-                const lines = PRODUCTS.map((p, i) => `${i + 1}. ${p.name}：${inventory[loc][p.id]} 箱`);
-                return `【${loc} 醫療用水庫存回報】
-回報時間：${now}
+  const el = document.getElementById('summaryTable');
+  el.innerHTML = `
+    <thead>
+      <tr>
+        <th>品項</th>
+        ${LOCATIONS.map(l => `<th>${l}</th>`).join('')}
+        <th style="color:var(--accent)">總計</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${PRODUCTS.map(p => `
+        <tr>
+          <td>${p.name}</td>
+          ${LOCATIONS.map(l => `<td>${inventory[l][p.id]}</td>`).join('')}
+          <td class="td-total">${totals[p.id]}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  `;
+}
 
-${lines.join('
-')}`;
-            };
-            const handleExport = (loc = activeTab) =>
-                copyToClipboard(buildText(loc), `已複製「${loc}」回報文`);
+function render() {
+  renderTabs();
+  renderProducts();
+  renderTable();
+}
 
-            /* ── 匯出全院 ── */
-            const handleExportAll = () => {
-                const now  = new Date().toLocaleString('zh-TW', { hour12: false });
-                const body = LOCATIONS.map(loc => {
-                    const lines = PRODUCTS.map((p, i) => `  ${i + 1}. ${p.name}：${inventory[loc][p.id]} 箱`);
-                    return `◆ ${loc}
-${lines.join('
-')}`;
-                }).join('
+// ── Actions ──
+function switchTab(loc) {
+  activeTab = loc;
+  render();
+}
 
-');
-                copyToClipboard(
-                    `【全院醫療用水庫存回報】
-回報時間：${now}
+function adjust(productId, delta) {
+  let val = (inventory[activeTab][productId] || 0) + delta;
+  if (val < 0) val = 0;
+  inventory[activeTab][productId] = val;
+  saveInventory();
+  render();
+}
 
-${body}`,
-                    '已複製全院回報文'
-                );
-            };
+function handleInput(productId, value) {
+  let val = parseFloat(value);
+  if (isNaN(val) || val < 0) val = 0;
+  inventory[activeTab][productId] = val;
+  saveInventory();
+  renderTable(); // only update table, keep focus
+}
 
-            /* ── 清空當前地點 ── */
-            const handleReset = () => {
-                if (!window.confirm(`確定清空「${activeTab}」的所有數量？`)) return;
-                setInventory(prev => ({
-                    ...prev,
-                    [activeTab]: PRODUCTS.reduce((acc, p) => ({ ...acc, [p.id]: 0 }), {})
-                }));
-                showToast(`已清空「${activeTab}」`);
-            };
+function handleSave() {
+  saveInventory();
+  showToast('✅ 已儲存至本機');
+}
 
-            /* ── 全院加總 ── */
-            const totals = PRODUCTS.reduce((acc, p) => ({
-                ...acc,
-                [p.id]: LOCATIONS.reduce((sum, loc) => sum + (inventory[loc][p.id] || 0), 0)
-            }), {});
+function handleExport() {
+  const lines = PRODUCTS.map((p, i) =>
+    `${i+1}. ${p.name}：${inventory[activeTab][p.id]} 箱`
+  );
+  const now = new Date();
+  const dateStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+  const text = `【${activeTab} 庫存回報】${dateStr}\n\n${lines.join('\n')}`;
 
-            /* ══════════════════════════════════
-               渲染
-            ══════════════════════════════════ */
-            return (
-                <div className="min-h-screen flex flex-col pb-24 sm:pb-8">
+  // Try modern API first
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(() => showToast(`📋 已複製「${activeTab}」回報文`))
+      .catch(() => fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
 
-                    {/* ─── Header ─── */}
-                    <header className="bg-blue-600 text-white shadow-md sticky top-0 z-20">
-                        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                                <i data-lucide="clipboard-list" className="w-6 h-6 shrink-0"></i>
-                                <div className="min-w-0">
-                                    <h1 className="text-lg font-bold leading-tight">醫療用水庫存回報</h1>
-                                    {savedAt && (
-                                        <p className="text-xs text-blue-200 leading-tight truncate">
-                                            上次儲存：{savedAt}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="flex gap-2 shrink-0">
-                                <button onClick={handleExportAll}
-                                    className="hidden sm:flex bg-indigo-500 hover:bg-indigo-400 text-white px-3 py-1.5 rounded-full text-sm font-bold shadow active:scale-95 transition-transform items-center gap-1">
-                                    <i data-lucide="send" className="w-4 h-4"></i>
-                                    全院匯出
-                                </button>
-                                <button onClick={handleSave}
-                                    className="bg-white text-blue-600 px-3 py-1.5 rounded-full text-sm font-bold shadow hover:bg-blue-50 active:scale-95 transition-transform flex items-center gap-1">
-                                    <i data-lucide="save" className="w-4 h-4"></i>
-                                    儲存
-                                </button>
-                            </div>
-                        </div>
-                    </header>
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try {
+    document.execCommand('copy');
+    showToast(`📋 已複製「${activeTab}」回報文`);
+  } catch(e) {
+    showToast('⚠️ 複製失敗，請手動選取');
+  }
+  document.body.removeChild(ta);
+}
 
-                    {/* ─── Toast ─── */}
-                    {toast && (
-                        <div className={`fixed top-20 left-1/2 -translate-x-1/2 px-5 py-2.5 rounded-full shadow-lg z-50 flex items-center gap-2 animate-fade-in-down text-sm whitespace-nowrap text-white ${toast.isError ? 'bg-red-600' : 'bg-gray-800'}`}>
-                            <i data-lucide={toast.isError ? 'x-circle' : 'check-circle-2'}
-                               className={`w-4 h-4 ${toast.isError ? 'text-red-200' : 'text-green-400'}`}></i>
-                            {toast.msg}
-                        </div>
-                    )}
+// ── Toast ──
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  const msgEl = document.getElementById('toastMsg');
+  msgEl.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
 
-                    <main className="flex-grow max-w-3xl mx-auto w-full px-4 pt-6">
-
-                        {/* ─── Location Tabs ─── */}
-                        <div className="flex bg-gray-200 p-1 rounded-xl mb-6 shadow-inner">
-                            {LOCATIONS.map(loc => (
-                                <button key={loc} onClick={() => setActiveTab(loc)}
-                                    className={`flex-1 py-2.5 text-center rounded-lg text-sm font-bold transition-all duration-200 ${
-                                        activeTab === loc
-                                            ? 'bg-white text-blue-600 shadow-sm scale-[1.02]'
-                                            : 'text-gray-500 hover:text-gray-700'
-                                    }`}>
-                                    {loc}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* ─── Editor Card ─── */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8">
-                            <div className="bg-slate-50 border-b border-gray-100 px-5 py-3 flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <i data-lucide="map-pin" className="w-5 h-5 text-slate-400"></i>
-                                    <h2 className="text-lg font-bold text-slate-700">正在盤點：{activeTab}</h2>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button onClick={handleReset}
-                                        className="bg-red-50 text-red-500 hover:bg-red-100 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors flex items-center gap-1 shadow-sm active:scale-95">
-                                        <i data-lucide="trash-2" className="w-4 h-4"></i>
-                                        清空
-                                    </button>
-                                    <button onClick={() => handleExport()}
-                                        className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors flex items-center gap-1.5 shadow-sm active:scale-95">
-                                        <i data-lucide="copy" className="w-4 h-4"></i>
-                                        匯出文字
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="divide-y divide-gray-100">
-                                {PRODUCTS.map((product, i
+// ── Init ──
+render();
+</script>
+</body>
+</html>
