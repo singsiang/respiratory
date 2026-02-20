@@ -27,6 +27,12 @@
     .report-table {
       font-family: 'Microsoft JhengHei', '微軟正黑體', Arial, sans-serif;
     }
+    
+    /* 自訂滾動條樣式給 Textarea */
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans pb-24 w-full">
@@ -42,6 +48,9 @@
     const IconX = ({className="w-3.5 h-3.5 sm:w-4 sm:h-4"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>;
     const IconPlus = ({className="w-4 h-4 sm:w-5 sm:h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
     const IconMinus = ({className="w-4 h-4 sm:w-5 sm:h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+    const IconFileText = ({className="w-5 h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>;
+    const IconCopy = ({className="w-5 h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>;
+    const IconInfo = ({className="w-4 h-4"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>;
 
     // --- 資料模型 ---
     const AREAS = ['9F', 'MICU', 'ER', 'VMICU'];
@@ -69,6 +78,7 @@
       const [focusedItem, setFocusedItem] = useState(null); 
       const [isExporting, setIsExporting] = useState(false);
       const [modal, setModal] = useState({ isOpen: false, type: 'alert', message: '', onConfirm: null });
+      const [mdModal, setMdModal] = useState({ isOpen: false, content: '', title: '' });
       const [currentTimeStr, setCurrentTimeStr] = useState('');
       const tableRef = useRef(null);
 
@@ -98,17 +108,15 @@
 
       // 更新統計時間
       useEffect(() => {
-        if (activeTab === 'SUMMARY') {
-          const updateTime = () => {
-            const now = new Date();
-            const pad = (n) => n.toString().padStart(2, '0');
-            setCurrentTimeStr(`${now.getFullYear()}/${pad(now.getMonth() + 1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`);
-          };
-          updateTime();
-          const timer = setInterval(updateTime, 60000);
-          return () => clearInterval(timer);
-        }
-      }, [activeTab]);
+        const updateTime = () => {
+          const now = new Date();
+          const pad = (n) => n.toString().padStart(2, '0');
+          setCurrentTimeStr(`${now.getFullYear()}/${pad(now.getMonth() + 1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`);
+        };
+        updateTime();
+        const timer = setInterval(updateTime, 60000);
+        return () => clearInterval(timer);
+      }, []);
 
       const showAlert = (message) => setModal({ isOpen: true, type: 'alert', message, onConfirm: null });
       const showConfirm = (message, onConfirm) => setModal({ isOpen: true, type: 'confirm', message, onConfirm });
@@ -176,6 +184,45 @@
           setFocusedItem(null);
           showAlert('資料已成功清空！');
         });
+      };
+
+      // --- 匯出 Markdown 文字 ---
+      const openMdModal = (tab) => {
+        let md = '';
+        if (tab === 'SUMMARY') {
+          md += `### 空機點班統計總表\n`;
+          md += `*統計時間：${currentTimeStr}*\n\n`;
+          md += `| 空機統計 | ${AREAS.join(' | ')} |\n`;
+          md += `| :--- | ${AREAS.map(() => ':---:').join(' | ')} |\n`;
+
+          ITEMS.forEach(item => {
+            const rowValues = AREAS.map(area => inventory[area][item.id] || 'N/A');
+            md += `| **${item.name}** | ${rowValues.join(' | ')} |\n`;
+          });
+        } else {
+          md += `### ${tab} 空機點班紀錄\n`;
+          md += `*統計時間：${currentTimeStr}*\n\n`;
+          const validItems = ITEMS.filter(item => item.validAreas.includes(tab));
+          validItems.forEach(item => {
+            md += `- **${item.name}**: ${inventory[tab][item.id]}\n`;
+          });
+        }
+        
+        setMdModal({ isOpen: true, content: md, title: tab === 'SUMMARY' ? '統計總表' : `${tab} 區` });
+      };
+
+      const copyMarkdownToClipboard = () => {
+        const textArea = document.createElement("textarea");
+        textArea.value = mdModal.content;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          showAlert('已成功複製 Markdown 文字到剪貼簿！可以去貼上囉。');
+        } catch (err) {
+          showAlert('複製失敗，請在文字方塊中手動全選並複製。');
+        }
+        document.body.removeChild(textArea);
       };
 
       const exportAsImage = async () => {
@@ -248,9 +295,10 @@
 
       return (
         <div className="min-h-screen flex flex-col w-full" onClick={() => setFocusedItem(null)}>
-          {/* 自訂 Modal */}
+          
+          {/* 系統提示 Modal */}
           {modal.isOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
               <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
                 <div className="p-5 sm:p-6">
                   <h3 className="text-base sm:text-lg font-bold text-slate-800 mb-2">系統提示</h3>
@@ -270,6 +318,46 @@
                     className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md font-medium"
                   >
                     確定
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Markdown 匯出 Modal */}
+          {mdModal.isOpen && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                <div className="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-center">
+                  <h3 className="text-lg font-bold text-slate-800">{mdModal.title} - 文字匯出</h3>
+                  <button onClick={() => setMdModal(prev => ({...prev, isOpen: false}))} className="text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-1 transition-colors">
+                    <IconX className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                <div className="p-4 sm:p-5 flex-1 overflow-y-auto bg-white">
+                  <textarea
+                    readOnly
+                    value={mdModal.content}
+                    className="w-full h-52 sm:h-64 p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono text-slate-700 outline-none resize-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 custom-scrollbar mb-3"
+                  />
+                  
+                  {/* 新增的 Markdown 簡單解釋區塊 */}
+                  <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-3 sm:p-4 flex gap-2.5 items-start">
+                    <IconInfo className="w-5 h-5 text-blue-500 mt-0.5 flex-none" />
+                    <div>
+                      <p className="text-sm font-bold text-blue-800 mb-1">💡 什麼是 Markdown 格式？</p>
+                      <p className="text-xs sm:text-sm text-blue-700 leading-relaxed">
+                        這是一種利用簡單符號 (如 <code className="bg-blue-100 px-1 rounded">|</code> 或 <code className="bg-blue-100 px-1 rounded">-</code>) 來排版的純文字。<strong>只要將上方文字直接複製，貼上到支援的系統</strong> (例如交班系統、Notion、Slack)，系統就會自動把它轉換成漂亮的「表格」或「條列重點」喔！
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-3 sm:p-4 flex justify-end gap-3 border-t border-slate-100">
+                  <button onClick={() => setMdModal(prev => ({...prev, isOpen: false}))} className="px-4 py-2 text-sm text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 font-medium">關閉</button>
+                  <button onClick={copyMarkdownToClipboard} className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md font-medium active:scale-95 transition-transform">
+                    <IconCopy className="w-4 h-4" /> 一鍵複製
                   </button>
                 </div>
               </div>
@@ -320,9 +408,17 @@
                 <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center mb-1">
                   <div>
                     <h2 className="text-base sm:text-lg font-bold text-slate-700">區域：{activeTab}</h2>
-                    <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">一排兩格設計，點選可放大編輯</p>
+                    {/* 針對「匯出文字」按鈕的新增備註 */}
+                    <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">點選欄位可編輯數量；<strong className="text-blue-600 font-medium">右側按鈕可匯出純文字，方便複製交班。</strong></p>
                   </div>
-                  <div className="text-green-500 opacity-20"><IconCheck /></div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openMdModal(activeTab); }}
+                    className="flex items-center gap-1 sm:gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg text-[13px] sm:text-sm font-medium transition-colors border border-slate-300 active:scale-95 whitespace-nowrap"
+                  >
+                    <IconFileText className="w-4 h-4" /> 
+                    <span className="hidden sm:inline">匯出文字</span>
+                    <span className="sm:hidden">匯出</span>
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
@@ -409,15 +505,26 @@
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200">
                   <div>
                     <h2 className="text-base sm:text-lg font-bold text-slate-800">統計總表</h2>
-                    <p className="text-[11px] sm:text-sm text-slate-500 mt-0.5">格式已完全依照圖片範本排版</p>
+                    {/* 針對「匯出 MD」按鈕的新增備註 */}
+                    <p className="text-[11px] sm:text-sm text-slate-500 mt-0.5">可選擇輸出圖片，<strong className="text-blue-600 font-medium">或匯出 Markdown (MD) 文字表格</strong></p>
                   </div>
-                  <button 
-                    onClick={exportAsImage}
-                    disabled={isExporting}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 sm:px-5 sm:py-3 rounded-lg text-sm sm:text-base font-bold shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-70 active:scale-95"
-                  >
-                    {isExporting ? '生成圖片中...' : <><IconCamera /> 儲存為圖片分享</>}
-                  </button>
+                  
+                  <div className="flex flex-row w-full sm:w-auto gap-2">
+                    <button 
+                      onClick={() => openMdModal('SUMMARY')}
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white px-3 py-2.5 sm:px-4 sm:py-2 rounded-lg text-sm sm:text-base font-bold shadow-md transition-all active:scale-95"
+                    >
+                      <IconFileText className="w-4 h-4 sm:w-5 sm:h-5"/> 
+                      <span className="whitespace-nowrap">匯出 MD</span>
+                    </button>
+                    <button 
+                      onClick={exportAsImage}
+                      disabled={isExporting}
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2.5 sm:px-4 sm:py-2 rounded-lg text-sm sm:text-base font-bold shadow-md shadow-emerald-600/20 transition-all disabled:opacity-70 active:scale-95"
+                    >
+                      {isExporting ? '生成中...' : <><IconCamera className="w-4 h-4 sm:w-5 sm:h-5" /> <span className="whitespace-nowrap">儲存圖片</span></>}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="w-full max-w-[calc(100vw-1.2rem)] sm:max-w-full overflow-x-auto bg-white p-2 sm:p-4 rounded-xl shadow-sm border border-slate-200 custom-scrollbar">
