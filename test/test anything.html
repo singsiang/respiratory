@@ -9,7 +9,7 @@
   <!-- 引入 React 與 ReactDOM -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <!-- 引入 Babel 讓瀏覽器可以直接編譯 JSX -->
+  <!-- 引入 Babel -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <!-- 引入 html2canvas 用於匯出圖片 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -18,34 +18,29 @@
     /* 隱藏滾動條但保持可以滾動 */
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    /* 防止手機點擊閃爍 */
-    body { -webkit-tap-highlight-color: transparent; }
+    /* 防止手機點擊閃爍，提升 App 原生感 */
+    body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+    /* 隱藏數字輸入框的預設上下箭頭 */
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans pb-20">
+<body class="bg-slate-50 text-slate-800 font-sans pb-24">
   <div id="root"></div>
 
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // --- 圖示元件 (取代外部依賴，確保單檔完美運行) ---
-    const IconClipboard = () => (
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>
-    );
-    const IconCamera = () => (
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-    );
-    const IconCheck = () => (
-      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-    );
-    const IconAlert = () => (
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
-    );
-    const IconX = () => (
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
-    );
+    // --- SVG 圖示元件 ---
+    const IconClipboard = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>;
+    const IconCamera = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>;
+    const IconCheck = () => <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>;
+    const IconAlert = () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>;
+    const IconX = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>;
+    const IconPlus = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+    const IconMinus = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
 
-    // --- 資料模型定義 ---
+    // --- 資料模型 ---
     const AREAS = ['9F', 'MICU', 'ER', 'VMICU'];
     const ITEMS = [
       { id: 'po_por', name: 'PO(por)', validAreas: ['VMICU'], isYellow: true },
@@ -68,11 +63,18 @@
     function App() {
       const [activeTab, setActiveTab] = useState('9F');
       const [inventory, setInventory] = useState({});
+      const [focusedItem, setFocusedItem] = useState(null); // 追蹤當前點擊的機器
       const [isExporting, setIsExporting] = useState(false);
       const [modal, setModal] = useState({ isOpen: false, type: 'alert', message: '', onConfirm: null });
       const tableRef = useRef(null);
+      
+      // 使用 Ref 儲存最新狀態，供鍵盤事件使用
+      const stateRef = useRef({ inventory, activeTab, focusedItem });
+      useEffect(() => {
+        stateRef.current = { inventory, activeTab, focusedItem };
+      }, [inventory, activeTab, focusedItem]);
 
-      // 初始化資料 (嘗試讀取暫存)
+      // 初始化資料
       useEffect(() => {
         const initialData = {};
         AREAS.forEach(area => {
@@ -83,12 +85,9 @@
         });
         
         try {
-          const savedData = localStorage.getItem('hospital_inventory_data');
-          if (savedData) {
-            setInventory(JSON.parse(savedData));
-          } else {
-            setInventory(initialData);
-          }
+          const savedData = localStorage.getItem('hospital_inventory_v2');
+          if (savedData) setInventory(JSON.parse(savedData));
+          else setInventory(initialData);
         } catch (e) {
           setInventory(initialData);
         }
@@ -97,31 +96,94 @@
       // 資料變更時自動儲存
       useEffect(() => {
         if (Object.keys(inventory).length > 0) {
-          localStorage.setItem('hospital_inventory_data', JSON.stringify(inventory));
+          localStorage.setItem('hospital_inventory_v2', JSON.stringify(inventory));
         }
       }, [inventory]);
+
+      // 監聽實體音量鍵與方向鍵
+      useEffect(() => {
+        const handleKeyDown = (e) => {
+          const { inventory, activeTab, focusedItem } = stateRef.current;
+          // 若沒有選中的機器或在預覽頁面，則不處理
+          if (!focusedItem || activeTab === 'SUMMARY') return;
+
+          const isUp = e.key === 'AudioVolumeUp' || e.key === 'VolumeUp' || e.key === 'ArrowUp' || e.keyCode === 428 || e.key === '+';
+          const isDown = e.key === 'AudioVolumeDown' || e.key === 'VolumeDown' || e.key === 'ArrowDown' || e.keyCode === 427 || e.key === '-';
+
+          if (isUp || isDown) {
+            e.preventDefault(); // 嘗試阻止系統音量 UI 出現
+            handleMathChange(activeTab, focusedItem, isUp ? 1 : -1);
+          }
+        };
+
+        window.addEventListener('keydown', handleKeyDown, { passive: false });
+        return () => window.removeEventListener('keydown', handleKeyDown);
+      }, []);
 
       const showAlert = (message) => setModal({ isOpen: true, type: 'alert', message, onConfirm: null });
       const showConfirm = (message, onConfirm) => setModal({ isOpen: true, type: 'confirm', message, onConfirm });
       const closeModal = () => setModal({ isOpen: false, type: 'alert', message: '', onConfirm: null });
 
+      // 手動輸入文字
       const handleInputChange = (area, itemId, value) => {
-        setInventory(prev => ({
-          ...prev, [area]: { ...prev[area], [itemId]: value }
-        }));
+        setInventory(prev => ({ ...prev, [area]: { ...prev[area], [itemId]: value } }));
+        setFocusedItem(itemId);
       };
 
-      const appendStatus = (area, itemId, statusStr) => {
+      // 處理數字加減 (分離前綴數字與後綴文字)
+      const handleMathChange = (area, itemId, delta) => {
         setInventory(prev => {
-          let currentVal = prev[area][itemId];
-          if (currentVal === '0' || currentVal === '') currentVal = `0${statusStr}`;
-          else currentVal = `${currentVal}${statusStr}`;
-          return { ...prev, [area]: { ...prev[area], [itemId]: currentVal } };
+          const currentStr = String(prev[area][itemId] || '0');
+          // 使用正則表達式抓取開頭的數字，例如 "4+1(請修)" 會抓出 "4" 和 "+1(請修)"
+          const match = currentStr.match(/^(\d+)(.*)/);
+          let num = 0;
+          let rest = '';
+          
+          if (match) {
+            num = parseInt(match[1], 10);
+            rest = match[2];
+          } else {
+            // 如果開頭不是數字（極端情況），直接將文字保留
+            rest = currentStr;
+          }
+
+          // 確保數量不會小於 0
+          num = Math.max(0, num + delta);
+
+          return {
+            ...prev,
+            [area]: {
+              ...prev[area],
+              [itemId]: `${num}${rest}` // 組合新的數字與原本的後綴文字
+            }
+          };
         });
+        setFocusedItem(itemId);
+      };
+
+      // 處理純文字後綴追加 (修復功能失效問題)
+      const handleAppendText = (area, itemId, text) => {
+        setInventory(prev => {
+          const currentStr = String(prev[area][itemId] || '0');
+          return {
+            ...prev,
+            [area]: {
+              ...prev[area],
+              [itemId]: currentStr + text // 直接將文字串接在最後面
+            }
+          };
+        });
+        setFocusedItem(itemId);
+      };
+
+      // 歸零
+      const handleResetItem = (area, itemId) => {
+        setInventory(prev => ({ ...prev, [area]: { ...prev[area], [itemId]: '0' } }));
+        setFocusedItem(itemId);
       };
 
       const requestClearData = () => {
-        showConfirm('確定要清空所有點班紀錄嗎？資料將會歸零。', () => {
+        showConfirm('確定要清空所有點班紀錄嗎？所有數字與註記將會歸零。', () => {
           const resetData = { ...inventory };
           AREAS.forEach(area => {
             ITEMS.forEach(item => {
@@ -129,6 +191,7 @@
             });
           });
           setInventory(resetData);
+          setFocusedItem(null);
           showAlert('資料已成功清空！');
         });
       };
@@ -161,22 +224,22 @@
       };
 
       if (Object.keys(inventory).length === 0) {
-        return <div className="p-10 text-center text-slate-500">載入中...</div>;
+        return <div className="p-10 text-center text-slate-500 flex flex-col items-center"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>系統載入中...</div>;
       }
 
       return (
-        <div className="min-h-screen flex flex-col">
+        <div className="min-h-screen flex flex-col" onClick={() => setFocusedItem(null)}>
           {/* 自訂 Modal */}
           {modal.isOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
                 <div className="p-6">
                   <h3 className="text-lg font-bold text-slate-800 mb-2">系統提示</h3>
                   <p className="text-slate-600">{modal.message}</p>
                 </div>
                 <div className="bg-slate-50 p-4 flex justify-end gap-3 border-t border-slate-100">
                   {modal.type === 'confirm' && (
-                    <button onClick={closeModal} className="px-4 py-2 text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">
+                    <button onClick={closeModal} className="px-4 py-2 text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 font-medium">
                       取消
                     </button>
                   )}
@@ -185,7 +248,7 @@
                       if (modal.onConfirm) modal.onConfirm();
                       closeModal();
                     }} 
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md font-medium"
                   >
                     確定
                   </button>
@@ -195,7 +258,7 @@
           )}
 
           {/* 頂部導覽列 */}
-          <header className="bg-blue-700 text-white shadow-md sticky top-0 z-20">
+          <header className="bg-blue-700 text-white shadow-md sticky top-0 z-40" onClick={e => e.stopPropagation()}>
             <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <IconClipboard />
@@ -211,7 +274,7 @@
               {AREAS.map(area => (
                 <button
                   key={area}
-                  onClick={() => setActiveTab(area)}
+                  onClick={() => { setActiveTab(area); setFocusedItem(null); }}
                   className={`flex-1 py-3 px-4 min-w-[80px] text-center font-medium border-b-4 transition-colors ${
                     activeTab === area ? 'border-white bg-blue-800 text-white' : 'border-transparent text-blue-200 hover:bg-blue-600'
                   }`}
@@ -220,7 +283,7 @@
                 </button>
               ))}
               <button
-                onClick={() => setActiveTab('SUMMARY')}
+                onClick={() => { setActiveTab('SUMMARY'); setFocusedItem(null); }}
                 className={`flex-1 py-3 px-4 min-w-[100px] text-center font-bold border-b-4 transition-colors ${
                   activeTab === 'SUMMARY' ? 'border-yellow-400 bg-blue-800 text-yellow-400' : 'border-transparent text-blue-200 hover:bg-blue-600'
                 }`}
@@ -230,56 +293,94 @@
             </div>
           </header>
 
-          <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-6">
+          <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-6 pb-32">
             {/* 區域點班區塊 */}
             {AREAS.includes(activeTab) && (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center mb-2">
                   <div>
                     <h2 className="text-lg font-bold text-slate-700">區域：{activeTab}</h2>
-                    <p className="text-sm text-slate-500">已隱藏不需點班之儀器</p>
+                    <p className="text-xs text-slate-500">點選機型可放大，並支援手機實體音量鍵 +/-</p>
                   </div>
                   <div className="text-green-500 opacity-20"><IconCheck /></div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {ITEMS.filter(item => item.validAreas.includes(activeTab)).map(item => (
-                    <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-3">
-                      <label className="font-bold text-lg text-slate-800 flex justify-between items-center">
-                        {item.name}
-                        {inventory[activeTab][item.id] === '0' && <span className="text-xs font-normal text-slate-400 bg-slate-100 px-2 py-1 rounded-md">未異動</span>}
-                      </label>
-                      
-                      <input
-                        type="text"
-                        value={inventory[activeTab][item.id]}
-                        onChange={(e) => handleInputChange(activeTab, item.id, e.target.value)}
-                        className="w-full text-xl font-bold p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
-                      />
-                      
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        <button onClick={() => appendStatus(activeTab, item.id, '+1')} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-sm font-medium transition active:scale-95">
-                          +1
-                        </button>
-                        <button onClick={() => appendStatus(activeTab, item.id, '+1(請修)')} className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-md text-sm font-medium transition flex items-center gap-1 active:scale-95">
-                          <IconAlert /> +1(請修)
-                        </button>
-                        <button onClick={() => appendStatus(activeTab, item.id, '+1(轉送)')} className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-md text-sm font-medium transition active:scale-95">
-                          +1(轉送)
-                        </button>
-                        <button onClick={() => handleInputChange(activeTab, item.id, '0')} className="px-3 py-1.5 ml-auto text-slate-500 hover:text-slate-800 text-sm font-medium active:scale-95">
-                          歸零
-                        </button>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {ITEMS.filter(item => item.validAreas.includes(activeTab)).map(item => {
+                    const isFocused = focusedItem === item.id;
+                    
+                    return (
+                      <div 
+                        key={item.id} 
+                        onClick={(e) => { e.stopPropagation(); setFocusedItem(item.id); }}
+                        className={`bg-white p-4 rounded-xl border flex flex-col gap-3 transition-all duration-200 ease-in-out cursor-pointer select-none
+                          ${isFocused 
+                            ? 'scale-[1.03] shadow-xl border-blue-500 ring-2 ring-blue-200 z-10' 
+                            : 'scale-100 shadow-sm border-slate-200 hover:border-blue-300'
+                          }`}
+                      >
+                        <label className="font-bold text-lg text-slate-800 flex justify-between items-center pointer-events-none">
+                          {item.name}
+                          {inventory[activeTab][item.id] === '0' && <span className="text-xs font-normal text-slate-400 bg-slate-100 px-2 py-1 rounded-md">未異動</span>}
+                        </label>
+                        
+                        {/* 數量顯示與增減區塊 */}
+                        <div className="flex gap-2 items-center">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleMathChange(activeTab, item.id, -1); }}
+                            className={`w-12 h-12 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 active:bg-slate-300 transition-colors ${isFocused ? 'bg-blue-50 text-blue-600 border border-blue-200' : ''}`}
+                          >
+                            <IconMinus />
+                          </button>
+                          
+                          <input
+                            type="text"
+                            value={inventory[activeTab][item.id]}
+                            onChange={(e) => handleInputChange(activeTab, item.id, e.target.value)}
+                            onClick={(e) => { e.stopPropagation(); setFocusedItem(item.id); }}
+                            className={`flex-1 text-center text-2xl font-bold p-2 border rounded-xl outline-none transition-colors 
+                              ${isFocused ? 'border-blue-500 bg-blue-50/30' : 'border-slate-300'}`}
+                          />
+                          
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleMathChange(activeTab, item.id, 1); }}
+                            className={`w-12 h-12 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 active:bg-slate-300 transition-colors ${isFocused ? 'bg-blue-50 text-blue-600 border border-blue-200' : ''}`}
+                          >
+                            <IconPlus />
+                          </button>
+                        </div>
+                        
+                        {/* 文字追加快捷鍵 */}
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleAppendText(activeTab, item.id, '+1(請修)'); }} 
+                            className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-md text-sm font-medium transition flex items-center gap-1 active:scale-95 border border-red-100"
+                          >
+                            <IconAlert /> +1(請修)
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleAppendText(activeTab, item.id, '+1(轉送)'); }} 
+                            className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-md text-sm font-medium transition active:scale-95 border border-orange-100"
+                          >
+                            +1(轉送)
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleResetItem(activeTab, item.id); }} 
+                            className="px-3 py-1.5 ml-auto text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md text-sm font-medium active:scale-95 transition-colors"
+                          >
+                            歸零
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
 
             {/* 總表預覽區塊 */}
             {activeTab === 'SUMMARY' && (
-              <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
+              <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                   <div>
                     <h2 className="text-lg font-bold text-slate-800">統計總表</h2>
@@ -295,7 +396,6 @@
                 </div>
 
                 <div className="overflow-x-auto bg-white p-1 md:p-2 rounded-xl shadow-sm border border-slate-200">
-                  {/* 此區塊為將被轉為圖片的內容 */}
                   <div ref={tableRef} className="p-4 bg-white min-w-[650px]">
                     <table className="w-full border-collapse border-2 border-slate-800 text-center text-[15px]">
                       <thead>
@@ -330,10 +430,6 @@
                     </table>
                   </div>
                 </div>
-                
-                <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm leading-relaxed border border-blue-100">
-                  💡 <strong>小提醒：</strong> 若要分享至 LINE 群組，請點擊上方綠色按鈕將表格儲存為圖片後直接傳送即可。
-                </div>
               </div>
             )}
           </main>
@@ -346,4 +442,3 @@
   </script>
 </body>
 </html>
-
