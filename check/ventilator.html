@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>呼吸器空機點班系統</title>
+  <!-- 引入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入 React 與 ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- 引入 Babel -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- 引入 html2canvas 用於匯出圖片 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <style>
+    /* 隱藏滾動條但保持可以滾動 */
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    /* 防止手機點擊閃爍 */
+    body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; overflow-x: hidden; }
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    
+    /* 報表專屬字體設定，確保輸出圖片字體與 Excel 相近 */
+    .report-table {
+      font-family: 'Microsoft JhengHei', '微軟正黑體', Arial, sans-serif;
+    }
+    
+    /* 自訂滾動條樣式給 Textarea */
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans pb-24 w-full">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // --- SVG 圖示元件 ---
+    const IconClipboard = ({className="w-5 h-5 sm:w-6 sm:h-6"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>;
+    const IconCamera = ({className="w-5 h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>;
+    const IconCheck = ({className="w-6 h-6 sm:w-8 sm:h-8"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>;
+    const IconX = ({className="w-3.5 h-3.5 sm:w-4 sm:h-4"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>;
+    const IconPlus = ({className="w-4 h-4 sm:w-5 sm:h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+    const IconMinus = ({className="w-4 h-4 sm:w-5 sm:h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+    const IconFileText = ({className="w-5 h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>;
+    const IconCopy = ({className="w-5 h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>;
+    const IconInfo = ({className="w-4 h-4"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>;
+    const IconTable = ({className="w-5 h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="9" x2="9" y2="21"></line><line x1="15" y1="9" x2="15" y2="21"></line></svg>;
+
+    // --- 資料模型 ---
+    const AREAS = ['9F', 'MICU', 'ER', 'VMICU'];
+    const ITEMS = [
+      { id: 'po_por', name: 'PO(por)', validAreas: ['VMICU'], isYellow: true },
+      { id: 'po_nt1d', name: 'PO(NT1D)', validAreas: ['9F', 'VMICU'], isYellow: true },
+      { id: 'savina', name: 'Savina', validAreas: ['9F', 'MICU', 'ER', 'VMICU'] },
+      { id: 'savina300', name: 'Savina300', validAreas: ['9F', 'MICU'] },
+      { id: 'v600', name: 'V600', validAreas: ['9F', 'MICU'] },
+      { id: 'servo300', name: 'Servo300', validAreas: ['9F'] },
+      { id: 'galileo', name: 'Galileo', validAreas: ['9F'] },
+      { id: 'dura', name: 'Dura', validAreas: ['MICU'] },
+      { id: 'evita4', name: 'Evita-4', validAreas: ['MICU', 'VMICU'] },
+      { id: 'po', name: 'PO', validAreas: ['9F'] },
+      { id: 'nonin', name: 'Nonin', validAreas: ['9F'] },
+      { id: 'hfnc', name: 'HFNC(AirVO2)', validAreas: ['9F', 'MICU', 'ER', 'VMICU'] },
+      { id: 'flexo', name: 'Flexo', validAreas: ['9F', 'MICU', 'ER', 'VMICU'] },
+      { id: 'trilogy', name: 'Trilogy', validAreas: ['VMICU'] },
+      { id: 'stellar', name: 'Stellar', validAreas: ['9F', 'MICU', 'ER'] }
+    ];
+
+    function App() {
+      const [activeTab, setActiveTab] = useState('9F');
+      const [inventory, setInventory] = useState({});
+      const [focusedItem, setFocusedItem] = useState(null); 
+      const [isExporting, setIsExporting] = useState(false);
+      const [modal, setModal] = useState({ isOpen: false, type: 'alert', message: '', onConfirm: null });
+      // mdModal 擴增：支援多種文字格式與判斷是否為總表
+      const [mdModal, setMdModal] = useState({ isOpen: false, content: '', listContent: '', title: '', isSummary: false });
+      const [textFormat, setTextFormat] = useState('markdown'); // 'markdown' | 'list'
+      const [currentTimeStr, setCurrentTimeStr] = useState('');
+      const tableRef = useRef(null);
+
+      useEffect(() => {
+        const initialData = {};
+        AREAS.forEach(area => {
+          initialData[area] = {};
+          ITEMS.forEach(item => {
+            initialData[area][item.id] = item.validAreas.includes(area) ? '0' : 'N/A';
+          });
+        });
+        
+        try {
+          const savedData = localStorage.getItem('hospital_inventory_v6');
+          if (savedData) setInventory(JSON.parse(savedData));
+          else setInventory(initialData);
+        } catch (e) {
+          setInventory(initialData);
+        }
+      }, []);
+
+      useEffect(() => {
+        if (Object.keys(inventory).length > 0) {
+          localStorage.setItem('hospital_inventory_v6', JSON.stringify(inventory));
+        }
+      }, [inventory]);
+
+      // 更新統計時間
+      useEffect(() => {
+        const updateTime = () => {
+          const now = new Date();
+          const pad = (n) => n.toString().padStart(2, '0');
+          setCurrentTimeStr(`${now.getFullYear()}/${pad(now.getMonth() + 1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`);
+        };
+        updateTime();
+        const timer = setInterval(updateTime, 60000);
+        return () => clearInterval(timer);
+      }, []);
+
+      const showAlert = (message) => setModal({ isOpen: true, type: 'alert', message, onConfirm: null });
+      const showConfirm = (message, onConfirm) => setModal({ isOpen: true, type: 'confirm', message, onConfirm });
+      const closeModal = () => setModal({ isOpen: false, type: 'alert', message: '', onConfirm: null });
+
+      const handleInputChange = (area, itemId, value) => {
+        setInventory(prev => ({ ...prev, [area]: { ...prev[area], [itemId]: value } }));
+        setFocusedItem(itemId);
+      };
+
+      const handleMainMathChange = (area, itemId, delta) => {
+        setInventory(prev => {
+          const currentStr = String(prev[area][itemId] || '0');
+          const match = currentStr.match(/^(\d+)(.*)/);
+          let num = 0;
+          let rest = '';
+          
+          if (match) {
+            num = parseInt(match[1], 10);
+            rest = match[2];
+          } else {
+            rest = currentStr;
+          }
+
+          num = Math.max(0, num + delta);
+          return { ...prev, [area]: { ...prev[area], [itemId]: `${num}${rest}` } };
+        });
+        setFocusedItem(itemId);
+      };
+
+      const handleStatusIncrease = (area, itemId, statusType) => {
+         setInventory(prev => {
+            const currentStr = String(prev[area][itemId] || '0');
+            const regex = new RegExp(`\\+(\\d+)\\(${statusType}\\)`);
+            const match = currentStr.match(regex);
+            let newStr = '';
+
+            if (match) {
+              const currentStatusCount = parseInt(match[1], 10);
+              const newStatusCount = currentStatusCount + 1;
+              newStr = currentStr.replace(regex, `+${newStatusCount}(${statusType})`);
+            } else {
+              newStr = `${currentStr}+1(${statusType})`;
+            }
+
+            return { ...prev, [area]: { ...prev[area], [itemId]: newStr } };
+         });
+         setFocusedItem(itemId);
+      };
+
+      const handleResetItem = (area, itemId) => {
+        setInventory(prev => ({ ...prev, [area]: { ...prev[area], [itemId]: '0' } }));
+        setFocusedItem(itemId);
+      };
+
+      const requestClearData = () => {
+        showConfirm('確定要清空所有點班紀錄嗎？所有數字與註記將會歸零。', () => {
+          const resetData = { ...inventory };
+          AREAS.forEach(area => {
+            ITEMS.forEach(item => {
+              if (item.validAreas.includes(area)) resetData[area][item.id] = '0';
+            });
+          });
+          setInventory(resetData);
+          setFocusedItem(null);
+          showAlert('資料已成功清空！');
+        });
+      };
+
+      // 計算表格的合併儲存格 (RowSpan) 邏輯 - 提升層級供匯出文字使用
+      const getCellSpans = () => {
+        const spans = {};
+        AREAS.forEach(area => {
+          spans[area] = {};
+          let i = 0;
+          while (i < ITEMS.length) {
+            const item = ITEMS[i];
+            const val = inventory[area]?.[item.id] || 'N/A';
+            
+            if (val === 'N/A' && i >= 2) {
+              let spanCount = 1;
+              let j = i + 1;
+              while (j < ITEMS.length && (inventory[area]?.[ITEMS[j].id] === 'N/A')) {
+                spanCount++;
+                j++;
+              }
+              spans[area][item.id] = { span: spanCount, skip: false };
+              for (let k = i + 1; k < j; k++) {
+                spans[area][ITEMS[k].id] = { span: 0, skip: true };
+              }
+              i = j;
+            } else {
+              spans[area][item.id] = { span: 1, skip: false };
+              i++;
+            }
+          }
+        });
+        return spans;
+      };
+
+      // --- 匯出文字 (Markdown / LINE 條列) ---
+      const openMdModal = (tab) => {
+        let md = '';
+        let listContent = '';
+        
+        if (tab === 'SUMMARY') {
+          const spans = getCellSpans();
+          
+          // 1. 生成 Markdown 版本 (將被合併的 N/A 替換為空白，畫面更貼近真表格)
+          md += `### 空機點班統計總表\n`;
+          md += `*統計時間：${currentTimeStr}*\n\n`;
+          md += `| 空機統計 | ${AREAS.join(' | ')} |\n`;
+          md += `| :--- | ${AREAS.map(() => ':---:').join(' | ')} |\n`;
+
+          ITEMS.forEach(item => {
+            const rowValues = AREAS.map(area => {
+              const spanInfo = spans[area]?.[item.id] || { span: 1, skip: false };
+              if (spanInfo.skip) return ' '; // 隱藏被合併的文字
+              return inventory[area][item.id] || 'N/A';
+            });
+            md += `| **${item.name}** | ${rowValues.join(' | ')} |\n`;
+          });
+          
+          // 2. 生成 LINE 條列版本 (方便手機端傳送)
+          listContent += `📊 空機點班總表 (${currentTimeStr})\n\n`;
+          AREAS.forEach(area => {
+            listContent += `【${area}】\n`;
+            let hasItems = false;
+            ITEMS.forEach(item => {
+              const val = inventory[area][item.id];
+              // 條列版只顯示非 0 且非 N/A 的項目，版面更乾淨
+              if (val !== 'N/A' && val !== '0') {
+                listContent += `- ${item.name}: ${val}\n`;
+                hasItems = true;
+              }
+            });
+            if (!hasItems) listContent += `- (無)\n`;
+            listContent += `\n`;
+          });
+          listContent = listContent.trim();
+          
+          setMdModal({ isOpen: true, content: md, listContent: listContent, title: '統計總表', isSummary: true });
+          setTextFormat('markdown');
+        } else {
+          // 單一區域匯出
+          md += `### ${tab} 空機點班紀錄\n`;
+          md += `*統計時間：${currentTimeStr}*\n\n`;
+          const validItems = ITEMS.filter(item => item.validAreas.includes(tab));
+          validItems.forEach(item => {
+            md += `- **${item.name}**: ${inventory[tab][item.id]}\n`;
+          });
+          setMdModal({ isOpen: true, content: md, listContent: md, title: `${tab} 區`, isSummary: false });
+          setTextFormat('markdown');
+        }
+      };
+
+      const copyMarkdownToClipboard = () => {
+        const textToCopy = textFormat === 'markdown' ? mdModal.content : mdModal.listContent;
+        const textArea = document.createElement("textarea");
+        textArea.value = textToCopy;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          showAlert('✅ 已成功複製文字！可以前往貼上了。');
+        } catch (err) {
+          showAlert('複製失敗，請在文字方塊中手動全選並複製。');
+        }
+        document.body.removeChild(textArea);
+      };
+
+      // --- 複製豐富文本表格 (支援 Word / Excel) ---
+      const copyRichTextTable = () => {
+        if (!tableRef.current) {
+          showAlert('系統尚未準備好表格，請稍後再試。');
+          return;
+        }
+        try {
+          const el = tableRef.current;
+          let range, sel;
+          if (document.createRange && window.getSelection) {
+            range = document.createRange();
+            sel = window.getSelection();
+            sel.removeAllRanges();
+            range.selectNodeContents(el);
+            sel.addRange(range);
+            document.execCommand("copy");
+            sel.removeAllRanges();
+            showAlert('✅ 已成功複製「表格格式」！\n您可以直接去貼上至 Word、Excel 或支援表格的交班系統中。');
+          } else {
+            showAlert('您的瀏覽器不支援此複製功能。');
+          }
+        } catch (err) {
+          console.error(err);
+          showAlert('複製失敗，請嘗試使用圖片匯出功能。');
+        }
+      };
+
+      // --- 匯出圖片 ---
+      const exportAsImage = async () => {
+        if (!window.html2canvas) {
+          showAlert('系統尚未準備好，請稍後再試。');
+          return;
+        }
+        setIsExporting(true);
+        try {
+          const canvas = await window.html2canvas(tableRef.current, {
+            scale: 2.5,
+            backgroundColor: '#ffffff',
+            useCORS: true,
+            logging: false
+          });
+          const image = canvas.toDataURL('image/png');
+          const link = document.createElement('a');
+          link.href = image;
+          const d = new Date();
+          const dateString = `${d.getMonth()+1}月${d.getDate()}日_${d.getHours()}時${d.getMinutes()}分`;
+          link.download = `空機點班統計_${dateString}.png`;
+          link.click();
+        } catch (err) {
+          console.error('匯出失敗:', err);
+          showAlert('匯出圖片失敗，請確認瀏覽器支援此功能。');
+        } finally {
+          setIsExporting(false);
+        }
+      };
+
+      if (Object.keys(inventory).length === 0) {
+        return <div className="p-10 text-center text-slate-500 flex flex-col items-center"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>系統載入中...</div>;
+      }
+
+      const cellSpans = activeTab === 'SUMMARY' ? getCellSpans() : {};
+
+      return (
+        <div className="min-h-screen flex flex-col w-full" onClick={() => setFocusedItem(null)}>
+          
+          {/* 系統提示 Modal */}
+          {modal.isOpen && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                <div className="p-5 sm:p-6">
+                  <h3 className="text-base sm:text-lg font-bold text-slate-800 mb-2">系統提示</h3>
+                  <p className="text-sm sm:text-base text-slate-600 whitespace-pre-wrap">{modal.message}</p>
+                </div>
+                <div className="bg-slate-50 p-3 sm:p-4 flex justify-end gap-3 border-t border-slate-100">
+                  {modal.type === 'confirm' && (
+                    <button onClick={closeModal} className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 font-medium">
+                      取消
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => {
+                      if (modal.onConfirm) modal.onConfirm();
+                      closeModal();
+                    }} 
+                    className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md font-medium"
+                  >
+                    確定
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 文字匯出 Modal (支援 MD / LINE 切換) */}
+          {mdModal.isOpen && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                <div className="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-center">
+                  <h3 className="text-lg font-bold text-slate-800">{mdModal.title} - 文字匯出</h3>
+                  <button onClick={() => setMdModal(prev => ({...prev, isOpen: false}))} className="text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-1 transition-colors">
+                    <IconX className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                <div className="p-4 sm:p-5 flex-1 overflow-y-auto bg-white flex flex-col">
+                  {mdModal.isSummary && (
+                    <div className="flex bg-slate-100 p-1 rounded-lg mb-3 shrink-0">
+                      <button 
+                        onClick={() => setTextFormat('markdown')} 
+                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${textFormat === 'markdown' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
+                        Markdown 表格
+                      </button>
+                      <button 
+                        onClick={() => setTextFormat('list')} 
+                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${textFormat === 'list' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
+                        LINE 條列版
+                      </button>
+                    </div>
+                  )}
+
+                  <textarea
+                    readOnly
+                    value={textFormat === 'markdown' ? mdModal.content : mdModal.listContent}
+                    className="w-full h-48 sm:h-64 p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono text-slate-700 outline-none resize-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 custom-scrollbar mb-3 shrink-0"
+                  />
+                  
+                  {/* 動態顯示解釋區塊 */}
+                  <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-3 sm:p-4 flex gap-2.5 items-start mt-auto">
+                    <IconInfo className="w-5 h-5 text-blue-500 mt-0.5 flex-none" />
+                    <div>
+                      {mdModal.isSummary ? (
+                        <>
+                          <p className="text-sm font-bold text-blue-800 mb-1">💡 貼上後覺得亂亂的怎麼辦？</p>
+                          <p className="text-xs sm:text-sm text-blue-700 leading-relaxed">
+                            • <strong>貼到 Word/Excel/護理系統：</strong>請關閉此視窗，直接點擊總表的<strong className="text-blue-800">「複製表格」</strong>按鈕。<br/>
+                            • <strong>貼到 LINE 通訊軟體：</strong>請切換為上方的<strong className="text-blue-800">「LINE 條列版」</strong>，無雜亂符號！
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm font-bold text-blue-800 mb-1">💡 什麼是 Markdown 格式？</p>
+                          <p className="text-xs sm:text-sm text-blue-700 leading-relaxed">
+                            利用簡單符號 (如 <code className="bg-blue-100 px-1 rounded">-</code> 或 <code className="bg-blue-100 px-1 rounded">**</code>) 標記格式的純文字。直接複製貼上至支援的交班系統或 Notion，就會自動轉換為漂亮排版。
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-3 sm:p-4 flex justify-end gap-3 border-t border-slate-100">
+                  <button onClick={() => setMdModal(prev => ({...prev, isOpen: false}))} className="px-4 py-2 text-sm text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 font-medium">關閉</button>
+                  <button onClick={copyMarkdownToClipboard} className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md font-medium active:scale-95 transition-transform">
+                    <IconCopy className="w-4 h-4" /> 一鍵複製
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 頂部導覽列 */}
+          <header className="bg-blue-700 text-white shadow-md sticky top-0 z-40 w-full" onClick={e => e.stopPropagation()}>
+            <div className="max-w-4xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex justify-between items-center">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <IconClipboard />
+                <h1 className="text-base sm:text-lg md:text-xl font-bold tracking-wide">空機點班</h1>
+              </div>
+              <button onClick={requestClearData} className="text-blue-200 hover:text-white flex items-center gap-1 text-xs sm:text-sm bg-blue-800 px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-lg transition active:scale-95">
+                <IconX />清空
+              </button>
+            </div>
+            
+            {/* 標籤頁切換 */}
+            <div className="flex overflow-x-auto hide-scrollbar border-t border-blue-600 w-full">
+              {AREAS.map(area => (
+                <button
+                  key={area}
+                  onClick={() => { setActiveTab(area); setFocusedItem(null); }}
+                  className={`flex-1 py-2.5 sm:py-3 px-2 sm:px-4 min-w-[65px] sm:min-w-[80px] text-sm sm:text-base text-center font-medium border-b-4 transition-colors ${
+                    activeTab === area ? 'border-white bg-blue-800 text-white' : 'border-transparent text-blue-200 hover:bg-blue-600'
+                  }`}
+                >
+                  {area}
+                </button>
+              ))}
+              <button
+                onClick={() => { setActiveTab('SUMMARY'); setFocusedItem(null); }}
+                className={`flex-1 py-2.5 sm:py-3 px-2 sm:px-4 min-w-[85px] sm:min-w-[100px] text-sm sm:text-base text-center font-bold border-b-4 transition-colors ${
+                  activeTab === 'SUMMARY' ? 'border-yellow-400 bg-blue-800 text-yellow-400' : 'border-transparent text-blue-200 hover:bg-blue-600'
+                }`}
+              >
+                總表預覽
+              </button>
+            </div>
+          </header>
+
+          <main className="flex-1 max-w-4xl w-full mx-auto p-2.5 sm:p-4 md:p-6 pb-32">
+            
+            {/* --- 編輯區塊 --- */}
+            {AREAS.includes(activeTab) && (
+              <div className="space-y-3 sm:space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center mb-1">
+                  <div>
+                    <h2 className="text-base sm:text-lg font-bold text-slate-700">區域：{activeTab}</h2>
+                    <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">點選欄位可編輯數量；<strong className="text-blue-600 font-medium">右側按鈕可匯出純文字，方便複製交班。</strong></p>
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openMdModal(activeTab); }}
+                    className="flex items-center gap-1 sm:gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg text-[13px] sm:text-sm font-medium transition-colors border border-slate-300 active:scale-95 whitespace-nowrap"
+                  >
+                    <IconFileText className="w-4 h-4" /> 
+                    <span className="hidden sm:inline">匯出文字</span>
+                    <span className="sm:hidden">匯出</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
+                  {ITEMS.filter(item => item.validAreas.includes(activeTab)).map(item => {
+                    const isFocused = focusedItem === item.id;
+                    const isUnchanged = inventory[activeTab][item.id] === '0';
+                    
+                    return (
+                      <div 
+                        key={item.id} 
+                        onClick={(e) => { e.stopPropagation(); setFocusedItem(item.id); }}
+                        className={`bg-white p-2.5 sm:p-4 rounded-xl border flex flex-col gap-2 transition-all duration-200 ease-in-out cursor-pointer select-none
+                          ${isFocused 
+                            ? 'scale-[1.03] shadow-lg border-blue-500 ring-2 ring-blue-200 z-10' 
+                            : 'scale-100 shadow-sm border-slate-200 hover:border-blue-300'
+                          }`}
+                      >
+                        <div className="flex justify-between items-start pointer-events-none">
+                          <label className="font-bold text-[13px] sm:text-base text-slate-800 leading-tight">
+                            {item.name}
+                          </label>
+                          {isUnchanged && (
+                            <span className="text-[9px] sm:text-xs font-normal text-slate-400 bg-slate-100 px-1 py-0.5 sm:px-2 sm:py-1 rounded whitespace-nowrap ml-1">
+                              未異動
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex gap-1 sm:gap-2 items-center w-full">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleMainMathChange(activeTab, item.id, -1); }}
+                            className={`flex-none w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 active:bg-slate-300 transition-colors ${isFocused ? 'bg-blue-50 text-blue-600 border border-blue-200' : ''}`}
+                          >
+                            <IconMinus />
+                          </button>
+                          
+                          <input
+                            type="text"
+                            value={inventory[activeTab][item.id]}
+                            onChange={(e) => handleInputChange(activeTab, item.id, e.target.value)}
+                            onClick={(e) => { e.stopPropagation(); setFocusedItem(item.id); }}
+                            className={`min-w-0 w-full flex-1 text-center text-base sm:text-xl font-bold p-1 sm:p-1.5 h-8 sm:h-10 border rounded-lg outline-none transition-colors 
+                              ${isFocused ? 'border-blue-500 bg-blue-50/30' : 'border-slate-300'}`}
+                          />
+                          
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleMainMathChange(activeTab, item.id, 1); }}
+                            className={`flex-none w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 active:bg-slate-300 transition-colors ${isFocused ? 'bg-blue-50 text-blue-600 border border-blue-200' : ''}`}
+                          >
+                            <IconPlus />
+                          </button>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-1 mt-auto w-full">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleStatusIncrease(activeTab, item.id, '請修'); }} 
+                            className="col-span-1 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-md text-[10px] sm:text-xs font-medium transition active:scale-95 border border-red-100 flex items-center justify-center leading-none"
+                          >
+                            +1(請修)
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleStatusIncrease(activeTab, item.id, '轉送'); }} 
+                            className="col-span-1 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-md text-[10px] sm:text-xs font-medium transition active:scale-95 border border-orange-100 flex items-center justify-center leading-none"
+                          >
+                            +1(轉送)
+                          </button>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleResetItem(activeTab, item.id); }} 
+                            className="col-span-2 py-1.5 bg-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-200 rounded-md text-[11px] sm:text-xs font-medium active:scale-95 transition-colors border border-transparent flex items-center justify-center leading-none"
+                          >
+                            歸零
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* --- 總表預覽 (圖片輸出區) --- */}
+            {activeTab === 'SUMMARY' && (
+              <div className="space-y-3 sm:space-y-4 animate-in fade-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 sm:gap-4 bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200">
+                  <div>
+                    <h2 className="text-base sm:text-lg font-bold text-slate-800">統計總表</h2>
+                    <p className="text-[11px] sm:text-sm text-slate-500 mt-0.5">提供最齊全的格式，支援複製到任何系統！</p>
+                  </div>
+                  
+                  {/* 改良的匯出工具列 */}
+                  <div className="flex flex-wrap sm:flex-nowrap w-full md:w-auto gap-2">
+                    <button 
+                      onClick={copyRichTextTable}
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 sm:px-4 sm:py-2 rounded-lg text-sm sm:text-base font-bold shadow-md transition-all active:scale-95"
+                    >
+                      <IconTable className="w-4 h-4 sm:w-5 sm:h-5"/> 
+                      <span className="whitespace-nowrap">複製表格</span>
+                    </button>
+                    <button 
+                      onClick={() => openMdModal('SUMMARY')}
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white px-3 py-2.5 sm:px-4 sm:py-2 rounded-lg text-sm sm:text-base font-bold shadow-md transition-all active:scale-95"
+                    >
+                      <IconFileText className="w-4 h-4 sm:w-5 sm:h-5"/> 
+                      <span className="whitespace-nowrap">匯出文字</span>
+                    </button>
+                    <button 
+                      onClick={exportAsImage}
+                      disabled={isExporting}
+                      className="w-full sm:w-auto flex-none flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2.5 sm:px-4 sm:py-2 rounded-lg text-sm sm:text-base font-bold shadow-md shadow-emerald-600/20 transition-all disabled:opacity-70 active:scale-95"
+                    >
+                      {isExporting ? '生成中...' : <><IconCamera className="w-4 h-4 sm:w-5 sm:h-5" /> <span className="whitespace-nowrap">儲存圖片</span></>}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="w-full max-w-[calc(100vw-1.2rem)] sm:max-w-full overflow-x-auto bg-white p-2 sm:p-4 rounded-xl shadow-sm border border-slate-200 custom-scrollbar">
+                  
+                  {/* === 即將被匯出為圖片/複製為表格的範圍 === */}
+                  <div ref={tableRef} className="bg-white p-4 min-w-[650px] report-table">
+                    
+                    {/* 表頭時間與標題 */}
+                    <div className="flex justify-between items-end mb-2 pb-1">
+                      <h2 className="text-xl font-bold text-black m-0 tracking-wider">空機點班統計表</h2>
+                      <div className="text-sm font-bold text-black bg-slate-100 px-3 py-1 rounded-sm border border-slate-300">
+                        統計時間：{currentTimeStr}
+                      </div>
+                    </div>
+                    
+                    {/* 嚴格的 Excel 格式表格 */}
+                    <table style={{ borderCollapse: 'collapse', width: '100%', color: '#000000', border: '1px solid black' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ border: '1px solid black', padding: '6px 8px', backgroundColor: '#ffffff', fontWeight: 'bold' }}>空機統計</th>
+                          {AREAS.map(area => (
+                            <th key={area} style={{ border: '1px solid black', padding: '6px 8px', backgroundColor: '#ffffff', fontWeight: 'bold' }}>{area}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ITEMS.map((item, idx) => (
+                          <tr key={item.id}>
+                            <td style={{ 
+                              border: '1px solid black', 
+                              padding: '6px 8px', 
+                              textAlign: 'left',
+                              backgroundColor: item.isYellow ? '#FFC000' : '#ffffff' 
+                            }}>
+                              {item.name}
+                            </td>
+                            {AREAS.map(area => {
+                              const spanInfo = cellSpans[area]?.[item.id] || { span: 1, skip: false };
+                              
+                              // 如果此格被上方合併，則不渲染
+                              if (spanInfo.skip) return null;
+
+                              const val = inventory[area]?.[item.id];
+                              const isNA = val === 'N/A';
+                              
+                              return (
+                                <td 
+                                  key={`${area}-${item.id}`} 
+                                  rowSpan={spanInfo.span}
+                                  style={{ 
+                                    border: '1px solid black', 
+                                    padding: '6px 8px', 
+                                    textAlign: 'center',
+                                    verticalAlign: 'middle',
+                                    backgroundColor: isNA ? '#D9D9D9' : '#ffffff',
+                                    fontWeight: isNA ? 'normal' : 'bold'
+                                  }}
+                                >
+                                  {val}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* === 圖片/表格範圍結束 === */}
+
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
