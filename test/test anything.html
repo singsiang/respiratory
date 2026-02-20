@@ -51,6 +51,7 @@
     const IconFileText = ({className="w-5 h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>;
     const IconCopy = ({className="w-5 h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>;
     const IconInfo = ({className="w-4 h-4"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>;
+    const IconTable = ({className="w-5 h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="9" x2="9" y2="21"></line><line x1="15" y1="9" x2="15" y2="21"></line></svg>;
 
     // --- 資料模型 ---
     const AREAS = ['9F', 'MICU', 'ER', 'VMICU'];
@@ -78,7 +79,9 @@
       const [focusedItem, setFocusedItem] = useState(null); 
       const [isExporting, setIsExporting] = useState(false);
       const [modal, setModal] = useState({ isOpen: false, type: 'alert', message: '', onConfirm: null });
-      const [mdModal, setMdModal] = useState({ isOpen: false, content: '', title: '' });
+      // mdModal 擴增：支援多種文字格式與判斷是否為總表
+      const [mdModal, setMdModal] = useState({ isOpen: false, content: '', listContent: '', title: '', isSummary: false });
+      const [textFormat, setTextFormat] = useState('markdown'); // 'markdown' | 'list'
       const [currentTimeStr, setCurrentTimeStr] = useState('');
       const tableRef = useRef(null);
 
@@ -186,76 +189,7 @@
         });
       };
 
-      // --- 匯出 Markdown 文字 ---
-      const openMdModal = (tab) => {
-        let md = '';
-        if (tab === 'SUMMARY') {
-          md += `### 空機點班統計總表\n`;
-          md += `*統計時間：${currentTimeStr}*\n\n`;
-          md += `| 空機統計 | ${AREAS.join(' | ')} |\n`;
-          md += `| :--- | ${AREAS.map(() => ':---:').join(' | ')} |\n`;
-
-          ITEMS.forEach(item => {
-            const rowValues = AREAS.map(area => inventory[area][item.id] || 'N/A');
-            md += `| **${item.name}** | ${rowValues.join(' | ')} |\n`;
-          });
-        } else {
-          md += `### ${tab} 空機點班紀錄\n`;
-          md += `*統計時間：${currentTimeStr}*\n\n`;
-          const validItems = ITEMS.filter(item => item.validAreas.includes(tab));
-          validItems.forEach(item => {
-            md += `- **${item.name}**: ${inventory[tab][item.id]}\n`;
-          });
-        }
-        
-        setMdModal({ isOpen: true, content: md, title: tab === 'SUMMARY' ? '統計總表' : `${tab} 區` });
-      };
-
-      const copyMarkdownToClipboard = () => {
-        const textArea = document.createElement("textarea");
-        textArea.value = mdModal.content;
-        document.body.appendChild(textArea);
-        textArea.select();
-        try {
-          document.execCommand('copy');
-          showAlert('已成功複製 Markdown 文字到剪貼簿！可以去貼上囉。');
-        } catch (err) {
-          showAlert('複製失敗，請在文字方塊中手動全選並複製。');
-        }
-        document.body.removeChild(textArea);
-      };
-
-      const exportAsImage = async () => {
-        if (!window.html2canvas) {
-          showAlert('系統尚未準備好，請稍後再試。');
-          return;
-        }
-        
-        setIsExporting(true);
-        try {
-          const canvas = await window.html2canvas(tableRef.current, {
-            scale: 2.5, // 提高匯出畫質
-            backgroundColor: '#ffffff',
-            useCORS: true,
-            logging: false
-          });
-          
-          const image = canvas.toDataURL('image/png');
-          const link = document.createElement('a');
-          link.href = image;
-          const d = new Date();
-          const dateString = `${d.getMonth()+1}月${d.getDate()}日_${d.getHours()}時${d.getMinutes()}分`;
-          link.download = `空機點班統計_${dateString}.png`;
-          link.click();
-        } catch (err) {
-          console.error('匯出失敗:', err);
-          showAlert('匯出圖片失敗，請確認瀏覽器支援此功能。');
-        } finally {
-          setIsExporting(false);
-        }
-      };
-
-      // 計算表格的合併儲存格 (RowSpan) 邏輯
+      // 計算表格的合併儲存格 (RowSpan) 邏輯 - 提升層級供匯出文字使用
       const getCellSpans = () => {
         const spans = {};
         AREAS.forEach(area => {
@@ -265,7 +199,6 @@
             const item = ITEMS[i];
             const val = inventory[area]?.[item.id] || 'N/A';
             
-            // 如果是 N/A 且不是前兩列 (PO系列不合併)，則開始向下尋找合併
             if (val === 'N/A' && i >= 2) {
               let spanCount = 1;
               let j = i + 1;
@@ -287,6 +220,133 @@
         return spans;
       };
 
+      // --- 匯出文字 (Markdown / LINE 條列) ---
+      const openMdModal = (tab) => {
+        let md = '';
+        let listContent = '';
+        
+        if (tab === 'SUMMARY') {
+          const spans = getCellSpans();
+          
+          // 1. 生成 Markdown 版本 (將被合併的 N/A 替換為空白，畫面更貼近真表格)
+          md += `### 空機點班統計總表\n`;
+          md += `*統計時間：${currentTimeStr}*\n\n`;
+          md += `| 空機統計 | ${AREAS.join(' | ')} |\n`;
+          md += `| :--- | ${AREAS.map(() => ':---:').join(' | ')} |\n`;
+
+          ITEMS.forEach(item => {
+            const rowValues = AREAS.map(area => {
+              const spanInfo = spans[area]?.[item.id] || { span: 1, skip: false };
+              if (spanInfo.skip) return ' '; // 隱藏被合併的文字
+              return inventory[area][item.id] || 'N/A';
+            });
+            md += `| **${item.name}** | ${rowValues.join(' | ')} |\n`;
+          });
+          
+          // 2. 生成 LINE 條列版本 (方便手機端傳送)
+          listContent += `📊 空機點班總表 (${currentTimeStr})\n\n`;
+          AREAS.forEach(area => {
+            listContent += `【${area}】\n`;
+            let hasItems = false;
+            ITEMS.forEach(item => {
+              const val = inventory[area][item.id];
+              // 條列版只顯示非 0 且非 N/A 的項目，版面更乾淨
+              if (val !== 'N/A' && val !== '0') {
+                listContent += `- ${item.name}: ${val}\n`;
+                hasItems = true;
+              }
+            });
+            if (!hasItems) listContent += `- (無)\n`;
+            listContent += `\n`;
+          });
+          listContent = listContent.trim();
+          
+          setMdModal({ isOpen: true, content: md, listContent: listContent, title: '統計總表', isSummary: true });
+          setTextFormat('markdown');
+        } else {
+          // 單一區域匯出
+          md += `### ${tab} 空機點班紀錄\n`;
+          md += `*統計時間：${currentTimeStr}*\n\n`;
+          const validItems = ITEMS.filter(item => item.validAreas.includes(tab));
+          validItems.forEach(item => {
+            md += `- **${item.name}**: ${inventory[tab][item.id]}\n`;
+          });
+          setMdModal({ isOpen: true, content: md, listContent: md, title: `${tab} 區`, isSummary: false });
+          setTextFormat('markdown');
+        }
+      };
+
+      const copyMarkdownToClipboard = () => {
+        const textToCopy = textFormat === 'markdown' ? mdModal.content : mdModal.listContent;
+        const textArea = document.createElement("textarea");
+        textArea.value = textToCopy;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          showAlert('✅ 已成功複製文字！可以前往貼上了。');
+        } catch (err) {
+          showAlert('複製失敗，請在文字方塊中手動全選並複製。');
+        }
+        document.body.removeChild(textArea);
+      };
+
+      // --- 複製豐富文本表格 (支援 Word / Excel) ---
+      const copyRichTextTable = () => {
+        if (!tableRef.current) {
+          showAlert('系統尚未準備好表格，請稍後再試。');
+          return;
+        }
+        try {
+          const el = tableRef.current;
+          let range, sel;
+          if (document.createRange && window.getSelection) {
+            range = document.createRange();
+            sel = window.getSelection();
+            sel.removeAllRanges();
+            range.selectNodeContents(el);
+            sel.addRange(range);
+            document.execCommand("copy");
+            sel.removeAllRanges();
+            showAlert('✅ 已成功複製「表格格式」！\n您可以直接去貼上至 Word、Excel 或支援表格的交班系統中。');
+          } else {
+            showAlert('您的瀏覽器不支援此複製功能。');
+          }
+        } catch (err) {
+          console.error(err);
+          showAlert('複製失敗，請嘗試使用圖片匯出功能。');
+        }
+      };
+
+      // --- 匯出圖片 ---
+      const exportAsImage = async () => {
+        if (!window.html2canvas) {
+          showAlert('系統尚未準備好，請稍後再試。');
+          return;
+        }
+        setIsExporting(true);
+        try {
+          const canvas = await window.html2canvas(tableRef.current, {
+            scale: 2.5,
+            backgroundColor: '#ffffff',
+            useCORS: true,
+            logging: false
+          });
+          const image = canvas.toDataURL('image/png');
+          const link = document.createElement('a');
+          link.href = image;
+          const d = new Date();
+          const dateString = `${d.getMonth()+1}月${d.getDate()}日_${d.getHours()}時${d.getMinutes()}分`;
+          link.download = `空機點班統計_${dateString}.png`;
+          link.click();
+        } catch (err) {
+          console.error('匯出失敗:', err);
+          showAlert('匯出圖片失敗，請確認瀏覽器支援此功能。');
+        } finally {
+          setIsExporting(false);
+        }
+      };
+
       if (Object.keys(inventory).length === 0) {
         return <div className="p-10 text-center text-slate-500 flex flex-col items-center"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>系統載入中...</div>;
       }
@@ -302,7 +362,7 @@
               <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
                 <div className="p-5 sm:p-6">
                   <h3 className="text-base sm:text-lg font-bold text-slate-800 mb-2">系統提示</h3>
-                  <p className="text-sm sm:text-base text-slate-600">{modal.message}</p>
+                  <p className="text-sm sm:text-base text-slate-600 whitespace-pre-wrap">{modal.message}</p>
                 </div>
                 <div className="bg-slate-50 p-3 sm:p-4 flex justify-end gap-3 border-t border-slate-100">
                   {modal.type === 'confirm' && (
@@ -324,7 +384,7 @@
             </div>
           )}
 
-          {/* Markdown 匯出 Modal */}
+          {/* 文字匯出 Modal (支援 MD / LINE 切換) */}
           {mdModal.isOpen && (
             <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
               <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
@@ -335,21 +395,50 @@
                   </button>
                 </div>
                 
-                <div className="p-4 sm:p-5 flex-1 overflow-y-auto bg-white">
+                <div className="p-4 sm:p-5 flex-1 overflow-y-auto bg-white flex flex-col">
+                  {mdModal.isSummary && (
+                    <div className="flex bg-slate-100 p-1 rounded-lg mb-3 shrink-0">
+                      <button 
+                        onClick={() => setTextFormat('markdown')} 
+                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${textFormat === 'markdown' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
+                        Markdown 表格
+                      </button>
+                      <button 
+                        onClick={() => setTextFormat('list')} 
+                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${textFormat === 'list' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
+                      >
+                        LINE 條列版
+                      </button>
+                    </div>
+                  )}
+
                   <textarea
                     readOnly
-                    value={mdModal.content}
-                    className="w-full h-52 sm:h-64 p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono text-slate-700 outline-none resize-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 custom-scrollbar mb-3"
+                    value={textFormat === 'markdown' ? mdModal.content : mdModal.listContent}
+                    className="w-full h-48 sm:h-64 p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono text-slate-700 outline-none resize-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 custom-scrollbar mb-3 shrink-0"
                   />
                   
-                  {/* 新增的 Markdown 簡單解釋區塊 */}
-                  <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-3 sm:p-4 flex gap-2.5 items-start">
+                  {/* 動態顯示解釋區塊 */}
+                  <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-3 sm:p-4 flex gap-2.5 items-start mt-auto">
                     <IconInfo className="w-5 h-5 text-blue-500 mt-0.5 flex-none" />
                     <div>
-                      <p className="text-sm font-bold text-blue-800 mb-1">💡 什麼是 Markdown 格式？</p>
-                      <p className="text-xs sm:text-sm text-blue-700 leading-relaxed">
-                        這是一種利用簡單符號 (如 <code className="bg-blue-100 px-1 rounded">|</code> 或 <code className="bg-blue-100 px-1 rounded">-</code>) 來排版的純文字。<strong>只要將上方文字直接複製，貼上到支援的系統</strong> (例如交班系統、Notion、Slack)，系統就會自動把它轉換成漂亮的「表格」或「條列重點」喔！
-                      </p>
+                      {mdModal.isSummary ? (
+                        <>
+                          <p className="text-sm font-bold text-blue-800 mb-1">💡 貼上後覺得亂亂的怎麼辦？</p>
+                          <p className="text-xs sm:text-sm text-blue-700 leading-relaxed">
+                            • <strong>貼到 Word/Excel/護理系統：</strong>請關閉此視窗，直接點擊總表的<strong className="text-blue-800">「複製表格」</strong>按鈕。<br/>
+                            • <strong>貼到 LINE 通訊軟體：</strong>請切換為上方的<strong className="text-blue-800">「LINE 條列版」</strong>，無雜亂符號！
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm font-bold text-blue-800 mb-1">💡 什麼是 Markdown 格式？</p>
+                          <p className="text-xs sm:text-sm text-blue-700 leading-relaxed">
+                            利用簡單符號 (如 <code className="bg-blue-100 px-1 rounded">-</code> 或 <code className="bg-blue-100 px-1 rounded">**</code>) 標記格式的純文字。直接複製貼上至支援的交班系統或 Notion，就會自動轉換為漂亮排版。
+                          </p>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -408,7 +497,6 @@
                 <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center mb-1">
                   <div>
                     <h2 className="text-base sm:text-lg font-bold text-slate-700">區域：{activeTab}</h2>
-                    {/* 針對「匯出文字」按鈕的新增備註 */}
                     <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">點選欄位可編輯數量；<strong className="text-blue-600 font-medium">右側按鈕可匯出純文字，方便複製交班。</strong></p>
                   </div>
                   <button
@@ -502,25 +590,32 @@
             {/* --- 總表預覽 (圖片輸出區) --- */}
             {activeTab === 'SUMMARY' && (
               <div className="space-y-3 sm:space-y-4 animate-in fade-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 sm:gap-4 bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200">
                   <div>
                     <h2 className="text-base sm:text-lg font-bold text-slate-800">統計總表</h2>
-                    {/* 針對「匯出 MD」按鈕的新增備註 */}
-                    <p className="text-[11px] sm:text-sm text-slate-500 mt-0.5">可選擇輸出圖片，<strong className="text-blue-600 font-medium">或匯出 Markdown (MD) 文字表格</strong></p>
+                    <p className="text-[11px] sm:text-sm text-slate-500 mt-0.5">提供最齊全的格式，支援複製到任何系統！</p>
                   </div>
                   
-                  <div className="flex flex-row w-full sm:w-auto gap-2">
+                  {/* 改良的匯出工具列 */}
+                  <div className="flex flex-wrap sm:flex-nowrap w-full md:w-auto gap-2">
+                    <button 
+                      onClick={copyRichTextTable}
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 sm:px-4 sm:py-2 rounded-lg text-sm sm:text-base font-bold shadow-md transition-all active:scale-95"
+                    >
+                      <IconTable className="w-4 h-4 sm:w-5 sm:h-5"/> 
+                      <span className="whitespace-nowrap">複製表格</span>
+                    </button>
                     <button 
                       onClick={() => openMdModal('SUMMARY')}
                       className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white px-3 py-2.5 sm:px-4 sm:py-2 rounded-lg text-sm sm:text-base font-bold shadow-md transition-all active:scale-95"
                     >
                       <IconFileText className="w-4 h-4 sm:w-5 sm:h-5"/> 
-                      <span className="whitespace-nowrap">匯出 MD</span>
+                      <span className="whitespace-nowrap">匯出文字</span>
                     </button>
                     <button 
                       onClick={exportAsImage}
                       disabled={isExporting}
-                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2.5 sm:px-4 sm:py-2 rounded-lg text-sm sm:text-base font-bold shadow-md shadow-emerald-600/20 transition-all disabled:opacity-70 active:scale-95"
+                      className="w-full sm:w-auto flex-none flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2.5 sm:px-4 sm:py-2 rounded-lg text-sm sm:text-base font-bold shadow-md shadow-emerald-600/20 transition-all disabled:opacity-70 active:scale-95"
                     >
                       {isExporting ? '生成中...' : <><IconCamera className="w-4 h-4 sm:w-5 sm:h-5" /> <span className="whitespace-nowrap">儲存圖片</span></>}
                     </button>
@@ -529,7 +624,7 @@
 
                 <div className="w-full max-w-[calc(100vw-1.2rem)] sm:max-w-full overflow-x-auto bg-white p-2 sm:p-4 rounded-xl shadow-sm border border-slate-200 custom-scrollbar">
                   
-                  {/* === 即將被匯出為圖片的範圍 === */}
+                  {/* === 即將被匯出為圖片/複製為表格的範圍 === */}
                   <div ref={tableRef} className="bg-white p-4 min-w-[650px] report-table">
                     
                     {/* 表頭時間與標題 */}
@@ -592,7 +687,7 @@
                       </tbody>
                     </table>
                   </div>
-                  {/* === 圖片範圍結束 === */}
+                  {/* === 圖片/表格範圍結束 === */}
 
                 </div>
               </div>
@@ -607,3 +702,5 @@
   </script>
 </body>
 </html>
+
+
