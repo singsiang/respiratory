@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Respiratory 專案網頁導覽</title>
+    <!-- 引入 Tailwind CSS (CDN) 用於排版與樣式 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Lucide Icons (CDN) 用於圖示 -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans min-h-screen flex flex-col">
+
+    <!-- 頂部導覽列 -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                        <i data-lucide="layout" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-slate-800">Respiratory 網頁總覽</h1>
+                        <p class="text-sm text-slate-500" id="repo-name-display">singsiang/respiratory</p>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3">
+                    <a id="github-repo-link" href="https://github.com/singsiang/respiratory" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium rounded-lg transition-colors">
+                        <i data-lucide="github" class="w-4 h-4"></i>
+                        GitHub 原始碼
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要內容區 -->
+    <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full">
+        <!-- 搜尋列 -->
+        <div class="mb-8 relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <i data-lucide="search" class="h-5 w-5 text-slate-400"></i>
+            </div>
+            <input type="text" id="search-input" class="block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-shadow shadow-sm" placeholder="搜尋網頁檔案名稱或路徑...">
+        </div>
+
+        <!-- 狀態顯示區塊 (載入中) -->
+        <div id="loading-state" class="flex flex-col items-center justify-center py-20 text-slate-500">
+            <i data-lucide="loader-2" class="w-10 h-10 animate-spin mb-4 text-blue-500"></i>
+            <p class="text-lg font-medium">正在載入專案檔案列表...</p>
+        </div>
+
+        <!-- 狀態顯示區塊 (錯誤) -->
+        <div id="error-state" class="hidden bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg mb-8">
+            <div class="flex items-start">
+                <i data-lucide="alert-circle" class="w-5 h-5 text-red-500 mt-0.5 mr-3 flex-shrink-0"></i>
+                <div>
+                    <h3 class="text-red-800 font-medium text-lg">載入失敗</h3>
+                    <p id="error-message" class="text-red-600 mt-1"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 檔案列表區塊 -->
+        <div id="content-state" class="hidden space-y-6">
+            <div class="flex justify-between items-end border-b border-slate-200 pb-2">
+                <h2 class="text-lg font-semibold text-slate-700">
+                    找到 <span id="file-count">0</span> 個網頁檔案
+                </h2>
+            </div>
+
+            <!-- 空狀態 -->
+            <div id="empty-state" class="hidden text-center py-12 bg-white rounded-xl border border-slate-200 border-dashed">
+                <i data-lucide="file-text" class="mx-auto h-12 w-12 text-slate-300 mb-3"></i>
+                <p class="text-slate-500 text-lg">找不到符合條件的網頁檔案</p>
+            </div>
+
+            <!-- 卡片容器 -->
+            <div id="files-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <!-- 卡片將由 JavaScript 動態生成 -->
+            </div>
+        </div>
+    </main>
+
+    <!-- 頁尾 -->
+    <footer class="bg-white border-t border-slate-200 mt-auto">
+        <div class="max-w-5xl mx-auto px-4 py-6 text-center text-sm text-slate-500">
+            <p>自動同步自 GitHub API · 僅顯示 .html 檔案</p>
+        </div>
+    </footer>
+
+    <!-- 主要邏輯 Script -->
+    <script>
+        // 初始化 Lucide 圖示
+        lucide.createIcons();
+
+        // 專案設定
+        const OWNER = 'singsiang';
+        const REPO = 'respiratory';
+        const GITHUB_PAGES_BASE = `https://${OWNER}.github.io/${REPO}`;
+        
+        // 全域變數
+        let allFiles = [];
+        let defaultBranch = 'main';
+
+        // DOM 元素
+        const searchInput = document.getElementById('search-input');
+        const loadingState = document.getElementById('loading-state');
+        const errorState = document.getElementById('error-state');
+        const errorMessage = document.getElementById('error-message');
+        const contentState = document.getElementById('content-state');
+        const filesContainer = document.getElementById('files-container');
+        const emptyState = document.getElementById('empty-state');
+        const fileCount = document.getElementById('file-count');
+
+        // 主程式載入
+        async function fetchRepositoryData() {
+            try {
+                showState('loading');
+
+                // 1. 取得專案基本資訊
+                const repoRes = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}`);
+                if (repoRes.status === 403) throw new Error('GitHub API 請求次數達上限，請稍後再試。');
+                if (!repoRes.ok) throw new Error('找不到指定的 GitHub 專案，請確認專案是否為公開狀態。');
+                
+                const repoData = await repoRes.json();
+                defaultBranch = repoData.default_branch || 'main';
+
+                // 2. 取得專案樹狀結構
+                const treeRes = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/git/trees/${defaultBranch}?recursive=1`);
+                if (!treeRes.ok) throw new Error('無法讀取專案檔案列表。');
+                
+                const treeData = await treeRes.json();
+
+                // 3. 過濾並整理 .html 檔案 (排除 index.html 本身避免循環連結)
+                allFiles = treeData.tree
+                    .filter(item => item.type === 'blob' && item.path.toLowerCase().endsWith('.html') && item.path !== 'index.html')
+                    .map(file => ({
+                        path: file.path,
+                        name: file.path.split('/').pop(),
+                        directory: file.path.includes('/') ? file.path.substring(0, file.path.lastIndexOf('/')) : '根目錄'
+                    }));
+
+                // 渲染初始畫面
+                renderFiles(allFiles);
+                showState('content');
+
+            } catch (error) {
+                errorMessage.textContent = error.message;
+                showState('error');
+            }
+        }
+
+        // 渲染檔案卡片
+        function renderFiles(filesToRender) {
+            fileCount.textContent = filesToRender.length;
+
+            if (filesToRender.length === 0) {
+                filesContainer.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            filesContainer.innerHTML = filesToRender.map(file => {
+                const pagesUrl = `${GITHUB_PAGES_BASE}/${file.path}`;
+                const sourceUrl = `https://github.com/${OWNER}/${REPO}/blob/${defaultBranch}/${file.path}`;
+
+                return `
+                    <div class="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-all hover:border-blue-300 flex flex-col h-full group">
+                        <div class="flex items-start gap-3 mb-4">
+                            <div class="mt-1 bg-blue-50 group-hover:bg-blue-100 transition-colors p-2 rounded-lg text-blue-500 flex-shrink-0">
+                                <i data-lucide="file-text" class="w-5 h-5"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-base font-semibold text-slate-800 truncate" title="${file.name}">
+                                    ${file.name}
+                                </h3>
+                                <p class="text-xs text-slate-500 truncate mt-1" title="${file.directory}">
+                                    📁 ${file.directory}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-auto flex gap-2">
+                            <a href="${pagesUrl}" target="_blank" rel="noopener noreferrer" class="flex-1 flex justify-center items-center gap-1.5 py-2 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 text-sm font-medium rounded-lg transition-colors">
+                                <i data-lucide="external-link" class="w-4 h-4"></i>
+                                開啟網頁
+                            </a>
+                            <a href="${sourceUrl}" target="_blank" rel="noopener noreferrer" class="flex-none flex items-center justify-center p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors" title="查看程式碼">
+                                <i data-lucide="github" class="w-5 h-5"></i>
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // 重新初始化新生成的圖示
+            lucide.createIcons();
+        }
+
+        // 搜尋功能監聽器
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredFiles = allFiles.filter(file => 
+                file.path.toLowerCase().includes(searchTerm)
+            );
+            renderFiles(filteredFiles);
+        });
+
+        // 顯示狀態切換邏輯
+        function showState(state) {
+            loadingState.classList.add('hidden');
+            errorState.classList.add('hidden');
+            contentState.classList.add('hidden');
+
+            if (state === 'loading') loadingState.classList.remove('hidden');
+            if (state === 'error') errorState.classList.remove('hidden');
+            if (state === 'content') contentState.classList.remove('hidden');
+        }
+
+        // 啟動程式
+        fetchRepositoryData();
+    </script>
+</body>
+</html>
+
