@@ -1,316 +1,349 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ClipboardList, Camera, CheckCircle2, AlertCircle, Share2, Save, XCircle } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>呼吸器空機點班系統</title>
+  <!-- 引入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入 React 與 ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- 引入 Babel 讓瀏覽器可以直接編譯 JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- 引入 html2canvas 用於匯出圖片 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-// 定義病房區域
-const AREAS = ['9F', 'MICU', 'ER', 'VMICU'];
+  <style>
+    /* 隱藏滾動條但保持可以滾動 */
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    /* 防止手機點擊閃爍 */
+    body { -webkit-tap-highlight-color: transparent; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans pb-20">
+  <div id="root"></div>
 
-// 定義儀器列表與其適用的區域
-const ITEMS = [
-  { id: 'po_por', name: 'PO(por)', validAreas: ['VMICU'], isYellow: true },
-  { id: 'po_nt1d', name: 'PO(NT1D)', validAreas: ['9F', 'VMICU'], isYellow: true },
-  { id: 'savina', name: 'Savina', validAreas: ['9F', 'MICU', 'ER', 'VMICU'] },
-  { id: 'savina300', name: 'Savina300', validAreas: ['9F', 'MICU'] },
-  { id: 'v600', name: 'V600', validAreas: ['9F', 'MICU'] },
-  { id: 'servo300', name: 'Servo300', validAreas: ['9F'] },
-  { id: 'galileo', name: 'Galileo', validAreas: ['9F'] },
-  { id: 'dura', name: 'Dura', validAreas: ['MICU'] },
-  { id: 'evita4', name: 'Evita-4', validAreas: ['MICU', 'VMICU'] },
-  { id: 'po', name: 'PO', validAreas: ['9F'] },
-  { id: 'nonin', name: 'Nonin', validAreas: ['9F'] },
-  { id: 'hfnc', name: 'HFNC(AirVO2)', validAreas: ['9F', 'MICU', 'ER', 'VMICU'] },
-  { id: 'flexo', name: 'Flexo', validAreas: ['9F', 'MICU', 'ER', 'VMICU'] },
-  { id: 'trilogy', name: 'Trilogy', validAreas: ['VMICU'] },
-  { id: 'stellar', name: 'Stellar', validAreas: ['9F', 'MICU', 'ER'] }
-];
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
 
-export default function App() {
-  const [activeTab, setActiveTab] = useState('9F');
-  const [inventory, setInventory] = useState({});
-  const [isExporting, setIsExporting] = useState(false);
-  const tableRef = useRef(null);
+    // --- 圖示元件 (取代外部依賴，確保單檔完美運行) ---
+    const IconClipboard = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>
+    );
+    const IconCamera = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+    );
+    const IconCheck = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+    );
+    const IconAlert = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+    );
+    const IconX = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
+    );
 
-  // 初始化資料與動態載入 html2canvas
-  useEffect(() => {
-    // 載入 html2canvas 以支援圖片匯出功能
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-    script.async = true;
-    document.body.appendChild(script);
+    // --- 資料模型定義 ---
+    const AREAS = ['9F', 'MICU', 'ER', 'VMICU'];
+    const ITEMS = [
+      { id: 'po_por', name: 'PO(por)', validAreas: ['VMICU'], isYellow: true },
+      { id: 'po_nt1d', name: 'PO(NT1D)', validAreas: ['9F', 'VMICU'], isYellow: true },
+      { id: 'savina', name: 'Savina', validAreas: ['9F', 'MICU', 'ER', 'VMICU'] },
+      { id: 'savina300', name: 'Savina300', validAreas: ['9F', 'MICU'] },
+      { id: 'v600', name: 'V600', validAreas: ['9F', 'MICU'] },
+      { id: 'servo300', name: 'Servo300', validAreas: ['9F'] },
+      { id: 'galileo', name: 'Galileo', validAreas: ['9F'] },
+      { id: 'dura', name: 'Dura', validAreas: ['MICU'] },
+      { id: 'evita4', name: 'Evita-4', validAreas: ['MICU', 'VMICU'] },
+      { id: 'po', name: 'PO', validAreas: ['9F'] },
+      { id: 'nonin', name: 'Nonin', validAreas: ['9F'] },
+      { id: 'hfnc', name: 'HFNC(AirVO2)', validAreas: ['9F', 'MICU', 'ER', 'VMICU'] },
+      { id: 'flexo', name: 'Flexo', validAreas: ['9F', 'MICU', 'ER', 'VMICU'] },
+      { id: 'trilogy', name: 'Trilogy', validAreas: ['VMICU'] },
+      { id: 'stellar', name: 'Stellar', validAreas: ['9F', 'MICU', 'ER'] }
+    ];
 
-    // 初始化庫存資料 (預設為 '0')
-    const initialData = {};
-    AREAS.forEach(area => {
-      initialData[area] = {};
-      ITEMS.forEach(item => {
-        if (item.validAreas.includes(area)) {
-          initialData[area][item.id] = '0';
-        } else {
-          initialData[area][item.id] = 'N/A';
+    function App() {
+      const [activeTab, setActiveTab] = useState('9F');
+      const [inventory, setInventory] = useState({});
+      const [isExporting, setIsExporting] = useState(false);
+      const [modal, setModal] = useState({ isOpen: false, type: 'alert', message: '', onConfirm: null });
+      const tableRef = useRef(null);
+
+      // 初始化資料 (嘗試讀取暫存)
+      useEffect(() => {
+        const initialData = {};
+        AREAS.forEach(area => {
+          initialData[area] = {};
+          ITEMS.forEach(item => {
+            initialData[area][item.id] = item.validAreas.includes(area) ? '0' : 'N/A';
+          });
+        });
+        
+        try {
+          const savedData = localStorage.getItem('hospital_inventory_data');
+          if (savedData) {
+            setInventory(JSON.parse(savedData));
+          } else {
+            setInventory(initialData);
+          }
+        } catch (e) {
+          setInventory(initialData);
         }
-      });
-    });
-    
-    // 嘗試從 localStorage 讀取暫存
-    const savedData = localStorage.getItem('inventoryData');
-    if (savedData) {
-      setInventory(JSON.parse(savedData));
-    } else {
-      setInventory(initialData);
-    }
-  }, []);
+      }, []);
 
-  // 當資料變更時，自動儲存到 localStorage
-  useEffect(() => {
-    if (Object.keys(inventory).length > 0) {
-      localStorage.setItem('inventoryData', JSON.stringify(inventory));
-    }
-  }, [inventory]);
+      // 資料變更時自動儲存
+      useEffect(() => {
+        if (Object.keys(inventory).length > 0) {
+          localStorage.setItem('hospital_inventory_data', JSON.stringify(inventory));
+        }
+      }, [inventory]);
 
-  const handleInputChange = (area, itemId, value) => {
-    setInventory(prev => ({
-      ...prev,
-      [area]: {
-        ...prev[area],
-        [itemId]: value
-      }
-    }));
-  };
+      const showAlert = (message) => setModal({ isOpen: true, type: 'alert', message, onConfirm: null });
+      const showConfirm = (message, onConfirm) => setModal({ isOpen: true, type: 'confirm', message, onConfirm });
+      const closeModal = () => setModal({ isOpen: false, type: 'alert', message: '', onConfirm: null });
 
-  const appendStatus = (area, itemId, statusStr) => {
-    setInventory(prev => {
-      let currentVal = prev[area][itemId];
-      if (currentVal === '0' || currentVal === '') {
-        currentVal = `0${statusStr}`;
-      } else {
-        currentVal = `${currentVal}${statusStr}`;
-      }
-      return {
-        ...prev,
-        [area]: {
-          ...prev[area],
-          [itemId]: currentVal
+      const handleInputChange = (area, itemId, value) => {
+        setInventory(prev => ({
+          ...prev, [area]: { ...prev[area], [itemId]: value }
+        }));
+      };
+
+      const appendStatus = (area, itemId, statusStr) => {
+        setInventory(prev => {
+          let currentVal = prev[area][itemId];
+          if (currentVal === '0' || currentVal === '') currentVal = `0${statusStr}`;
+          else currentVal = `${currentVal}${statusStr}`;
+          return { ...prev, [area]: { ...prev[area], [itemId]: currentVal } };
+        });
+      };
+
+      const requestClearData = () => {
+        showConfirm('確定要清空所有點班紀錄嗎？資料將會歸零。', () => {
+          const resetData = { ...inventory };
+          AREAS.forEach(area => {
+            ITEMS.forEach(item => {
+              if (item.validAreas.includes(area)) resetData[area][item.id] = '0';
+            });
+          });
+          setInventory(resetData);
+          showAlert('資料已成功清空！');
+        });
+      };
+
+      const exportAsImage = async () => {
+        if (!window.html2canvas) {
+          showAlert('系統尚未準備好，請稍後再試。');
+          return;
+        }
+        
+        setIsExporting(true);
+        try {
+          const canvas = await window.html2canvas(tableRef.current, {
+            scale: 2, backgroundColor: '#ffffff', useCORS: true
+          });
+          
+          const image = canvas.toDataURL('image/png');
+          const link = document.createElement('a');
+          link.href = image;
+          const d = new Date();
+          const dateString = `${d.getMonth()+1}月${d.getDate()}日_${d.getHours()}時${d.getMinutes()}分`;
+          link.download = `空機點班統計_${dateString}.png`;
+          link.click();
+        } catch (err) {
+          console.error('匯出失敗:', err);
+          showAlert('匯出圖片失敗，請確認瀏覽器支援此功能。');
+        } finally {
+          setIsExporting(false);
         }
       };
-    });
-  };
 
-  const clearData = () => {
-    if (window.confirm('確定要清空所有點班紀錄嗎？')) {
-      const resetData = { ...inventory };
-      AREAS.forEach(area => {
-        ITEMS.forEach(item => {
-          if (item.validAreas.includes(area)) {
-            resetData[area][item.id] = '0';
-          }
-        });
-      });
-      setInventory(resetData);
-      localStorage.removeItem('inventoryData');
-    }
-  };
+      if (Object.keys(inventory).length === 0) {
+        return <div className="p-10 text-center text-slate-500">載入中...</div>;
+      }
 
-  const exportAsImage = async () => {
-    if (!window.html2canvas) {
-      alert('圖片生成模組載入中，請稍後再試。');
-      return;
-    }
-    
-    setIsExporting(true);
-    try {
-      // 擷取表格為 Canvas
-      const canvas = await window.html2canvas(tableRef.current, {
-        scale: 2, // 提高解析度
-        backgroundColor: '#ffffff'
-      });
-      
-      // 轉換為圖片網址並下載
-      const image = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.href = image;
-      const date = new Date();
-      const dateString = `${date.getMonth()+1}月${date.getDate()}日_${date.getHours()}時${date.getMinutes()}分`;
-      link.download = `空機點班統計_${dateString}.png`;
-      link.click();
-    } catch (err) {
-      console.error('匯出圖片失敗:', err);
-      alert('匯出圖片失敗，請重試。');
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  if (Object.keys(inventory).length === 0) return <div className="p-4 text-center">載入中...</div>;
-
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-20">
-      {/* 頂部導覽列 */}
-      <header className="bg-blue-700 text-white shadow-md sticky top-0 z-20">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <ClipboardList size={24} />
-            <h1 className="text-xl font-bold tracking-wider">呼吸器空機點班系統</h1>
-          </div>
-          <button 
-            onClick={clearData}
-            className="text-blue-200 hover:text-white flex items-center gap-1 text-sm bg-blue-800 px-3 py-1.5 rounded-lg transition"
-          >
-            <XCircle size={16} />
-            清空
-          </button>
-        </div>
-        
-        {/* 標籤頁切換 */}
-        <div className="flex overflow-x-auto hide-scrollbar border-t border-blue-600">
-          {AREAS.map(area => (
-            <button
-              key={area}
-              onClick={() => setActiveTab(area)}
-              className={`flex-1 py-3 px-4 min-w-[80px] text-center font-medium border-b-4 transition-colors ${
-                activeTab === area ? 'border-white bg-blue-800 text-white' : 'border-transparent text-blue-200 hover:bg-blue-600'
-              }`}
-            >
-              {area}
-            </button>
-          ))}
-          <button
-            onClick={() => setActiveTab('SUMMARY')}
-            className={`flex-1 py-3 px-4 min-w-[100px] text-center font-medium border-b-4 transition-colors ${
-              activeTab === 'SUMMARY' ? 'border-yellow-400 bg-blue-800 text-yellow-400' : 'border-transparent text-blue-200 hover:bg-blue-600'
-            }`}
-          >
-            總表預覽
-          </button>
-        </div>
-      </header>
-
-      <main className="max-w-4xl mx-auto p-4 mt-2">
-        {/* 區域點班輸入區 */}
-        {AREAS.includes(activeTab) && (
-          <div className="space-y-4">
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center mb-6">
-              <div>
-                <h2 className="text-lg font-bold text-slate-700">目前區域：{activeTab}</h2>
-                <p className="text-sm text-slate-500">僅顯示該區域需點班之儀器</p>
-              </div>
-              <CheckCircle2 className="text-green-500" size={32} opacity={0.2} />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              {ITEMS.filter(item => item.validAreas.includes(activeTab)).map(item => (
-                <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-3">
-                  <label className="font-semibold text-lg text-slate-800 flex justify-between items-center">
-                    {item.name}
-                    {inventory[activeTab][item.id] === '0' && <span className="text-xs font-normal text-slate-400 bg-slate-100 px-2 py-1 rounded">未有異動</span>}
-                  </label>
-                  
-                  <div className="flex gap-2 items-center">
-                    <input
-                      type="text"
-                      value={inventory[activeTab][item.id]}
-                      onChange={(e) => handleInputChange(activeTab, item.id, e.target.value)}
-                      className="flex-1 text-xl font-bold p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    />
-                  </div>
-                  
-                  {/* 快捷按鈕 */}
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    <button onClick={() => appendStatus(activeTab, item.id, '+1')} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-sm font-medium transition">
-                      +1
-                    </button>
-                    <button onClick={() => appendStatus(activeTab, item.id, '+1(請修)')} className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-md text-sm font-medium transition flex items-center gap-1">
-                      <AlertCircle size={14} /> +1(請修)
-                    </button>
-                    <button onClick={() => appendStatus(activeTab, item.id, '+1(轉送)')} className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-md text-sm font-medium transition">
-                      +1(轉送)
-                    </button>
-                    <button onClick={() => handleInputChange(activeTab, item.id, '0')} className="px-3 py-1.5 ml-auto text-slate-500 hover:text-slate-700 text-sm underline">
-                      歸零
-                    </button>
-                  </div>
+      return (
+        <div className="min-h-screen flex flex-col">
+          {/* 自訂 Modal */}
+          {modal.isOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div className="p-6">
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">系統提示</h3>
+                  <p className="text-slate-600">{modal.message}</p>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 總表預覽區 */}
-        {activeTab === 'SUMMARY' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-              <div>
-                <h2 className="text-lg font-bold text-slate-800">點班統計總表</h2>
-                <p className="text-sm text-slate-500">確認無誤後可匯出圖片分享</p>
+                <div className="bg-slate-50 p-4 flex justify-end gap-3 border-t border-slate-100">
+                  {modal.type === 'confirm' && (
+                    <button onClick={closeModal} className="px-4 py-2 text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">
+                      取消
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => {
+                      if (modal.onConfirm) modal.onConfirm();
+                      closeModal();
+                    }} 
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md"
+                  >
+                    確定
+                  </button>
+                </div>
               </div>
-              <button 
-                onClick={exportAsImage}
-                disabled={isExporting}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-md shadow-green-600/20 transition-all disabled:opacity-70"
-              >
-                {isExporting ? <span className="animate-pulse">生成中...</span> : <><Camera size={20} /> 儲存圖片</>}
+            </div>
+          )}
+
+          {/* 頂部導覽列 */}
+          <header className="bg-blue-700 text-white shadow-md sticky top-0 z-20">
+            <div className="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <IconClipboard />
+                <h1 className="text-lg md:text-xl font-bold tracking-wider">呼吸器空機點班</h1>
+              </div>
+              <button onClick={requestClearData} className="text-blue-200 hover:text-white flex items-center gap-1 text-sm bg-blue-800 px-3 py-1.5 rounded-lg transition active:scale-95">
+                <IconX />清空
               </button>
             </div>
-
-            {/* 表格容器 (套用與圖片完全相同的樣式) */}
-            <div className="overflow-x-auto bg-white p-2 rounded-xl shadow-sm border border-slate-200">
-              <div ref={tableRef} className="p-4 bg-white min-w-[600px]">
-                <table className="w-full border-collapse border-2 border-slate-800 text-center font-sans">
-                  <thead>
-                    <tr>
-                      <th className="border border-slate-800 p-2 bg-slate-100 font-bold text-slate-800 w-1/5">空機統計</th>
-                      {AREAS.map(area => (
-                        <th key={area} className="border border-slate-800 p-2 bg-slate-100 font-bold text-slate-800 w-1/5">{area}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ITEMS.map(item => (
-                      <tr key={item.id}>
-                        <td className={`border border-slate-800 p-2 font-medium text-left ${item.isYellow ? 'bg-amber-400' : 'bg-white'}`}>
-                          {item.name}
-                        </td>
-                        {AREAS.map(area => {
-                          const val = inventory[area]?.[item.id];
-                          const isNA = val === 'N/A';
-                          return (
-                            <td 
-                              key={`${area}-${item.id}`} 
-                              className={`border border-slate-800 p-2 ${isNA ? 'bg-gray-300 text-slate-500' : 'bg-white text-slate-900 font-medium'}`}
-                            >
-                              {val}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
             
-            {/* 提示說明 */}
-            <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm leading-relaxed border border-blue-100">
-              💡 <strong>操作提示：</strong><br />
-              1. 點擊上方的區域標籤（9F, MICU...）來進行各區的點班。<br />
-              2. 輸入欄位支援文字，您可以直接輸入如 <code>4+1(請修)</code>，或使用下方的快捷按鈕。<br />
-              3. 所有資料會自動暫存在瀏覽器中，不小心關閉網頁也不會消失。<br />
-              4. 點擊「儲存圖片」即可將表格轉為 PNG 圖片下載。
+            {/* 標籤頁切換 */}
+            <div className="flex overflow-x-auto hide-scrollbar border-t border-blue-600">
+              {AREAS.map(area => (
+                <button
+                  key={area}
+                  onClick={() => setActiveTab(area)}
+                  className={`flex-1 py-3 px-4 min-w-[80px] text-center font-medium border-b-4 transition-colors ${
+                    activeTab === area ? 'border-white bg-blue-800 text-white' : 'border-transparent text-blue-200 hover:bg-blue-600'
+                  }`}
+                >
+                  {area}
+                </button>
+              ))}
+              <button
+                onClick={() => setActiveTab('SUMMARY')}
+                className={`flex-1 py-3 px-4 min-w-[100px] text-center font-bold border-b-4 transition-colors ${
+                  activeTab === 'SUMMARY' ? 'border-yellow-400 bg-blue-800 text-yellow-400' : 'border-transparent text-blue-200 hover:bg-blue-600'
+                }`}
+              >
+                總表預覽
+              </button>
             </div>
-          </div>
-        )}
-      </main>
-      
-      {/* 隱藏滾動條的 CSS */}
-      <style dangerouslySetInnerHTML={{__html: `
-        .hide-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .hide-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}} />
-    </div>
-  );
-}
+          </header>
 
+          <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-6">
+            {/* 區域點班區塊 */}
+            {AREAS.includes(activeTab) && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center mb-2">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-700">區域：{activeTab}</h2>
+                    <p className="text-sm text-slate-500">已隱藏不需點班之儀器</p>
+                  </div>
+                  <div className="text-green-500 opacity-20"><IconCheck /></div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {ITEMS.filter(item => item.validAreas.includes(activeTab)).map(item => (
+                    <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-3">
+                      <label className="font-bold text-lg text-slate-800 flex justify-between items-center">
+                        {item.name}
+                        {inventory[activeTab][item.id] === '0' && <span className="text-xs font-normal text-slate-400 bg-slate-100 px-2 py-1 rounded-md">未異動</span>}
+                      </label>
+                      
+                      <input
+                        type="text"
+                        value={inventory[activeTab][item.id]}
+                        onChange={(e) => handleInputChange(activeTab, item.id, e.target.value)}
+                        className="w-full text-xl font-bold p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                      />
+                      
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        <button onClick={() => appendStatus(activeTab, item.id, '+1')} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-sm font-medium transition active:scale-95">
+                          +1
+                        </button>
+                        <button onClick={() => appendStatus(activeTab, item.id, '+1(請修)')} className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-md text-sm font-medium transition flex items-center gap-1 active:scale-95">
+                          <IconAlert /> +1(請修)
+                        </button>
+                        <button onClick={() => appendStatus(activeTab, item.id, '+1(轉送)')} className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-md text-sm font-medium transition active:scale-95">
+                          +1(轉送)
+                        </button>
+                        <button onClick={() => handleInputChange(activeTab, item.id, '0')} className="px-3 py-1.5 ml-auto text-slate-500 hover:text-slate-800 text-sm font-medium active:scale-95">
+                          歸零
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 總表預覽區塊 */}
+            {activeTab === 'SUMMARY' && (
+              <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-800">統計總表</h2>
+                    <p className="text-sm text-slate-500">請確認表格數據是否正確</p>
+                  </div>
+                  <button 
+                    onClick={exportAsImage}
+                    disabled={isExporting}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-lg font-bold shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-70 active:scale-95"
+                  >
+                    {isExporting ? '生成圖片中...' : <><IconCamera /> 儲存為圖片分享</>}
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto bg-white p-1 md:p-2 rounded-xl shadow-sm border border-slate-200">
+                  {/* 此區塊為將被轉為圖片的內容 */}
+                  <div ref={tableRef} className="p-4 bg-white min-w-[650px]">
+                    <table className="w-full border-collapse border-2 border-slate-800 text-center text-[15px]">
+                      <thead>
+                        <tr>
+                          <th className="border border-slate-800 p-2 bg-slate-100 font-bold text-slate-800 w-1/5">空機統計</th>
+                          {AREAS.map(area => (
+                            <th key={area} className="border border-slate-800 p-2 bg-slate-100 font-bold text-slate-800 w-1/5">{area}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ITEMS.map(item => (
+                          <tr key={item.id}>
+                            <td className={`border border-slate-800 p-2 font-bold text-left ${item.isYellow ? 'bg-amber-400' : 'bg-white'}`}>
+                              {item.name}
+                            </td>
+                            {AREAS.map(area => {
+                              const val = inventory[area]?.[item.id];
+                              const isNA = val === 'N/A';
+                              return (
+                                <td 
+                                  key={`${area}-${item.id}`} 
+                                  className={`border border-slate-800 p-2 ${isNA ? 'bg-gray-300 text-slate-500 text-sm' : 'bg-white text-slate-900 font-bold text-lg'}`}
+                                >
+                                  {val}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                
+                <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm leading-relaxed border border-blue-100">
+                  💡 <strong>小提醒：</strong> 若要分享至 LINE 群組，請點擊上方綠色按鈕將表格儲存為圖片後直接傳送即可。
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
 
