@@ -3,21 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ABG 酸鹼判讀與病因分析</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & ReactDOM -->
+    <title>動脈血氣體分析 (ABG) 判讀輔助工具</title>
+    
+    <!-- 引入 React 與 ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel for in-browser JSX compilation -->
-    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- 引入 Babel 用於瀏覽器端編譯 JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 引入 FontAwesome 圖示 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f8fafc; }
-        /* 隱藏數字輸入框的上下箭頭 */
-        input[type="number"]::-webkit-inner-spin-button, input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type="number"] { -moz-appearance: textfield; }
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
+        .input-focus-ring:focus-within { box-shadow: 0 0 0 2px #3b82f6; border-color: #3b82f6; }
+        
+        /* 動畫效果 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
     </style>
 </head>
 <body>
@@ -26,294 +37,369 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- 核心醫療邏輯與圖表常數 ---
-        // 這些常數用於將圖片上的座標映射到實際的 pH 與 HCO3 值
-        const GRAPH_X_MIN = 7.0;
-        const GRAPH_X_MAX = 7.8;
-        const GRAPH_Y_MIN = 0;
-        const GRAPH_Y_MAX = 60;
+        // --- 診斷資料庫 ---
+        const DIAGNOSIS_DATA = {
+            "Metabolic acidosis": {
+                title: "代謝性酸中毒 (Metabolic Acidosis)",
+                color: "text-red-600",
+                bgColor: "bg-red-50",
+                icon: "fa-droplet",
+                desc: "原發性 HCO3- 降低導致血液變酸。正常生理代償會透過過度換氣來降低 PaCO2。",
+                causes: [
+                    "高陰離子間隙 (MUDPILES)：糖尿病酮酸中毒 (DKA)、乳酸中毒、尿毒症、水楊酸中毒等。",
+                    "正常陰離子間隙 (HARDUP)：嚴重腹瀉、腎小管酸中毒 (RTA)。"
+                ]
+            },
+            "Metabolic alkalosis": {
+                title: "代謝性鹼中毒 (Metabolic Alkalosis)",
+                color: "text-blue-600",
+                bgColor: "bg-blue-50",
+                icon: "fa-arrow-up-right-dots",
+                desc: "原發性 HCO3- 升高導致血液變鹼。代償機制為呼吸變慢以保留二氧化碳。",
+                causes: [
+                    "流失胃酸：頻繁嘔吐、鼻胃管引流。",
+                    "體液及電解質流失：利尿劑使用 (導致低血鉀、低血氯)。",
+                    "內分泌異常：原發性醛固酮增多症。"
+                ]
+            },
+            "Acute respiratory acidosis": {
+                title: "急性呼吸性酸中毒 (Acute Resp. Acidosis)",
+                color: "text-orange-600",
+                bgColor: "bg-orange-50",
+                icon: "fa-lungs",
+                desc: "急性 PaCO2 升高導致血液變酸。腎臟尚未有足夠時間進行代償 (HCO3- 僅輕微上升)。",
+                causes: [
+                    "中樞神經受抑制：鴉片類藥物、鎮靜劑過量。",
+                    "急性氣道阻塞：異物吸入、嚴重氣喘急性發作。",
+                    "肺部疾病：嚴重肺炎、急性呼吸窘迫症候群 (ARDS)。",
+                    "神經肌肉無力：重症肌無力急性惡化。"
+                ]
+            },
+            "Chronic respiratory acidosis": {
+                title: "慢性呼吸性酸中毒 (Chronic Resp. Acidosis)",
+                color: "text-amber-600",
+                bgColor: "bg-amber-50",
+                icon: "fa-lungs-virus",
+                desc: "長期 PaCO2 升高，腎臟已進行代償保留 HCO3-，使 pH 值接近正常但仍偏酸。",
+                causes: [
+                    "氣道疾病：慢性阻塞性肺病 (COPD)。",
+                    "胸廓/呼吸控制問題：肥胖低通氣症候群 (OHS)。",
+                    "嚴重慢性間質性肺病。"
+                ]
+            },
+            "Acute respiratory alkalosis": {
+                title: "急性呼吸性鹼中毒 (Acute Resp. Alkalosis)",
+                color: "text-teal-600",
+                bgColor: "bg-teal-50",
+                icon: "fa-wind",
+                desc: "急性 PaCO2 降低 (過度換氣) 導致血液變鹼。腎臟尚未完全代償。",
+                causes: [
+                    "精神神經性：焦慮、恐慌發作導致過度換氣。",
+                    "生理刺激：急性疼痛、發燒。",
+                    "低氧血症：高海拔環境、初期肺栓塞。",
+                    "藥物：水楊酸中毒早期 (直接刺激呼吸中樞)。"
+                ]
+            },
+            "Chronic respiratory alkalosis": {
+                title: "慢性呼吸性鹼中毒 (Chronic Resp. Alkalosis)",
+                color: "text-cyan-600",
+                bgColor: "bg-cyan-50",
+                icon: "fa-leaf",
+                desc: "長期 PaCO2 降低，腎臟代償排出 HCO3-，pH 值接近正常但仍偏鹼。",
+                causes: [
+                    "生理變化：懷孕 (黃體素刺激呼吸中樞)。",
+                    "系統性疾病：慢性肝病、肝衰竭。",
+                    "環境適應：長期居住於高海拔區域。"
+                ]
+            },
+            "Normal": {
+                title: "正常 (Normal)",
+                color: "text-green-600",
+                bgColor: "bg-green-50",
+                icon: "fa-check-circle",
+                desc: "血液酸鹼值 (pH)、二氧化碳分壓 (PaCO2) 及碳酸氫根 (HCO3-) 皆落在正常範圍內。",
+                causes: ["無明顯酸鹼異常。"]
+            },
+            "Mixed": {
+                title: "混合型或代償中 (Mixed/Uncompensated)",
+                color: "text-slate-600",
+                bgColor: "bg-slate-100",
+                icon: "fa-circle-exclamation",
+                desc: "數值未落入單一典型的酸鹼異常區域，可能同時存在兩種以上的原發性異常，或是正處於過渡代償階段。",
+                causes: [
+                    "患者可能同時存在多重病因，例如：同時有敗血症(乳酸中毒)併發呼吸衰竭(呼吸性酸中毒)。",
+                    "亦可能為單一異常尚未達到穩定代償狀態。",
+                    "請綜合患者的病史、用藥紀錄與臨床症狀進行最終判斷。"
+                ]
+            }
+        };
 
-        // 根據您提供的圖片推算的網格邊界百分比 (可微調)
-        const IMG_X_MIN_PCT = 0.138; 
-        const IMG_X_MAX_PCT = 0.941; 
-        const IMG_Y_MIN_PCT = 0.898; 
-        const IMG_Y_MAX_PCT = 0.055; 
+        // --- 核心邏輯演算法 ---
+        function getDiagnosis(phStr, pco2Str, hco3Str) {
+            const ph = parseFloat(phStr);
+            const pco2 = parseFloat(pco2Str);
+            const hco3 = parseFloat(hco3Str);
 
-        const ABGApp = () => {
-            const [inputs, setInputs] = useState({ pH: 7.40, pCO2: 40, hco3: 24 });
-            const [dotPos, setDotPos] = useState({ x: 53.95, y: 56.12 }); // 預設 7.4, 24 的位置
-            const [analysis, setAnalysis] = useState({ result: '正常 (Normal)', causes: ['無明顯酸鹼異常'] });
-            const imgRef = useRef(null);
+            if (isNaN(ph) || isNaN(pco2) || isNaN(hco3)) return null;
 
-            // 當數值改變時，重新分析並移動圖片上的紅點
-            useEffect(() => {
-                const { pH, pCO2, hco3 } = inputs;
-                updateDotPosition(pH, hco3);
-                const res = interpretABG(pH, pCO2, hco3);
-                setAnalysis(res);
-            }, [inputs]);
+            // 1. 正常範圍判斷
+            if (ph >= 7.35 && ph <= 7.45 && pco2 >= 35 && pco2 <= 45 && hco3 >= 22 && hco3 <= 26) {
+                return "Normal";
+            }
 
-            // 計算並更新紅點的 X, Y 百分比座標
-            const updateDotPosition = (pH, hco3) => {
-                let p = parseFloat(pH);
-                let h = parseFloat(hco3);
-                if (isNaN(p) || isNaN(h)) return;
-                
-                // 限制在圖表範圍內顯示
-                p = Math.max(GRAPH_X_MIN, Math.min(GRAPH_X_MAX, p));
-                h = Math.max(GRAPH_Y_MIN, Math.min(GRAPH_Y_MAX, h));
+            // 2. 依據代償公式計算預期值 (涵蓋圖表的 95% 信心區間)
+            const exp_pco2_ma = 1.5 * hco3 + 8; // Winter's formula
+            const exp_pco2_mal = 40 + 0.7 * (hco3 - 24);
+            const exp_hco3_ara = 24 + 0.1 * (pco2 - 40);
+            const exp_hco3_cra = 24 + 0.4 * (pco2 - 40);
+            const exp_hco3_aral = 24 - 0.2 * (40 - pco2);
+            const exp_hco3_cral = 24 - 0.5 * (40 - pco2);
 
-                const xRatio = (p - GRAPH_X_MIN) / (GRAPH_X_MAX - GRAPH_X_MIN);
-                const yRatio = (h - GRAPH_Y_MIN) / (GRAPH_Y_MAX - GRAPH_Y_MIN);
+            // 3. 根據數值匹配特定區域 (使用略寬的容差以吻合視覺圖表)
+            // 允許誤差容忍度 (Tolerance)
+            if (ph < 7.38 && hco3 < 24 && Math.abs(pco2 - exp_pco2_ma) <= 2.5) return "Metabolic acidosis";
+            if (ph > 7.42 && hco3 > 24 && Math.abs(pco2 - exp_pco2_mal) <= 3.5) return "Metabolic alkalosis";
+            
+            if (ph < 7.42 && pco2 > 42 && Math.abs(hco3 - exp_hco3_ara) <= 2.5) return "Acute respiratory acidosis";
+            if (ph < 7.42 && pco2 > 42 && Math.abs(hco3 - exp_hco3_cra) <= 4.0) return "Chronic respiratory acidosis";
+            
+            if (ph > 7.38 && pco2 < 38 && Math.abs(hco3 - exp_hco3_aral) <= 2.5) return "Acute respiratory alkalosis";
+            if (ph > 7.38 && pco2 < 38 && Math.abs(hco3 - exp_hco3_cral) <= 3.0) return "Chronic respiratory alkalosis";
 
-                const pctX = (IMG_X_MIN_PCT + xRatio * (IMG_X_MAX_PCT - IMG_X_MIN_PCT)) * 100;
-                const pctY = (IMG_Y_MIN_PCT - yRatio * (IMG_Y_MIN_PCT - IMG_Y_MAX_PCT)) * 100;
-                
-                setDotPos({ x: pctX, y: pctY });
-            };
+            // 未落入單一典型區間，視為混合型
+            return "Mixed";
+        }
 
-            // 處理圖片點擊事件
+        // --- 主應用程式元件 ---
+        const App = () => {
+            const [ph, setPh] = useState('');
+            const [pco2, setPco2] = useState('');
+            const [hco3, setHco3] = useState('');
+            const [clickPos, setClickPos] = useState(null); // 記錄點擊在圖表上的相對位置 (百分比)
+            const imageRef = useRef(null);
+
+            // 當圖表被點擊時
             const handleImageClick = (e) => {
-                if (!imgRef.current) return;
-                const rect = imgRef.current.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
+                if (!imageRef.current) return;
                 
-                const pctX = x / rect.width;
-                const pctY = y / rect.height;
+                const rect = imageRef.current.getBoundingClientRect();
+                const xPct = ((e.clientX - rect.left) / rect.width) * 100;
+                const yPct = ((e.clientY - rect.top) / rect.height) * 100;
 
-                // 將點擊的百分比轉換為 pH 與 HCO3
-                let xRatio = (pctX - IMG_X_MIN_PCT) / (IMG_X_MAX_PCT - IMG_X_MIN_PCT);
-                let yRatio = (IMG_Y_MIN_PCT - pctY) / (IMG_Y_MIN_PCT - IMG_Y_MAX_PCT);
+                // 根據上傳圖表的網格校準座標參數 (近似值)
+                // x 軸: 7.0 到 7.8
+                const GRID_LEFT_PCT = 13.5;  // 圖表中 pH 7.0 所在的 X 軸百分比
+                const GRID_RIGHT_PCT = 95.0; // 圖表中 pH 7.8 所在的 X 軸百分比
+                // y 軸: 0 到 60
+                const GRID_TOP_PCT = 5.5;    // 圖表中 HCO3 60 所在的 Y 軸百分比
+                const GRID_BOTTOM_PCT = 90.0;// 圖表中 HCO3 0 所在的 Y 軸百分比
 
-                let newPh = GRAPH_X_MIN + xRatio * (GRAPH_X_MAX - GRAPH_X_MIN);
-                let newHco3 = GRAPH_Y_MIN + yRatio * (GRAPH_Y_MAX - GRAPH_Y_MIN);
+                // 限制點擊範圍在網格內，避免算出極端值
+                const clampedX = Math.max(GRID_LEFT_PCT, Math.min(xPct, GRID_RIGHT_PCT));
+                const clampedY = Math.max(GRID_TOP_PCT, Math.min(yPct, GRID_BOTTOM_PCT));
 
-                // 限制在圖表範圍內
-                newPh = Math.max(GRAPH_X_MIN, Math.min(GRAPH_X_MAX, newPh));
-                newHco3 = Math.max(GRAPH_Y_MIN, Math.min(GRAPH_Y_MAX, newHco3));
+                // 內插法計算 pH 與 HCO3
+                const calcPh = 7.0 + ((clampedX - GRID_LEFT_PCT) / (GRID_RIGHT_PCT - GRID_LEFT_PCT)) * (7.8 - 7.0);
+                const calcHco3 = 60 - ((clampedY - GRID_TOP_PCT) / (GRID_BOTTOM_PCT - GRID_TOP_PCT)) * 60;
 
-                // 根據 Henderson-Hasselbalch 方程式推算 pCO2
-                // [H+] = 24 * (pCO2 / HCO3)  -> pCO2 = HCO3 / (0.03 * 10^(pH - 6.1))
-                let newPco2 = newHco3 / (0.03 * Math.pow(10, newPh - 6.1));
-                
-                setInputs({
-                    pH: newPh.toFixed(2),
-                    pCO2: newPco2.toFixed(1),
-                    hco3: newHco3.toFixed(1)
-                });
+                // 利用 Henderson-Hasselbalch 公式計算精確的 PaCO2
+                // pH = 6.1 + log10(HCO3 / (0.03 * PaCO2))
+                // => PaCO2 = HCO3 / (0.03 * 10^(pH - 6.1))
+                const calcPco2 = calcHco3 / (0.03 * Math.pow(10, calcPh - 6.1));
+
+                // 更新狀態
+                setPh(calcPh.toFixed(2));
+                setHco3(calcHco3.toFixed(1));
+                setPco2(calcPco2.toFixed(1));
+                setClickPos({ x: xPct, y: yPct });
             };
 
-            const handleInputChange = (e) => {
-                const { name, value } = e.target;
-                setInputs(prev => ({ ...prev, [name]: value }));
+            // 當手動輸入數值改變時
+            const handleInputChange = (setter) => (e) => {
+                setter(e.target.value);
+                setClickPos(null); // 清除圖表上的標記，因為數值已經不對應點擊位置
             };
 
-            // ABG 判讀核心邏輯
-            const interpretABG = (pHStr, pCO2Str, HCO3Str) => {
-                const pH = parseFloat(pHStr);
-                const pCO2 = parseFloat(pCO2Str);
-                const HCO3 = parseFloat(HCO3Str);
-
-                if (isNaN(pH) || isNaN(pCO2) || isNaN(HCO3)) {
-                    return { result: '等待完整數值...', causes: [] };
-                }
-
-                let result = "";
-                let causes = [];
-
-                const isAcidemia = pH < 7.35;
-                const isAlkalemia = pH > 7.45;
-                const isNormalPh = pH >= 7.35 && pH <= 7.45;
-
-                if (isNormalPh && pCO2 >= 35 && pCO2 <= 45 && HCO3 >= 22 && HCO3 <= 26) {
-                    return { result: "正常 (Normal)", causes: ["無明顯酸鹼異常"] };
-                }
-
-                if (isAcidemia) {
-                    if (pCO2 > 45 && HCO3 < 22) {
-                        result = "混合型酸中毒 (Mixed Acidosis)";
-                        causes = ["同時存在呼吸衰竭與代謝性酸中毒 (如心跳停止、嚴重敗血症合併呼吸衰竭)"];
-                    } else if (pCO2 > 45) {
-                        let expHco3Acute = 24 + 0.1 * (pCO2 - 40);
-                        let expHco3Chronic = 24 + 0.4 * (pCO2 - 40);
-                        if (Math.abs(HCO3 - expHco3Acute) < Math.abs(HCO3 - expHco3Chronic)) {
-                            result = "急性呼吸性酸中毒 (Acute Resp. Acidosis)";
-                        } else {
-                            result = "慢性呼吸性酸中毒 (Chronic Resp. Acidosis)";
-                        }
-                        causes = ["中樞神經抑制 (如安眠藥過量)", "氣道阻塞 (如異物、氣喘嚴重發作)", "神經肌肉疾病 (如重症肌無力)", "COPD 急性惡化"];
-                    } else if (HCO3 < 22) {
-                        let expPco2 = 1.5 * HCO3 + 8;
-                        if (pCO2 < expPco2 - 2) {
-                            result = "代謝性酸中毒合併呼吸性鹼中毒";
-                        } else if (pCO2 > expPco2 + 2) {
-                            result = "代謝性酸中毒合併呼吸性酸中毒";
-                        } else {
-                            result = "單純代謝性酸中毒 (Metabolic Acidosis)";
-                        }
-                        causes = ["高陰離子間隙 (MUDPILES): 乳酸酸中毒、糖尿病酮酸中毒(DKA)、尿毒症、中毒(甲醇/水楊酸)", "正常陰離子間隙: 嚴重腹瀉、腎小管酸中毒 (RTA)"];
-                    } else {
-                        result = "酸血症 (需進一步臨床資訊)";
-                    }
-                } else if (isAlkalemia) {
-                    if (pCO2 < 35 && HCO3 > 26) {
-                        result = "混合型鹼中毒 (Mixed Alkalosis)";
-                        causes = ["如肝硬化患者使用利尿劑，並伴隨過度換氣"];
-                    } else if (pCO2 < 35) {
-                        let expHco3Acute = 24 - 0.2 * (40 - pCO2);
-                        let expHco3Chronic = 24 - 0.4 * (40 - pCO2);
-                        if (Math.abs(HCO3 - expHco3Acute) < Math.abs(HCO3 - expHco3Chronic)) {
-                            result = "急性呼吸性鹼中毒 (Acute Resp. Alkalosis)";
-                        } else {
-                            result = "慢性呼吸性鹼中毒 (Chronic Resp. Alkalosis)";
-                        }
-                        causes = ["過度換氣症候群 (焦慮, 疼痛)", "缺氧 (如高海拔, 早期肺栓塞)", "中樞神經系統疾病", "敗血症早期"];
-                    } else if (HCO3 > 26) {
-                        let expPco2 = 0.7 * HCO3 + 21;
-                        if (pCO2 > expPco2 + 2) {
-                            result = "代謝性鹼中毒合併呼吸性酸中毒";
-                        } else if (pCO2 < expPco2 - 2) {
-                            result = "代謝性鹼中毒合併呼吸性鹼中毒";
-                        } else {
-                            result = "單純代謝性鹼中毒 (Metabolic Alkalosis)";
-                        }
-                        causes = ["腸胃道流失 (嚴重嘔吐, 鼻胃管大量引流)", "腎臟流失 (利尿劑使用)", "低血鉀", "原發性醛固酮增多症"];
-                    } else {
-                        result = "鹼血症 (需進一步臨床資訊)";
-                    }
-                } else {
-                    if (pCO2 > 45 && HCO3 > 26) {
-                        result = pH < 7.4 ? "慢性呼吸性酸中毒 (代償完全) 或 混合型" : "代謝性鹼中毒 (代償完全) 或 混合型";
-                        causes = ["COPD患者合併利尿劑使用", "長期慢性嘔吐患者"];
-                    } else if (pCO2 < 35 && HCO3 < 22) {
-                        result = pH < 7.4 ? "代謝性酸中毒 (代償完全) 或 混合型" : "慢性呼吸性鹼中毒 (代償完全) 或 混合型";
-                        causes = ["水楊酸中毒 (早期呼吸鹼，後期代謝酸)", "敗血症"];
-                    } else {
-                        result = "正常範圍內，或輕微混合型異常";
-                        causes = ["數值位於正常邊緣"];
-                    }
-                }
-
-                // 驗證數值合理性 (利用 Henderson-Hasselbalch)
-                const calc_pH = 6.1 + Math.log10(HCO3 / (0.03 * pCO2));
-                if (Math.abs(calc_pH - pH) > 0.08) {
-                    causes.unshift("⚠️ 警告：輸入的數值 (pH, pCO2, HCO3) 在生理學公式中不吻合，請確認數據是否輸入錯誤或檢體誤差。");
-                }
-
-                return { result, causes };
+            const resetData = () => {
+                setPh('');
+                setPco2('');
+                setHco3('');
+                setClickPos(null);
             };
+
+            // 取得目前的診斷結果
+            const diagKey = getDiagnosis(ph, pco2, hco3);
+            const currentDiag = diagKey ? DIAGNOSIS_DATA[diagKey] : null;
 
             return (
-                <div className="min-h-screen p-4 md:p-8 flex flex-col items-center">
-                    <div className="max-w-6xl w-full">
-                        <header className="mb-6 flex items-center space-x-3 text-blue-800">
-                            <i data-lucide="activity" className="w-8 h-8"></i>
-                            <h1 className="text-3xl font-bold">ABG 酸鹼判讀與病因分析</h1>
-                        </header>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            
-                            {/* 左側：互動式圖表 */}
-                            <div className="bg-white p-4 rounded-2xl shadow-lg border border-slate-100 flex flex-col">
-                                <h2 className="text-lg font-semibold mb-3 flex items-center text-slate-700">
-                                    <i data-lucide="mouse-pointer-click" className="w-5 h-5 mr-2"></i>
-                                    點擊圖表區域或手動輸入
-                                </h2>
-                                <div className="relative w-full overflow-hidden rounded-xl border border-slate-200 cursor-crosshair bg-slate-50" onClick={handleImageClick}>
-                                    <img 
-                                        ref={imgRef}
-                                        src="Abg_chart.jpg" 
-                                        alt="ABG Nomogram" 
-                                        className="w-full h-auto pointer-events-none select-none"
-                                        onError={(e) => {
-                                            e.target.onerror = null; 
-                                            e.target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400"><rect width="100%" height="100%" fill="%23f1f5f9"/><text x="50%" y="50%" font-family="sans-serif" font-size="16" fill="%2364748b" text-anchor="middle">請將圖片命名為 Abg_chart.jpg</text><text x="50%" y="60%" font-family="sans-serif" font-size="16" fill="%2364748b" text-anchor="middle">並與 index.html 放在同一目錄下</text></svg>';
-                                        }}
-                                    />
-                                    {/* 互動紅點 */}
-                                    <div 
-                                        className="absolute w-4 h-4 bg-red-500 rounded-full transform -translate-x-1/2 -translate-y-1/2 shadow-lg border-2 border-white transition-all duration-300 pointer-events-none"
-                                        style={{ left: `${dotPos.x}%`, top: `${dotPos.y}%` }}
-                                    ></div>
-                                </div>
-                                <p className="text-sm text-slate-500 mt-3 flex items-center">
-                                    <i data-lucide="info" className="w-4 h-4 mr-1"></i>
-                                    點擊圖表任一處，將自動根據公式推算對應的 pH, PaCO2 與 HCO3。
-                                </p>
-                            </div>
-
-                            {/* 右側：輸入與判讀結果 */}
-                            <div className="space-y-6">
-                                
-                                {/* 手動輸入區塊 */}
-                                <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
-                                    <h2 className="text-xl font-bold mb-4 text-slate-800 flex items-center">
-                                        <i data-lucide="calculator" className="w-5 h-5 mr-2 text-blue-600"></i>
-                                        患者檢驗數據 (手動輸入)
-                                    </h2>
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-600 mb-1">pH</label>
-                                            <input type="number" name="pH" value={inputs.pH} onChange={handleInputChange} step="0.01" className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-center font-mono text-lg" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-600 mb-1">PaCO2 <span className="text-xs text-slate-400">mmHg</span></label>
-                                            <input type="number" name="pCO2" value={inputs.pCO2} onChange={handleInputChange} step="0.1" className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-center font-mono text-lg" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-600 mb-1">HCO3- <span className="text-xs text-slate-400">mmol/L</span></label>
-                                            <input type="number" name="hco3" value={inputs.hco3} onChange={handleInputChange} step="0.1" className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-center font-mono text-lg" />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* 判讀結果區塊 */}
-                                <div className="bg-blue-50 p-6 rounded-2xl shadow-lg border border-blue-100">
-                                    <h2 className="text-xl font-bold mb-4 text-blue-900 flex items-center">
-                                        <i data-lucide="stethoscope" className="w-5 h-5 mr-2"></i>
-                                        判讀結果
-                                    </h2>
-                                    <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-50 mb-4">
-                                        <p className="text-2xl font-bold text-blue-700 text-center">{analysis.result}</p>
-                                    </div>
-                                    
-                                    <h3 className="text-md font-bold text-blue-900 mb-2 flex items-center mt-5">
-                                        <i data-lucide="book-open" className="w-4 h-4 mr-2"></i>
-                                        潛在病因分析 (Etiology)
-                                    </h3>
-                                    <ul className="space-y-2">
-                                        {analysis.causes.map((cause, index) => (
-                                            <li key={index} className="flex items-start">
-                                                <span className={`mr-2 mt-1 flex-shrink-0 ${cause.includes('⚠️') ? 'text-red-500' : 'text-blue-500'}`}>
-                                                    {cause.includes('⚠️') ? '' : '•'}
-                                                </span>
-                                                <span className={cause.includes('⚠️') ? 'text-red-600 font-semibold text-sm' : 'text-slate-700'}>
-                                                    {cause}
-                                                </span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-
+                <div className="min-h-screen pb-12">
+                    {/* Header */}
+                    <header className="bg-slate-900 text-white shadow-md pt-6 pb-6 px-4 md:px-8 mb-8">
+                        <div className="max-w-6xl mx-auto flex items-center gap-3">
+                            <i className="fa-solid fa-notes-medical text-3xl text-blue-400"></i>
+                            <div>
+                                <h1 className="text-2xl font-bold tracking-wide">ABG 酸鹼圖譜判讀輔助工具</h1>
+                                <p className="text-slate-400 text-sm mt-1">點擊圖表或輸入數值，自動分析動脈血氣體報告</p>
                             </div>
                         </div>
-                    </div>
+                    </header>
+
+                    <main className="max-w-6xl mx-auto px-4 md:px-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        
+                        {/* 左側：互動式圖表 */}
+                        <div className="lg:col-span-7 flex flex-col gap-4">
+                            <div className="glass-panel rounded-2xl p-4 md:p-6 relative overflow-hidden group">
+                                <div className="absolute top-6 left-6 z-10 bg-white/80 backdrop-blur text-slate-700 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2 pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity">
+                                    <i className="fa-solid fa-hand-pointer text-blue-500"></i> 支援點擊互動
+                                </div>
+                                
+                                <div 
+                                    className="relative w-full cursor-crosshair border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm"
+                                    onClick={handleImageClick}
+                                >
+                                    {/* 由於在瀏覽器端獨立執行，假設圖片 abg_chart.jpg 與 HTML 放在同一個目錄 */}
+                                    <img 
+                                        ref={imageRef}
+                                        src="abg_chart.jpg" 
+                                        alt="" 
+                                        className="w-full h-auto select-none"
+                                        draggable="false"
+                                        onError={(e) => {
+                                            e.target.onerror = null; 
+                                            e.target.src = "https://via.placeholder.com/800x600.png?text=ABG+Chart+Not+Found+(Please+ensure+abg_chart.jpg+is+in+the+same+folder)";
+                                        }}
+                                    />
+                                    
+                                    {/* 點擊標記 (Dot) */}
+                                    {clickPos && (
+                                        <div 
+                                            className="absolute w-4 h-4 bg-blue-500 border-2 border-white rounded-full shadow-md transform -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all duration-200 ease-out"
+                                            style={{ left: `${clickPos.x}%`, top: `${clickPos.y}%` }}
+                                        >
+                                            <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-75"></div>
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-center text-slate-400 text-xs mt-3">
+                                    註：圖表點擊所計算出之數值為內插近似值，可能與原始精確公式略有微小差異。
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* 右側：資料輸入與判讀結果 */}
+                        <div className="lg:col-span-5 flex flex-col gap-6">
+                            
+                            {/* 手動輸入區塊 */}
+                            <div className="glass-panel rounded-2xl p-6 border border-slate-100">
+                                <div className="flex justify-between items-center mb-5">
+                                    <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                        <i className="fa-solid fa-keyboard text-slate-400"></i> 血液數值
+                                    </h2>
+                                    <button 
+                                        onClick={resetData}
+                                        className="text-sm text-slate-500 hover:text-red-500 transition-colors flex items-center gap-1"
+                                    >
+                                        <i className="fa-solid fa-rotate-right"></i> 清除
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-xs font-semibold text-slate-500">pH 值</label>
+                                        <div className="input-focus-ring flex items-center border border-slate-300 rounded-lg bg-white overflow-hidden transition-all">
+                                            <input 
+                                                type="number" 
+                                                step="0.01"
+                                                value={ph} 
+                                                onChange={handleInputChange(setPh)} 
+                                                className="w-full p-2 outline-none text-center font-mono font-medium text-slate-700" 
+                                                placeholder="7.40"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-xs font-semibold text-slate-500">PaCO2 <span className="text-[10px] font-normal">(mmHg)</span></label>
+                                        <div className="input-focus-ring flex items-center border border-slate-300 rounded-lg bg-white overflow-hidden transition-all">
+                                            <input 
+                                                type="number" 
+                                                step="0.1"
+                                                value={pco2} 
+                                                onChange={handleInputChange(setPco2)} 
+                                                className="w-full p-2 outline-none text-center font-mono font-medium text-slate-700" 
+                                                placeholder="40.0"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <label className="text-xs font-semibold text-slate-500">HCO3- <span className="text-[10px] font-normal">(mmol/L)</span></label>
+                                        <div className="input-focus-ring flex items-center border border-slate-300 rounded-lg bg-white overflow-hidden transition-all">
+                                            <input 
+                                                type="number" 
+                                                step="0.1"
+                                                value={hco3} 
+                                                onChange={handleInputChange(setHco3)} 
+                                                className="w-full p-2 outline-none text-center font-mono font-medium text-slate-700" 
+                                                placeholder="24.0"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 判讀結果區塊 */}
+                            <div className="glass-panel rounded-2xl flex-1 flex flex-col border border-slate-100 overflow-hidden min-h-[350px]">
+                                <div className="bg-slate-50 border-b border-slate-100 px-6 py-4">
+                                    <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                        <i className="fa-solid fa-stethoscope text-blue-500"></i> 判讀分析結果
+                                    </h2>
+                                </div>
+                                
+                                <div className="p-6 flex-1 flex flex-col">
+                                    {!currentDiag ? (
+                                        <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-4">
+                                            <i className="fa-solid fa-chart-area text-5xl opacity-20"></i>
+                                            <p className="text-center text-sm">請點擊左側圖表區域<br/>或在上方輸入完整數值以顯示分析。</p>
+                                        </div>
+                                    ) : (
+                                        <div className={`animate-fade-in flex-1 flex flex-col h-full ${currentDiag.bgColor} rounded-xl p-5 border border-white`}>
+                                            <div className="flex items-start gap-4 mb-4">
+                                                <div className={`w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0 ${currentDiag.color}`}>
+                                                    <i className={`fa-solid ${currentDiag.icon} text-2xl`}></i>
+                                                </div>
+                                                <div>
+                                                    <h3 className={`text-xl font-bold mb-1 ${currentDiag.color}`}>
+                                                        {currentDiag.title}
+                                                    </h3>
+                                                    <p className="text-slate-600 text-sm leading-relaxed">
+                                                        {currentDiag.desc}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="mt-auto bg-white/60 rounded-lg p-4">
+                                                <h4 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                                                    <i className="fa-solid fa-clipboard-list text-slate-400"></i> 常見潛在病因：
+                                                </h4>
+                                                <ul className="list-disc list-inside text-sm text-slate-600 space-y-1.5 ml-1">
+                                                    {currentDiag.causes.map((cause, idx) => (
+                                                        <li key={idx} className="leading-snug">{cause}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                        </div>
+                    </main>
                 </div>
             );
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<ABGApp />);
-
-        // 初始化圖標
-        setTimeout(() => {
-            if (window.lucide) {
-                window.lucide.createIcons();
-            }
-        }, 100);
+        root.render(<App />);
     </script>
 </body>
 </html>
-
 
