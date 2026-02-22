@@ -1,1 +1,1023 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ABG 血氣分析判讀系統</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e3a5f;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #39ff14;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --normal: #39ff14;
+    --acidosis: #ff4444;
+    --alkalosis: #4488ff;
+    --warning: #ffaa00;
+  }
 
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans TC', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline effect */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,212,255,0.015) 2px,
+      rgba(0,212,255,0.015) 4px
+    );
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-shadow: 0 0 20px var(--accent);
+  }
+
+  .logo span { color: var(--accent2); }
+
+  .header-sub {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 1px;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    background: var(--accent3);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent3);
+    animation: pulse 2s ease-in-out infinite;
+    margin-left: auto;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 0;
+    min-height: calc(100vh - 61px);
+  }
+
+  /* LEFT: Chart panel */
+  .chart-panel {
+    padding: 24px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .panel-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .chart-container {
+    position: relative;
+    display: inline-block;
+    cursor: crosshair;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    border-radius: 4px;
+    max-width: 100%;
+  }
+
+  .chart-container img {
+    display: block;
+    width: 100%;
+    max-width: 700px;
+    height: auto;
+    filter: brightness(0.9) contrast(1.1) saturate(0.8) hue-rotate(200deg);
+    mix-blend-mode: normal;
+  }
+
+  .chart-container::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(10,14,26,0.2);
+    pointer-events: none;
+  }
+
+  /* Crosshair */
+  .crosshair-h, .crosshair-v {
+    position: absolute;
+    background: rgba(0,212,255,0.6);
+    pointer-events: none;
+    display: none;
+    z-index: 10;
+  }
+  .crosshair-h { height: 1px; left: 0; right: 0; }
+  .crosshair-v { width: 1px; top: 0; bottom: 0; }
+
+  .coord-tooltip {
+    position: absolute;
+    background: rgba(0,0,0,0.85);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    padding: 4px 8px;
+    border-radius: 2px;
+    pointer-events: none;
+    display: none;
+    z-index: 20;
+    white-space: nowrap;
+  }
+
+  .click-marker {
+    position: absolute;
+    width: 12px; height: 12px;
+    border: 2px solid var(--accent2);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 15;
+    box-shadow: 0 0 10px var(--accent2);
+    display: none;
+  }
+
+  /* RIGHT: Control panel */
+  .control-panel {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  /* Manual Input */
+  .input-section {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .section-header {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-header::before {
+    content: '//';
+    color: var(--text-dim);
+  }
+
+  .input-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .input-group label {
+    display: block;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+
+  .input-group input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 8px 10px;
+    color: var(--accent);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1rem;
+    font-weight: 500;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    text-align: center;
+  }
+  .input-group input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(0,212,255,0.15);
+  }
+  .input-group input::placeholder { color: #2a3a50; }
+
+  .normal-range {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--text-dim);
+    text-align: center;
+    margin-top: 3px;
+  }
+
+  .analyze-btn {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .analyze-btn:hover {
+    background: rgba(0,212,255,0.1);
+    box-shadow: 0 0 20px rgba(0,212,255,0.2);
+  }
+  .analyze-btn:active { transform: scale(0.98); }
+
+  .clear-btn {
+    width: 100%;
+    padding: 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border-radius: 3px;
+    margin-top: 6px;
+    transition: all 0.2s;
+  }
+  .clear-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* Result section */
+  .result-section {
+    padding: 20px;
+    flex: 1;
+    background: var(--surface2);
+  }
+
+  .result-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    min-height: 200px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .result-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    text-align: center;
+    line-height: 2;
+  }
+
+  .result-empty .icon { font-size: 2rem; margin-bottom: 12px; opacity: 0.3; }
+
+  /* Diagnosis display */
+  .diagnosis {
+    display: none;
+    flex-direction: column;
+    gap: 14px;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .diagnosis.show { display: flex; }
+
+  .diag-main {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    padding: 12px;
+    border-radius: 3px;
+    text-align: center;
+    border: 1px solid;
+  }
+  .diag-main.normal { color: var(--normal); border-color: var(--normal); background: rgba(57,255,20,0.05); text-shadow: 0 0 10px var(--normal); }
+  .diag-main.acidosis { color: var(--acidosis); border-color: var(--acidosis); background: rgba(255,68,68,0.05); text-shadow: 0 0 10px var(--acidosis); }
+  .diag-main.alkalosis { color: var(--alkalosis); border-color: var(--alkalosis); background: rgba(68,136,255,0.05); text-shadow: 0 0 10px var(--alkalosis); }
+
+  .diag-values {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+
+  .val-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 8px;
+    text-align: center;
+  }
+  .val-card .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .val-card .value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  .val-card .status {
+    font-size: 0.55rem;
+    margin-top: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .high { color: var(--acidosis); }
+  .low { color: var(--alkalosis); }
+  .ok { color: var(--normal); }
+
+  .diag-detail {
+    background: var(--surface);
+    border-left: 2px solid var(--accent);
+    padding: 10px 12px;
+    border-radius: 0 3px 3px 0;
+  }
+  .diag-detail h4 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--accent);
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .diag-detail p {
+    font-size: 0.78rem;
+    color: var(--text);
+    line-height: 1.7;
+  }
+
+  .causes-grid {
+    display: grid;
+    gap: 8px;
+  }
+  .cause-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 0.75rem;
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .cause-bullet {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent2);
+    margin-top: 6px;
+    flex-shrink: 0;
+    box-shadow: 0 0 4px var(--accent2);
+  }
+
+  .compensation-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    padding: 3px 8px;
+    border-radius: 2px;
+    border: 1px solid var(--warning);
+    color: var(--warning);
+    display: inline-block;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    padding: 0 20px;
+  }
+  .tab {
+    padding: 10px 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: flex; flex-direction: column; }
+
+  /* Reference table */
+  .ref-section {
+    padding: 16px 20px;
+    background: var(--surface2);
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .ref-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.7rem;
+  }
+  .ref-table th {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+  .ref-table td {
+    padding: 8px 6px;
+    border-bottom: 1px solid rgba(30,58,95,0.4);
+    vertical-align: top;
+    line-height: 1.4;
+  }
+  .ref-table tr:hover td { background: rgba(0,212,255,0.03); }
+  .cond-name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .main { grid-template-columns: 1fr; }
+    .chart-panel { border-right: none; border-bottom: 1px solid var(--border); }
+    .control-panel { max-height: none; }
+    .input-grid { grid-template-columns: 1fr 1fr 1fr; }
+  }
+  @media (max-width: 500px) {
+    .input-grid { grid-template-columns: 1fr; }
+    .diag-values { grid-template-columns: 1fr 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">ABG<span>·</span>Rx</div>
+    <div class="header-sub">血液氣體分析判讀系統 v2.0</div>
+  </div>
+  <div class="status-dot"></div>
+</header>
+
+<div class="main">
+  <!-- LEFT: Chart -->
+  <div class="chart-panel">
+    <div class="panel-title">// Davenport Nomogram — 點擊圖表直接判讀</div>
+    <div class="chart-container" id="chartContainer">
+      <img src="abg_chart.jpg" alt="ABG Nomogram" id="chartImg" draggable="false">
+      <div class="crosshair-h" id="crossH"></div>
+      <div class="crosshair-v" id="crossV"></div>
+      <div class="coord-tooltip" id="coordTooltip"></div>
+      <div class="click-marker" id="clickMarker"></div>
+    </div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:var(--text-dim);line-height:1.8;">
+      <span style="color:var(--accent)">→</span> 移動滑鼠：即時顯示座標值<br>
+      <span style="color:var(--accent2)">→</span> 點擊圖表：自動填入 pH 與 HCO₃⁻ 並判讀<br>
+      <span style="color:var(--text-dim)">　　PaCO₂ 請手動補充以確認代償情形</span>
+    </div>
+  </div>
+
+  <!-- RIGHT: Controls -->
+  <div class="control-panel">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('analyze')">判讀</div>
+      <div class="tab" onclick="switchTab('reference')">參考表</div>
+    </div>
+
+    <!-- ANALYZE TAB -->
+    <div class="tab-content active" id="tab-analyze">
+      <div class="input-section">
+        <div class="section-header">手動輸入數值</div>
+        <div class="input-grid">
+          <div class="input-group">
+            <label>pH</label>
+            <input type="number" id="pH" placeholder="7.40" min="6.8" max="7.9" step="0.01">
+            <div class="normal-range">7.35–7.45</div>
+          </div>
+          <div class="input-group">
+            <label>PaCO₂ mmHg</label>
+            <input type="number" id="paco2" placeholder="40" min="10" max="140" step="1">
+            <div class="normal-range">35–45</div>
+          </div>
+          <div class="input-group">
+            <label>HCO₃⁻ mEq/L</label>
+            <input type="number" id="hco3" placeholder="24" min="1" max="60" step="0.1">
+            <div class="normal-range">22–26</div>
+          </div>
+        </div>
+        <button class="analyze-btn" onclick="analyzeManual()">▶ 開始判讀</button>
+        <button class="clear-btn" onclick="clearAll()">清除重設</button>
+      </div>
+
+      <div class="result-section">
+        <div class="section-header">判讀結果</div>
+        <div class="result-box">
+          <div class="result-empty" id="emptyState">
+            <div class="icon">⟳</div>
+            點擊圖表<br>或輸入數值後<br>按下「開始判讀」
+          </div>
+          <div class="diagnosis" id="diagnosisBox">
+            <div class="diag-main" id="diagMain"></div>
+            <div class="diag-values">
+              <div class="val-card">
+                <div class="label">pH</div>
+                <div class="value" id="rPH">—</div>
+                <div class="status" id="rPHs">—</div>
+              </div>
+              <div class="val-card">
+                <div class="label">PaCO₂</div>
+                <div class="value" id="rCO2">—</div>
+                <div class="status" id="rCO2s">—</div>
+              </div>
+              <div class="val-card">
+                <div class="label">HCO₃⁻</div>
+                <div class="value" id="rHCO">—</div>
+                <div class="status" id="rHCOs">—</div>
+              </div>
+            </div>
+            <div class="diag-detail" id="diagDetail">
+              <h4>代償狀態</h4>
+              <p id="diagComp"></p>
+            </div>
+            <div class="diag-detail" id="diagCausesBox">
+              <h4>常見病因</h4>
+              <div class="causes-grid" id="diagCauses"></div>
+            </div>
+            <div class="diag-detail" id="diagTreatBox" style="border-left-color:var(--accent3)">
+              <h4 style="color:var(--accent3)">臨床處置方向</h4>
+              <p id="diagTreat"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REFERENCE TAB -->
+    <div class="tab-content" id="tab-reference">
+      <div class="ref-section">
+        <div class="section-header">快速參考</div>
+        <table class="ref-table">
+          <thead>
+            <tr>
+              <th>診斷</th>
+              <th>pH</th>
+              <th>PaCO₂</th>
+              <th>HCO₃⁻</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="cond-name">正常</td><td>7.35–7.45</td><td>35–45</td><td>22–26</td></tr>
+            <tr><td class="cond-name" style="color:var(--acidosis)">代謝性酸中毒</td><td>↓</td><td>↓ (代償)</td><td>↓↓</td></tr>
+            <tr><td class="cond-name" style="color:var(--alkalosis)">代謝性鹼中毒</td><td>↑</td><td>↑ (代償)</td><td>↑↑</td></tr>
+            <tr><td class="cond-name" style="color:var(--acidosis)">急性呼吸酸中毒</td><td>↓↓</td><td>↑↑</td><td>輕微↑</td></tr>
+            <tr><td class="cond-name" style="color:var(--acidosis)">慢性呼吸酸中毒</td><td>輕微↓</td><td>↑↑</td><td>↑ (代償)</td></tr>
+            <tr><td class="cond-name" style="color:var(--alkalosis)">急性呼吸鹼中毒</td><td>↑↑</td><td>↓↓</td><td>輕微↓</td></tr>
+            <tr><td class="cond-name" style="color:var(--alkalosis)">慢性呼吸鹼中毒</td><td>輕微↑</td><td>↓↓</td><td>↓ (代償)</td></tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:20px">
+          <div class="section-header" style="margin-bottom:12px">代償公式</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--text-dim);line-height:2.2;">
+            <div><span style="color:var(--accent)">代謝酸</span> → PaCO₂ = 1.5×HCO₃⁻ + 8 ± 2</div>
+            <div><span style="color:var(--accent)">代謝鹼</span> → PaCO₂ = 0.7×HCO₃⁻ + 21 ± 2</div>
+            <div><span style="color:var(--accent)">急呼酸</span> → HCO₃⁻↑ 1 per PaCO₂↑10</div>
+            <div><span style="color:var(--accent)">慢呼酸</span> → HCO₃⁻↑ 3.5 per PaCO₂↑10</div>
+            <div><span style="color:var(--accent)">急呼鹼</span> → HCO₃⁻↓ 2 per PaCO₂↓10</div>
+            <div><span style="color:var(--accent)">慢呼鹼</span> → HCO₃⁻↓ 5 per PaCO₂↓10</div>
+          </div>
+        </div>
+
+        <div style="margin-top:20px">
+          <div class="section-header" style="margin-bottom:12px">Anion Gap</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--text-dim);line-height:2.2;">
+            <div>AG = Na⁺ − (Cl⁻ + HCO₃⁻)</div>
+            <div><span style="color:var(--accent3)">正常值</span>：8–12 mEq/L</div>
+            <div style="margin-top:8px;color:var(--text)">高AG代謝酸中毒：MUDPILES</div>
+            <div style="font-size:0.6rem;line-height:1.8;">
+              M-Methanol 甲醇<br>
+              U-Uremia 尿毒症<br>
+              D-DKA 糖尿病酮酸中毒<br>
+              P-Propylene glycol<br>
+              I-Isoniazid / Iron<br>
+              L-Lactic acidosis 乳酸<br>
+              E-Ethylene glycol 乙二醇<br>
+              S-Salicylates 水楊酸
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Chart coordinate mapping ───
+// Chart bounds: pH 7.0–7.8 (X), HCO3 0–60 (Y)
+// Image pixel bounds need calibration
+
+const chartImg = document.getElementById('chartImg');
+const chartContainer = document.getElementById('chartContainer');
+const crossH = document.getElementById('crossH');
+const crossV = document.getElementById('crossV');
+const coordTooltip = document.getElementById('coordTooltip');
+const clickMarker = document.getElementById('clickMarker');
+
+// Chart axis limits (from the image)
+const pH_MIN = 7.0, pH_MAX = 7.8;
+const HCO3_MIN = 0, HCO3_MAX = 60;
+
+// Approximate pixel offsets within image (fraction of image size)
+// Left edge at pH 7.0, right edge at pH 7.8
+// Bottom at HCO3=0, top at HCO3=60
+// These are approximate based on chart margins
+const LEFT_FRAC = 0.055;   // x fraction where pH=7.0
+const RIGHT_FRAC = 0.97;   // x fraction where pH=7.8
+const TOP_FRAC = 0.03;     // y fraction where HCO3=60
+const BOTTOM_FRAC = 0.97;  // y fraction where HCO3=0
+
+function pixelToValues(px, py, imgW, imgH) {
+  const xFrac = px / imgW;
+  const yFrac = py / imgH;
+  const pH = pH_MIN + (xFrac - LEFT_FRAC) / (RIGHT_FRAC - LEFT_FRAC) * (pH_MAX - pH_MIN);
+  const hco3 = HCO3_MIN + (1 - (yFrac - TOP_FRAC) / (BOTTOM_FRAC - TOP_FRAC)) * (HCO3_MAX - HCO3_MIN);
+  return { pH: Math.max(pH_MIN, Math.min(pH_MAX, pH)), hco3: Math.max(0, Math.min(60, hco3)) };
+}
+
+chartContainer.addEventListener('mousemove', (e) => {
+  const rect = chartImg.getBoundingClientRect();
+  const px = e.clientX - rect.left;
+  const py = e.clientY - rect.top;
+  const { pH, hco3 } = pixelToValues(px, py, rect.width, rect.height);
+
+  crossH.style.display = 'block';
+  crossV.style.display = 'block';
+  coordTooltip.style.display = 'block';
+
+  const containerRect = chartContainer.getBoundingClientRect();
+  const relX = e.clientX - containerRect.left;
+  const relY = e.clientY - containerRect.top;
+
+  crossH.style.top = relY + 'px';
+  crossV.style.left = relX + 'px';
+
+  let ttX = relX + 12;
+  let ttY = relY - 30;
+  if (ttX > containerRect.width - 140) ttX = relX - 145;
+  if (ttY < 5) ttY = relY + 8;
+
+  coordTooltip.style.left = ttX + 'px';
+  coordTooltip.style.top = ttY + 'px';
+  coordTooltip.textContent = `pH ${pH.toFixed(2)}  HCO₃⁻ ${hco3.toFixed(1)}`;
+});
+
+chartContainer.addEventListener('mouseleave', () => {
+  crossH.style.display = 'none';
+  crossV.style.display = 'none';
+  coordTooltip.style.display = 'none';
+});
+
+chartContainer.addEventListener('click', (e) => {
+  const rect = chartImg.getBoundingClientRect();
+  const px = e.clientX - rect.left;
+  const py = e.clientY - rect.top;
+  const { pH, hco3 } = pixelToValues(px, py, rect.width, rect.height);
+
+  // Show marker
+  const containerRect = chartContainer.getBoundingClientRect();
+  const relX = e.clientX - containerRect.left;
+  const relY = e.clientY - containerRect.top;
+  clickMarker.style.display = 'block';
+  clickMarker.style.left = relX + 'px';
+  clickMarker.style.top = relY + 'px';
+
+  // Fill inputs
+  document.getElementById('pH').value = pH.toFixed(2);
+  document.getElementById('hco3').value = hco3.toFixed(1);
+
+  // Switch to analyze tab and run
+  switchTab('analyze');
+  runDiagnosis(pH, parseFloat(document.getElementById('paco2').value) || null, hco3);
+});
+
+// ─── Tab switching ───
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['analyze','reference'][i] === name);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ─── Manual analyze ───
+function analyzeManual() {
+  const pH = parseFloat(document.getElementById('pH').value);
+  const paco2 = parseFloat(document.getElementById('paco2').value);
+  const hco3 = parseFloat(document.getElementById('hco3').value);
+
+  if (isNaN(pH) && isNaN(hco3) && isNaN(paco2)) {
+    alert('請至少輸入 pH 值');
+    return;
+  }
+  runDiagnosis(isNaN(pH)?null:pH, isNaN(paco2)?null:paco2, isNaN(hco3)?null:hco3);
+}
+
+function clearAll() {
+  document.getElementById('pH').value = '';
+  document.getElementById('paco2').value = '';
+  document.getElementById('hco3').value = '';
+  document.getElementById('emptyState').style.display = 'flex';
+  document.getElementById('diagnosisBox').classList.remove('show');
+  clickMarker.style.display = 'none';
+}
+
+// ─── Core diagnosis engine ───
+function runDiagnosis(pH, paco2, hco3) {
+  const DB = getDiagnosisData(pH, paco2, hco3);
+  renderDiagnosis(DB, pH, paco2, hco3);
+}
+
+function getDiagnosisData(pH, paco2, hco3) {
+  // Determine primary disorder
+  if (pH === null) {
+    // try to infer
+    if (hco3 !== null && hco3 < 22) return diagData('metabolic_acidosis');
+    if (hco3 !== null && hco3 > 26) return diagData('metabolic_alkalosis');
+    if (paco2 !== null && paco2 > 45) return diagData('resp_acidosis_chronic');
+    if (paco2 !== null && paco2 < 35) return diagData('resp_alkalosis_chronic');
+    return diagData('normal');
+  }
+
+  const pHNormal = pH >= 7.35 && pH <= 7.45;
+  const pHAcid = pH < 7.35;
+  const pHAlk = pH > 7.45;
+
+  const co2High = paco2 !== null && paco2 > 45;
+  const co2Low = paco2 !== null && paco2 < 35;
+  const hco3High = hco3 !== null && hco3 > 26;
+  const hco3Low = hco3 !== null && hco3 < 22;
+
+  if (pHNormal && !co2High && !co2Low && !hco3High && !hco3Low) return diagData('normal');
+
+  if (pHAcid) {
+    if (co2High && !hco3High) {
+      // respiratory acidosis — acute vs chronic
+      if (hco3 !== null) {
+        const expectedAcute = 24 + (paco2 - 40) * 0.1;
+        const expectedChronic = 24 + (paco2 - 40) * 0.35;
+        if (hco3 > expectedAcute + 1) return diagData('resp_acidosis_chronic');
+        return diagData('resp_acidosis_acute');
+      }
+      return diagData('resp_acidosis_acute');
+    }
+    if (hco3Low && !co2High) {
+      // metabolic acidosis — check compensation
+      if (paco2 !== null) {
+        const winterExpected = 1.5 * (hco3) + 8;
+        if (Math.abs(paco2 - winterExpected) < 2) return diagData('metabolic_acidosis', '代償適當 (Winter公式)');
+        if (paco2 > winterExpected + 2) return diagData('metabolic_acidosis', '代償不足 → 合併呼吸酸中毒');
+        if (paco2 < winterExpected - 2) return diagData('metabolic_acidosis', '代償過度 → 合併呼吸鹼中毒');
+      }
+      return diagData('metabolic_acidosis');
+    }
+    // mixed or borderline
+    if (co2High && hco3Low) return diagData('mixed_acid', '混合型酸中毒：呼吸＋代謝並存');
+    return diagData('metabolic_acidosis');
+  }
+
+  if (pHAlk) {
+    if (co2Low && !hco3Low) {
+      if (hco3 !== null) {
+        const expectedAcute = 24 - (40 - paco2) * 0.2;
+        const expectedChronic = 24 - (40 - paco2) * 0.5;
+        if (hco3 < expectedChronic - 1) return diagData('resp_alkalosis_chronic');
+        return diagData('resp_alkalosis_acute');
+      }
+      return diagData('resp_alkalosis_acute');
+    }
+    if (hco3High && !co2Low) {
+      if (paco2 !== null) {
+        const expectedCO2 = 0.7 * hco3 + 21;
+        if (Math.abs(paco2 - expectedCO2) < 2) return diagData('metabolic_alkalosis', '代償適當');
+        if (paco2 < expectedCO2 - 2) return diagData('metabolic_alkalosis', '代償不足 → 合併呼吸鹼中毒');
+        if (paco2 > expectedCO2 + 2) return diagData('metabolic_alkalosis', '代償過度 → 合併呼吸酸中毒');
+      }
+      return diagData('metabolic_alkalosis');
+    }
+    if (co2Low && hco3High) return diagData('mixed_alk');
+    return diagData('metabolic_alkalosis');
+  }
+
+  // pH normal but abnormal values = compensated
+  if (co2High && hco3High) return diagData('resp_acidosis_chronic', '完全代償的慢性呼吸酸中毒');
+  if (co2Low && hco3Low) return diagData('resp_alkalosis_chronic', '完全代償的慢性呼吸鹼中毒');
+  if (hco3Low && co2Low) return diagData('metabolic_acidosis', '完全代償');
+  if (hco3High && co2High) return diagData('metabolic_alkalosis', '完全代償');
+
+  return diagData('normal');
+}
+
+function diagData(type, extraComp) {
+  const DB = {
+    normal: {
+      label: '✓ 正常血氣', cls: 'normal',
+      comp: '所有數值均在正常範圍內。',
+      causes: ['正常生理狀態'],
+      treat: '無需特殊處置。持續監測生命徵象。'
+    },
+    metabolic_acidosis: {
+      label: '代謝性酸中毒', cls: 'acidosis',
+      comp: '預期呼吸代償：PaCO₂ = 1.5 × HCO₃⁻ + 8 ± 2（Winter公式）',
+      causes: [
+        '高AG：DKA / 乳酸酸中毒 / 尿毒症 / 藥物中毒（甲醇、水楊酸）',
+        '正常AG：腹瀉 / RTA（腎小管酸中毒）/ 生理食鹽水過多 / 腸瘻管',
+        'Addison病 / 碳酸酐酶抑制劑'
+      ],
+      treat: '治療原發病因；嚴重酸中毒(pH<7.1)可考慮碳酸氫鈉；確認AG以辨別病因；監測電解質（尤其K⁺）。'
+    },
+    metabolic_alkalosis: {
+      label: '代謝性鹼中毒', cls: 'alkalosis',
+      comp: '預期呼吸代償：PaCO₂ = 0.7 × HCO₃⁻ + 21 ± 2',
+      causes: [
+        '嘔吐 / 鼻胃管引流（HCl流失）',
+        '利尿劑（Thiazide / Loop）過度使用',
+        '原發性醛固酮增多症',
+        '低血鉀症',
+        'Milk-alkali syndrome / 大量輸血'
+      ],
+      treat: '補充Cl⁻（生理食鹽水）、補鉀（低鉀時）；停用利尿劑；原發性醛固酮者需手術或螺旋內酯。'
+    },
+    resp_acidosis_acute: {
+      label: '急性呼吸酸中毒', cls: 'acidosis',
+      comp: '急性期代償：HCO₃⁻ 每增加 1 mEq/L（PaCO₂每升高10 mmHg）',
+      causes: [
+        '呼吸驅動抑制：鎮靜劑、麻醉、腦幹病變',
+        '神經肌肉疾病：GBS / 重症肌無力 / 脊髓損傷',
+        '急性上呼吸道阻塞：喉頭痙攣、異物',
+        '嚴重氣喘急性發作 / 急性肺水腫'
+      ],
+      treat: '立即解除呼吸道阻塞；必要時予以輔助通氣（BiPAP/插管）；治療原發病；避免過度使用鎮靜劑。'
+    },
+    resp_acidosis_chronic: {
+      label: '慢性呼吸酸中毒', cls: 'acidosis',
+      comp: '慢性代償：HCO₃⁻ 每增加 3.5 mEq/L（PaCO₂每升高10 mmHg）',
+      causes: [
+        'COPD（最常見）',
+        '重度肥胖低通氣症候群（OHS）',
+        '慢性神經肌肉疾病（ALS / DMD）',
+        '胸廓變形 / 嚴重脊柱側彎'
+      ],
+      treat: '戒菸、支氣管擴張劑；長期氧療（SpO₂ 88–92%）；夜間BiPAP；急性惡化時評估插管；注意「CO₂ retainer」不過度給O₂。'
+    },
+    resp_alkalosis_acute: {
+      label: '急性呼吸鹼中毒', cls: 'alkalosis',
+      comp: '急性代償：HCO₃⁻ 每降低 2 mEq/L（PaCO₂每降低10 mmHg）',
+      causes: [
+        '焦慮 / 過度換氣症候群',
+        '疼痛 / 發燒',
+        '肺栓塞 / 急性肺損傷（ALI）',
+        '早期敗血症（Gram陰性菌）',
+        '高海拔低氧刺激'
+      ],
+      treat: '治療原發病；焦慮性者可考慮再呼吸法（紙袋）或鎮定；肺栓塞需抗凝療法；監測Ca²⁺（鹼中毒降低游離鈣）。'
+    },
+    resp_alkalosis_chronic: {
+      label: '慢性呼吸鹼中毒', cls: 'alkalosis',
+      comp: '慢性代償：HCO₃⁻ 每降低 5 mEq/L（PaCO₂每降低10 mmHg）',
+      causes: [
+        '長期居住高海拔',
+        '慢性肝病（氨刺激呼吸中樞）',
+        '懷孕（黃體素刺激）',
+        '慢性焦慮 / 心因性過度換氣'
+      ],
+      treat: '治療基礎疾病；肝病者評估肝功能；懷孕為生理現象無需特殊處置。'
+    },
+    mixed_acid: {
+      label: '混合型酸中毒', cls: 'acidosis',
+      comp: '同時存在呼吸酸中毒與代謝酸中毒，代償不足以解釋數值異常。',
+      causes: [
+        '心肺停止 / 心源性休克',
+        'COPD急性惡化合併代謝性酸中毒',
+        '嚴重敗血症伴乳酸堆積'
+      ],
+      treat: '緊急穩定生命徵象；插管通氣控制CO₂；同時矯正代謝原因；密切監測。'
+    },
+    mixed_alk: {
+      label: '混合型鹼中毒', cls: 'alkalosis',
+      comp: '同時存在呼吸鹼中毒與代謝鹼中毒。',
+      causes: [
+        '肝硬化合併嘔吐或利尿劑使用',
+        'ICU病人：過度通氣 + NG引流',
+        '心衰竭合併利尿劑 + 過度換氣'
+      ],
+      treat: '調整呼吸機設定（降低分鐘通氣量）；補充氯化物；治療基礎病。'
+    }
+  };
+  const d = DB[type] || DB['normal'];
+  if (extraComp) d.comp = extraComp;
+  return d;
+}
+
+function renderDiagnosis(data, pH, paco2, hco3) {
+  document.getElementById('emptyState').style.display = 'none';
+  const box = document.getElementById('diagnosisBox');
+  box.classList.add('show');
+
+  // Main label
+  const main = document.getElementById('diagMain');
+  main.textContent = data.label;
+  main.className = 'diag-main ' + data.cls;
+
+  // Values
+  function setVal(id, sid, val, low, high) {
+    const el = document.getElementById(id);
+    const sel = document.getElementById(sid);
+    if (val === null || isNaN(val)) { el.textContent = '—'; sel.textContent = '—'; sel.className='status'; return; }
+    el.textContent = val;
+    if (val < low) { sel.textContent = '↓ 偏低'; sel.className='status low'; }
+    else if (val > high) { sel.textContent = '↑ 偏高'; sel.className='status high'; }
+    else { sel.textContent = '正常'; sel.className='status ok'; }
+  }
+  setVal('rPH', 'rPHs', pH!==null?pH.toFixed(2):null, 7.35, 7.45);
+  setVal('rCO2', 'rCO2s', paco2, 35, 45);
+  setVal('rHCO', 'rHCOs', hco3!==null?parseFloat(hco3).toFixed(1):null, 22, 26);
+
+  // Compensation
+  document.getElementById('diagComp').textContent = data.comp;
+
+  // Causes
+  const causesEl = document.getElementById('diagCauses');
+  causesEl.innerHTML = '';
+  data.causes.forEach(c => {
+    causesEl.innerHTML += `<div class="cause-item"><div class="cause-bullet"></div><div>${c}</div></div>`;
+  });
+
+  // Treatment
+  document.getElementById('diagTreat').textContent = data.treat;
+}
+
+// Allow Enter key in inputs
+document.querySelectorAll('input').forEach(inp => {
+  inp.addEventListener('keydown', e => { if(e.key==='Enter') analyzeManual(); });
+});
+</script>
+</body>
+</html>
