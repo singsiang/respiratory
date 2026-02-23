@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>常見疾病衛教 — 基隆長庚外科加護病房</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --teal: #0a7e78; --teal-light: #14b8a6; --gold: #c9a84c; --cream: #f8f6f1; --dark: #1a2e2d; }
+  body { font-family: 'Noto Sans TC', sans-serif; background: var(--cream); min-height: 100vh; padding: 2rem 1rem 4rem; }
+  
+  .back { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--teal); text-decoration: none; font-weight: 700; font-size: 0.9rem; margin-bottom: 2rem; }
+
+  .header { text-align: center; margin-bottom: 2.5rem; }
+  .tag { display: inline-block; background: var(--gold); color: white; font-size: 0.75rem; font-weight: 700; padding: 0.3rem 1rem; border-radius: 100px; letter-spacing: 0.1em; margin-bottom: 1rem; }
+  h1 { font-size: clamp(1.6rem, 5vw, 2.4rem); font-weight: 900; color: var(--dark); }
+  .sub { color: #888; margin-top: 0.5rem; font-size: 0.95rem; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.25rem; max-width: 1000px; margin: 2rem auto 0; }
+
+  .card { background: white; border-radius: 16px; padding: 1.5rem 1rem; text-align: center; box-shadow: 0 2px 16px rgba(10,126,120,0.07); border-top: 4px solid var(--gold); transition: transform 0.2s, box-shadow 0.2s; }
+  .card:hover { transform: translateY(-4px); box-shadow: 0 8px 28px rgba(10,126,120,0.14); }
+  .card h2 { font-size: 1rem; font-weight: 900; color: var(--dark); margin-bottom: 1rem; line-height: 1.5; }
+
+  .qr-wrapper { display: flex; justify-content: center; margin-bottom: 1rem; }
+  .qr-placeholder { width: 120px; height: 120px; background: #f5f5f5; border: 2px dashed #ddd; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 0.7rem; }
+
+  .btn { display: inline-block; padding: 0.45rem 1.1rem; background: var(--gold); color: white; border-radius: 100px; text-decoration: none; font-size: 0.8rem; font-weight: 700; transition: background 0.2s; }
+  .btn:hover { background: #b8923b; }
+  .btn-placeholder { display: inline-block; padding: 0.45rem 1.1rem; background: #ddd; color: #aaa; border-radius: 100px; font-size: 0.8rem; font-weight: 700; }
+
+  .note { text-align: center; margin-top: 3rem; color: #aaa; font-size: 0.8rem; }
+</style>
+</head>
+<body>
+
+<a class="back" href="index.html">← 返回首頁</a>
+
+<div class="header">
+  <div class="tag">外科加護病房</div>
+  <h1>常見疾病 QR Code</h1>
+  <div class="sub">基隆長庚醫院外科加護病房與您一起關心身體健康</div>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="note">基隆長庚醫院外科加護病房　·　人本濟世　勤勞樸實</div>
+
+<script>
+// =============================================
+// 填入各疾病衛教連結（掃 QR Code 後取得的 URL）
+// =============================================
+const diseases = [
+  { name: '心臟手術後照護', url: '' },
+  { name: '認識口腔癌',     url: '' },
+  { name: '認識食道癌',     url: '' },
+  { name: '認識肺癌',       url: '' },
+  { name: '認識胰臟癌',     url: '' },
+  { name: '認識肝癌',       url: '' },
+  { name: '認識胃癌',       url: '' },
+  { name: '創傷性血胸照護', url: '' },
+  { name: '認識動脈瘤',     url: '' },
+  { name: '認識腦中風',     url: '' },
+  { name: '認識腦腫瘤',     url: '' },
+  { name: '認識腦下垂體瘤', url: '' },
+  { name: '認識頸椎疾病',   url: '' },
+  { name: '認識大腸癌',     url: '' },
+  { name: '認識腸道阻塞',   url: '' },
+  { name: '灼(燙)傷照護',  url: '' },
+];
+
+const grid = document.getElementById('grid');
+
+diseases.forEach((d, i) => {
+  const card = document.createElement('div');
+  card.className = 'card';
+
+  const qrId = `qr-${i}`;
+  const btnId = `btn-${i}`;
+
+  card.innerHTML = `
+    <h2>${d.name}</h2>
+    <div class="qr-wrapper" id="${qrId}">
+      <div class="qr-placeholder">待填入連結</div>
+    </div>
+    ${d.url
+      ? `<a class="btn" href="${d.url}" target="_blank">查看衛教</a>`
+      : `<span class="btn-placeholder" id="${btnId}">查看衛教</span>`
+    }
+  `;
+
+  grid.appendChild(card);
+
+  if (d.url) {
+    setTimeout(() => {
+      const wrapper = document.getElementById(qrId);
+      wrapper.innerHTML = '';
+      new QRCode(wrapper, { text: d.url, width: 120, height: 120, colorDark: '#1a2e2d', colorLight: '#ffffff' });
+    }, 0);
+  }
+});
+</script>
+
+</body>
+</html>
