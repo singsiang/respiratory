@@ -1,706 +1,429 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>呼吸器空機點班系統</title>
-  <!-- 引入 Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- 引入 React 與 ReactDOM -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <!-- 引入 Babel -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- 引入 html2canvas 用於匯出圖片 -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>呼吸道藥物階層式衛教檢索</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f8fafc;
+        }
 
-  <style>
-    /* 隱藏滾動條但保持可以滾動 */
-    .hide-scrollbar::-webkit-scrollbar { display: none; }
-    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    /* 防止手機點擊閃爍 */
-    body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; overflow-x: hidden; }
-    input[type=number]::-webkit-inner-spin-button, 
-    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-    
-    /* 報表專屬字體設定，確保輸出圖片字體與 Excel 相近 */
-    .report-table {
-      font-family: 'Microsoft JhengHei', '微軟正黑體', Arial, sans-serif;
-    }
-    
-    /* 自訂滾動條樣式給 Textarea */
-    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-  </style>
+        /* 主標籤動效 */
+        .main-tab {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .main-tab.active {
+            background-color: #0f172a;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 次標籤樣式 */
+        .sub-tab {
+            transition: all 0.2s ease;
+        }
+        .sub-tab.active {
+            background-color: #2563eb;
+            color: white;
+            border-color: #2563eb;
+        }
+
+        /* 卡片設計與懸停 */
+        .med-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @media (min-width: 768px) {
+            .med-card:hover {
+                transform: translateY(-8px);
+                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            }
+        }
+
+        /* 藥理分類配色條 */
+        .border-laba-ics { border-left: 5px solid #818cf8; }
+        .border-laba-lama { border-left: 5px solid #10b981; }
+        .border-lama { border-left: 5px solid #06b6d4; }
+        .border-triple { border-left: 5px solid #f43f5e; }
+        .border-saba { border-left: 5px solid #f59e0b; }
+        .border-ics { border-left: 5px solid #f472b6; }
+        .border-others { border-left: 5px solid #94a3b8; }
+
+        /* 滾動條隱藏 */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* SVG 插畫特效 */
+        .svg-container {
+            perspective: 1000px;
+        }
+        .svg-device {
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.1));
+        }
+        .med-card:hover .svg-device {
+            transform: rotateY(-10deg) rotateX(5deg) scale(1.1);
+        }
+    </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans pb-24 w-full">
-  <div id="root"></div>
+<body class="p-4 md:p-10">
 
-  <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
+    <!-- 全局 SVG 定義 -->
+    <svg width="0" height="0" class="absolute hidden">
+        <defs>
+            <filter id="mainShadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="2" dy="4" stdDeviation="3" flood-color="#000" flood-opacity="0.2" />
+            </filter>
+            <!-- 漸層定義：金屬 -->
+            <linearGradient id="gradMetal" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#94a3b8" />
+                <stop offset="30%" stop-color="#f8fafc" />
+                <stop offset="60%" stop-color="#cbd5e1" />
+                <stop offset="100%" stop-color="#64748b" />
+            </linearGradient>
+            <!-- 漸層定義：塑膠 -->
+            <linearGradient id="gradPlastic" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#ffffff" />
+                <stop offset="100%" stop-color="#e2e8f0" />
+            </linearGradient>
+            <!-- 漸層定義：半透明外殼 -->
+            <linearGradient id="gradGlass" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="rgba(255,255,255,0.8)" />
+                <stop offset="100%" stop-color="rgba(203,213,225,0.4)" />
+            </linearGradient>
+        </defs>
+    </svg>
 
-    // --- SVG 圖示元件 ---
-    const IconClipboard = ({className="w-5 h-5 sm:w-6 sm:h-6"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>;
-    const IconCamera = ({className="w-5 h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>;
-    const IconCheck = ({className="w-6 h-6 sm:w-8 sm:h-8"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>;
-    const IconX = ({className="w-3.5 h-3.5 sm:w-4 sm:h-4"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>;
-    const IconPlus = ({className="w-4 h-4 sm:w-5 sm:h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
-    const IconMinus = ({className="w-4 h-4 sm:w-5 sm:h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
-    const IconFileText = ({className="w-5 h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>;
-    const IconCopy = ({className="w-5 h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>;
-    const IconInfo = ({className="w-4 h-4"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>;
-    const IconTable = ({className="w-5 h-5"}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="9" x2="9" y2="21"></line><line x1="15" y1="9" x2="15" y2="21"></line></svg>;
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-10 text-center">
+            <h1 class="text-3xl md:text-5xl font-black text-slate-800 mb-2 tracking-tight">呼吸道藥物 ‧ 圖鑑檢索</h1>
+            <p class="text-slate-500 font-medium">基於臨床手冊繪製的高擬真吸入器視覺指南</p>
+        </header>
 
-    // --- 資料模型 ---
-    const AREAS = ['9F', 'MICU', 'ER', 'VMICU'];
-    const ITEMS = [
-      { id: 'po_por', name: 'PO(por)', validAreas: ['VMICU'], isYellow: true },
-      { id: 'po_nt1d', name: 'PO(NT1D)', validAreas: ['9F', 'VMICU'], isYellow: true },
-      { id: 'savina', name: 'Savina', validAreas: ['9F', 'MICU', 'ER', 'VMICU'] },
-      { id: 'savina300', name: 'Savina300', validAreas: ['9F', 'MICU'] },
-      { id: 'v600', name: 'V600', validAreas: ['9F', 'MICU'] },
-      { id: 'servo300', name: 'Servo300', validAreas: ['9F'] },
-      { id: 'galileo', name: 'Galileo', validAreas: ['9F'] },
-      { id: 'dura', name: 'Dura', validAreas: ['MICU'] },
-      { id: 'evita4', name: 'Evita-4', validAreas: ['MICU', 'VMICU'] },
-      { id: 'po', name: 'PO', validAreas: ['9F'] },
-      { id: 'nonin', name: 'Nonin', validAreas: ['9F'] },
-      { id: 'hfnc', name: 'HFNC(AirVO2)', validAreas: ['9F', 'MICU', 'ER', 'VMICU'] },
-      { id: 'flexo', name: 'Flexo', validAreas: ['9F', 'MICU', 'ER', 'VMICU'] },
-      { id: 'trilogy', name: 'Trilogy', validAreas: ['VMICU'] },
-      { id: 'stellar', name: 'Stellar', validAreas: ['9F', 'MICU', 'ER'] }
-    ];
-
-    function App() {
-      const [activeTab, setActiveTab] = useState('9F');
-      const [inventory, setInventory] = useState({});
-      const [focusedItem, setFocusedItem] = useState(null); 
-      const [isExporting, setIsExporting] = useState(false);
-      const [modal, setModal] = useState({ isOpen: false, type: 'alert', message: '', onConfirm: null });
-      // mdModal 擴增：支援多種文字格式與判斷是否為總表
-      const [mdModal, setMdModal] = useState({ isOpen: false, content: '', listContent: '', title: '', isSummary: false });
-      const [textFormat, setTextFormat] = useState('markdown'); // 'markdown' | 'list'
-      const [currentTimeStr, setCurrentTimeStr] = useState('');
-      const tableRef = useRef(null);
-
-      useEffect(() => {
-        const initialData = {};
-        AREAS.forEach(area => {
-          initialData[area] = {};
-          ITEMS.forEach(item => {
-            initialData[area][item.id] = item.validAreas.includes(area) ? '0' : 'N/A';
-          });
-        });
-        
-        try {
-          const savedData = localStorage.getItem('hospital_inventory_v6');
-          if (savedData) setInventory(JSON.parse(savedData));
-          else setInventory(initialData);
-        } catch (e) {
-          setInventory(initialData);
-        }
-      }, []);
-
-      useEffect(() => {
-        if (Object.keys(inventory).length > 0) {
-          localStorage.setItem('hospital_inventory_v6', JSON.stringify(inventory));
-        }
-      }, [inventory]);
-
-      // 更新統計時間
-      useEffect(() => {
-        const updateTime = () => {
-          const now = new Date();
-          const pad = (n) => n.toString().padStart(2, '0');
-          setCurrentTimeStr(`${now.getFullYear()}/${pad(now.getMonth() + 1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`);
-        };
-        updateTime();
-        const timer = setInterval(updateTime, 60000);
-        return () => clearInterval(timer);
-      }, []);
-
-      const showAlert = (message) => setModal({ isOpen: true, type: 'alert', message, onConfirm: null });
-      const showConfirm = (message, onConfirm) => setModal({ isOpen: true, type: 'confirm', message, onConfirm });
-      const closeModal = () => setModal({ isOpen: false, type: 'alert', message: '', onConfirm: null });
-
-      const handleInputChange = (area, itemId, value) => {
-        setInventory(prev => ({ ...prev, [area]: { ...prev[area], [itemId]: value } }));
-        setFocusedItem(itemId);
-      };
-
-      const handleMainMathChange = (area, itemId, delta) => {
-        setInventory(prev => {
-          const currentStr = String(prev[area][itemId] || '0');
-          const match = currentStr.match(/^(\d+)(.*)/);
-          let num = 0;
-          let rest = '';
-          
-          if (match) {
-            num = parseInt(match[1], 10);
-            rest = match[2];
-          } else {
-            rest = currentStr;
-          }
-
-          num = Math.max(0, num + delta);
-          return { ...prev, [area]: { ...prev[area], [itemId]: `${num}${rest}` } };
-        });
-        setFocusedItem(itemId);
-      };
-
-      const handleStatusIncrease = (area, itemId, statusType) => {
-         setInventory(prev => {
-            const currentStr = String(prev[area][itemId] || '0');
-            const regex = new RegExp(`\\+(\\d+)\\(${statusType}\\)`);
-            const match = currentStr.match(regex);
-            let newStr = '';
-
-            if (match) {
-              const currentStatusCount = parseInt(match[1], 10);
-              const newStatusCount = currentStatusCount + 1;
-              newStr = currentStr.replace(regex, `+${newStatusCount}(${statusType})`);
-            } else {
-              newStr = `${currentStr}+1(${statusType})`;
-            }
-
-            return { ...prev, [area]: { ...prev[area], [itemId]: newStr } };
-         });
-         setFocusedItem(itemId);
-      };
-
-      const handleResetItem = (area, itemId) => {
-        setInventory(prev => ({ ...prev, [area]: { ...prev[area], [itemId]: '0' } }));
-        setFocusedItem(itemId);
-      };
-
-      const requestClearData = () => {
-        showConfirm('確定要清空所有點班紀錄嗎？所有數字與註記將會歸零。', () => {
-          const resetData = { ...inventory };
-          AREAS.forEach(area => {
-            ITEMS.forEach(item => {
-              if (item.validAreas.includes(area)) resetData[area][item.id] = '0';
-            });
-          });
-          setInventory(resetData);
-          setFocusedItem(null);
-          showAlert('資料已成功清空！');
-        });
-      };
-
-      // 計算表格的合併儲存格 (RowSpan) 邏輯 - 提升層級供匯出文字使用
-      const getCellSpans = () => {
-        const spans = {};
-        AREAS.forEach(area => {
-          spans[area] = {};
-          let i = 0;
-          while (i < ITEMS.length) {
-            const item = ITEMS[i];
-            const val = inventory[area]?.[item.id] || 'N/A';
-            
-            if (val === 'N/A' && i >= 2) {
-              let spanCount = 1;
-              let j = i + 1;
-              while (j < ITEMS.length && (inventory[area]?.[ITEMS[j].id] === 'N/A')) {
-                spanCount++;
-                j++;
-              }
-              spans[area][item.id] = { span: spanCount, skip: false };
-              for (let k = i + 1; k < j; k++) {
-                spans[area][ITEMS[k].id] = { span: 0, skip: true };
-              }
-              i = j;
-            } else {
-              spans[area][item.id] = { span: 1, skip: false };
-              i++;
-            }
-          }
-        });
-        return spans;
-      };
-
-      // --- 匯出文字 (Markdown / LINE 條列) ---
-      const openMdModal = (tab) => {
-        let md = '';
-        let listContent = '';
-        
-        if (tab === 'SUMMARY') {
-          const spans = getCellSpans();
-          
-          // 1. 生成 Markdown 版本 (將被合併的 N/A 替換為空白，畫面更貼近真表格)
-          md += `### 空機點班統計總表\n`;
-          md += `*統計時間：${currentTimeStr}*\n\n`;
-          md += `| 空機統計 | ${AREAS.join(' | ')} |\n`;
-          md += `| :--- | ${AREAS.map(() => ':---:').join(' | ')} |\n`;
-
-          ITEMS.forEach(item => {
-            const rowValues = AREAS.map(area => {
-              const spanInfo = spans[area]?.[item.id] || { span: 1, skip: false };
-              if (spanInfo.skip) return ' '; // 隱藏被合併的文字
-              return inventory[area][item.id] || 'N/A';
-            });
-            md += `| **${item.name}** | ${rowValues.join(' | ')} |\n`;
-          });
-          
-          // 2. 生成 LINE 條列版本 (方便手機端傳送)
-          listContent += `📊 空機點班總表 (${currentTimeStr})\n\n`;
-          AREAS.forEach(area => {
-            listContent += `【${area}】\n`;
-            let hasItems = false;
-            ITEMS.forEach(item => {
-              const val = inventory[area][item.id];
-              // 條列版只顯示非 0 且非 N/A 的項目，版面更乾淨
-              if (val !== 'N/A' && val !== '0') {
-                listContent += `- ${item.name}: ${val}\n`;
-                hasItems = true;
-              }
-            });
-            if (!hasItems) listContent += `- (無)\n`;
-            listContent += `\n`;
-          });
-          listContent = listContent.trim();
-          
-          setMdModal({ isOpen: true, content: md, listContent: listContent, title: '統計總表', isSummary: true });
-          setTextFormat('markdown');
-        } else {
-          // 單一區域匯出
-          md += `### ${tab} 空機點班紀錄\n`;
-          md += `*統計時間：${currentTimeStr}*\n\n`;
-          const validItems = ITEMS.filter(item => item.validAreas.includes(tab));
-          validItems.forEach(item => {
-            md += `- **${item.name}**: ${inventory[tab][item.id]}\n`;
-          });
-          setMdModal({ isOpen: true, content: md, listContent: md, title: `${tab} 區`, isSummary: false });
-          setTextFormat('markdown');
-        }
-      };
-
-      const copyMarkdownToClipboard = () => {
-        const textToCopy = textFormat === 'markdown' ? mdModal.content : mdModal.listContent;
-        const textArea = document.createElement("textarea");
-        textArea.value = textToCopy;
-        document.body.appendChild(textArea);
-        textArea.select();
-        try {
-          document.execCommand('copy');
-          showAlert('✅ 已成功複製文字！可以前往貼上了。');
-        } catch (err) {
-          showAlert('複製失敗，請在文字方塊中手動全選並複製。');
-        }
-        document.body.removeChild(textArea);
-      };
-
-      // --- 複製豐富文本表格 (支援 Word / Excel) ---
-      const copyRichTextTable = () => {
-        if (!tableRef.current) {
-          showAlert('系統尚未準備好表格，請稍後再試。');
-          return;
-        }
-        try {
-          const el = tableRef.current;
-          let range, sel;
-          if (document.createRange && window.getSelection) {
-            range = document.createRange();
-            sel = window.getSelection();
-            sel.removeAllRanges();
-            range.selectNodeContents(el);
-            sel.addRange(range);
-            document.execCommand("copy");
-            sel.removeAllRanges();
-            showAlert('✅ 已成功複製「表格格式」！\n您可以直接去貼上至 Word、Excel 或支援表格的交班系統中。');
-          } else {
-            showAlert('您的瀏覽器不支援此複製功能。');
-          }
-        } catch (err) {
-          console.error(err);
-          showAlert('複製失敗，請嘗試使用圖片匯出功能。');
-        }
-      };
-
-      // --- 匯出圖片 ---
-      const exportAsImage = async () => {
-        if (!window.html2canvas) {
-          showAlert('系統尚未準備好，請稍後再試。');
-          return;
-        }
-        setIsExporting(true);
-        try {
-          const canvas = await window.html2canvas(tableRef.current, {
-            scale: 2.5,
-            backgroundColor: '#ffffff',
-            useCORS: true,
-            logging: false
-          });
-          const image = canvas.toDataURL('image/png');
-          const link = document.createElement('a');
-          link.href = image;
-          const d = new Date();
-          const dateString = `${d.getMonth()+1}月${d.getDate()}日_${d.getHours()}時${d.getMinutes()}分`;
-          link.download = `空機點班統計_${dateString}.png`;
-          link.click();
-        } catch (err) {
-          console.error('匯出失敗:', err);
-          showAlert('匯出圖片失敗，請確認瀏覽器支援此功能。');
-        } finally {
-          setIsExporting(false);
-        }
-      };
-
-      if (Object.keys(inventory).length === 0) {
-        return <div className="p-10 text-center text-slate-500 flex flex-col items-center"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>系統載入中...</div>;
-      }
-
-      const cellSpans = activeTab === 'SUMMARY' ? getCellSpans() : {};
-
-      return (
-        <div className="min-h-screen flex flex-col w-full" onClick={() => setFocusedItem(null)}>
-          
-          {/* 系統提示 Modal */}
-          {modal.isOpen && (
-            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-                <div className="p-5 sm:p-6">
-                  <h3 className="text-base sm:text-lg font-bold text-slate-800 mb-2">系統提示</h3>
-                  <p className="text-sm sm:text-base text-slate-600 whitespace-pre-wrap">{modal.message}</p>
-                </div>
-                <div className="bg-slate-50 p-3 sm:p-4 flex justify-end gap-3 border-t border-slate-100">
-                  {modal.type === 'confirm' && (
-                    <button onClick={closeModal} className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 font-medium">
-                      取消
-                    </button>
-                  )}
-                  <button 
-                    onClick={() => {
-                      if (modal.onConfirm) modal.onConfirm();
-                      closeModal();
-                    }} 
-                    className="px-3 py-1.5 sm:px-4 sm:py-2 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md font-medium"
-                  >
-                    確定
-                  </button>
-                </div>
-              </div>
+        <!-- 篩選區 Step 1 -->
+        <div class="mb-6">
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 text-center">Step 1. 裝置類型分類</p>
+            <div class="flex flex-nowrap md:flex-wrap justify-start md:justify-center gap-3 overflow-x-auto pb-4 hide-scrollbar" id="mainTabs">
+                <button class="main-tab active px-6 py-3 rounded-2xl font-black bg-white text-slate-600 shadow-sm border border-slate-200 flex-shrink-0" data-main="all">全部裝置</button>
+                <button class="main-tab px-6 py-3 rounded-2xl font-black bg-white text-slate-600 shadow-sm border border-slate-200 flex-shrink-0" data-main="smi">SMI 舒沛噴</button>
+                <button class="main-tab px-6 py-3 rounded-2xl font-black bg-white text-slate-600 shadow-sm border border-slate-200 flex-shrink-0" data-main="dpi">DPI 乾粉型</button>
+                <button class="main-tab px-6 py-3 rounded-2xl font-black bg-white text-slate-600 shadow-sm border border-slate-200 flex-shrink-0" data-main="mdi">MDI 定量型</button>
+                <button class="main-tab px-6 py-3 rounded-2xl font-black bg-white text-slate-600 shadow-sm border border-slate-200 flex-shrink-0" data-main="nasal">鼻噴劑</button>
             </div>
-          )}
-
-          {/* 文字匯出 Modal (支援 MD / LINE 切換) */}
-          {mdModal.isOpen && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-              <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
-                <div className="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-center">
-                  <h3 className="text-lg font-bold text-slate-800">{mdModal.title} - 文字匯出</h3>
-                  <button onClick={() => setMdModal(prev => ({...prev, isOpen: false}))} className="text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-1 transition-colors">
-                    <IconX className="w-5 h-5" />
-                  </button>
-                </div>
-                
-                <div className="p-4 sm:p-5 flex-1 overflow-y-auto bg-white flex flex-col">
-                  {mdModal.isSummary && (
-                    <div className="flex bg-slate-100 p-1 rounded-lg mb-3 shrink-0">
-                      <button 
-                        onClick={() => setTextFormat('markdown')} 
-                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${textFormat === 'markdown' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
-                      >
-                        Markdown 表格
-                      </button>
-                      <button 
-                        onClick={() => setTextFormat('list')} 
-                        className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${textFormat === 'list' ? 'bg-white shadow-sm text-blue-700' : 'text-slate-500 hover:text-slate-700'}`}
-                      >
-                        LINE 條列版
-                      </button>
-                    </div>
-                  )}
-
-                  <textarea
-                    readOnly
-                    value={textFormat === 'markdown' ? mdModal.content : mdModal.listContent}
-                    className="w-full h-48 sm:h-64 p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm font-mono text-slate-700 outline-none resize-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 custom-scrollbar mb-3 shrink-0"
-                  />
-                  
-                  {/* 動態顯示解釋區塊 */}
-                  <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-3 sm:p-4 flex gap-2.5 items-start mt-auto">
-                    <IconInfo className="w-5 h-5 text-blue-500 mt-0.5 flex-none" />
-                    <div>
-                      {mdModal.isSummary ? (
-                        <>
-                          <p className="text-sm font-bold text-blue-800 mb-1">💡 貼上後覺得亂亂的怎麼辦？</p>
-                          <p className="text-xs sm:text-sm text-blue-700 leading-relaxed">
-                            • <strong>貼到 Word/Excel/護理系統：</strong>請關閉此視窗，直接點擊總表的<strong className="text-blue-800">「複製表格」</strong>按鈕。<br/>
-                            • <strong>貼到 LINE 通訊軟體：</strong>請切換為上方的<strong className="text-blue-800">「LINE 條列版」</strong>，無雜亂符號！
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="text-sm font-bold text-blue-800 mb-1">💡 什麼是 Markdown 格式？</p>
-                          <p className="text-xs sm:text-sm text-blue-700 leading-relaxed">
-                            利用簡單符號 (如 <code className="bg-blue-100 px-1 rounded">-</code> 或 <code className="bg-blue-100 px-1 rounded">**</code>) 標記格式的純文字。直接複製貼上至支援的交班系統或 Notion，就會自動轉換為漂亮排版。
-                          </p>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 p-3 sm:p-4 flex justify-end gap-3 border-t border-slate-100">
-                  <button onClick={() => setMdModal(prev => ({...prev, isOpen: false}))} className="px-4 py-2 text-sm text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 font-medium">關閉</button>
-                  <button onClick={copyMarkdownToClipboard} className="flex items-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-md font-medium active:scale-95 transition-transform">
-                    <IconCopy className="w-4 h-4" /> 一鍵複製
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 頂部導覽列 */}
-          <header className="bg-blue-700 text-white shadow-md sticky top-0 z-40 w-full" onClick={e => e.stopPropagation()}>
-            <div className="max-w-4xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex justify-between items-center">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <IconClipboard />
-                <h1 className="text-base sm:text-lg md:text-xl font-bold tracking-wide">空機點班</h1>
-              </div>
-              <button onClick={requestClearData} className="text-blue-200 hover:text-white flex items-center gap-1 text-xs sm:text-sm bg-blue-800 px-2 py-1.5 sm:px-3 sm:py-1.5 rounded-lg transition active:scale-95">
-                <IconX />清空
-              </button>
-            </div>
-            
-            {/* 標籤頁切換 */}
-            <div className="flex overflow-x-auto hide-scrollbar border-t border-blue-600 w-full">
-              {AREAS.map(area => (
-                <button
-                  key={area}
-                  onClick={() => { setActiveTab(area); setFocusedItem(null); }}
-                  className={`flex-1 py-2.5 sm:py-3 px-2 sm:px-4 min-w-[65px] sm:min-w-[80px] text-sm sm:text-base text-center font-medium border-b-4 transition-colors ${
-                    activeTab === area ? 'border-white bg-blue-800 text-white' : 'border-transparent text-blue-200 hover:bg-blue-600'
-                  }`}
-                >
-                  {area}
-                </button>
-              ))}
-              <button
-                onClick={() => { setActiveTab('SUMMARY'); setFocusedItem(null); }}
-                className={`flex-1 py-2.5 sm:py-3 px-2 sm:px-4 min-w-[85px] sm:min-w-[100px] text-sm sm:text-base text-center font-bold border-b-4 transition-colors ${
-                  activeTab === 'SUMMARY' ? 'border-yellow-400 bg-blue-800 text-yellow-400' : 'border-transparent text-blue-200 hover:bg-blue-600'
-                }`}
-              >
-                總表預覽
-              </button>
-            </div>
-          </header>
-
-          <main className="flex-1 max-w-4xl w-full mx-auto p-2.5 sm:p-4 md:p-6 pb-32">
-            
-            {/* --- 編輯區塊 --- */}
-            {AREAS.includes(activeTab) && (
-              <div className="space-y-3 sm:space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center mb-1">
-                  <div>
-                    <h2 className="text-base sm:text-lg font-bold text-slate-700">區域：{activeTab}</h2>
-                    <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">點選欄位可編輯數量；<strong className="text-blue-600 font-medium">右側按鈕可匯出純文字，方便複製交班。</strong></p>
-                  </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); openMdModal(activeTab); }}
-                    className="flex items-center gap-1 sm:gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg text-[13px] sm:text-sm font-medium transition-colors border border-slate-300 active:scale-95 whitespace-nowrap"
-                  >
-                    <IconFileText className="w-4 h-4" /> 
-                    <span className="hidden sm:inline">匯出文字</span>
-                    <span className="sm:hidden">匯出</span>
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
-                  {ITEMS.filter(item => item.validAreas.includes(activeTab)).map(item => {
-                    const isFocused = focusedItem === item.id;
-                    const isUnchanged = inventory[activeTab][item.id] === '0';
-                    
-                    return (
-                      <div 
-                        key={item.id} 
-                        onClick={(e) => { e.stopPropagation(); setFocusedItem(item.id); }}
-                        className={`bg-white p-2.5 sm:p-4 rounded-xl border flex flex-col gap-2 transition-all duration-200 ease-in-out cursor-pointer select-none
-                          ${isFocused 
-                            ? 'scale-[1.03] shadow-lg border-blue-500 ring-2 ring-blue-200 z-10' 
-                            : 'scale-100 shadow-sm border-slate-200 hover:border-blue-300'
-                          }`}
-                      >
-                        <div className="flex justify-between items-start pointer-events-none">
-                          <label className="font-bold text-[13px] sm:text-base text-slate-800 leading-tight">
-                            {item.name}
-                          </label>
-                          {isUnchanged && (
-                            <span className="text-[9px] sm:text-xs font-normal text-slate-400 bg-slate-100 px-1 py-0.5 sm:px-2 sm:py-1 rounded whitespace-nowrap ml-1">
-                              未異動
-                            </span>
-                          )}
-                        </div>
-                        
-                        <div className="flex gap-1 sm:gap-2 items-center w-full">
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleMainMathChange(activeTab, item.id, -1); }}
-                            className={`flex-none w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 active:bg-slate-300 transition-colors ${isFocused ? 'bg-blue-50 text-blue-600 border border-blue-200' : ''}`}
-                          >
-                            <IconMinus />
-                          </button>
-                          
-                          <input
-                            type="text"
-                            value={inventory[activeTab][item.id]}
-                            onChange={(e) => handleInputChange(activeTab, item.id, e.target.value)}
-                            onClick={(e) => { e.stopPropagation(); setFocusedItem(item.id); }}
-                            className={`min-w-0 w-full flex-1 text-center text-base sm:text-xl font-bold p-1 sm:p-1.5 h-8 sm:h-10 border rounded-lg outline-none transition-colors 
-                              ${isFocused ? 'border-blue-500 bg-blue-50/30' : 'border-slate-300'}`}
-                          />
-                          
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleMainMathChange(activeTab, item.id, 1); }}
-                            className={`flex-none w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 active:bg-slate-300 transition-colors ${isFocused ? 'bg-blue-50 text-blue-600 border border-blue-200' : ''}`}
-                          >
-                            <IconPlus />
-                          </button>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-1 mt-auto w-full">
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleStatusIncrease(activeTab, item.id, '請修'); }} 
-                            className="col-span-1 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-md text-[10px] sm:text-xs font-medium transition active:scale-95 border border-red-100 flex items-center justify-center leading-none"
-                          >
-                            +1(請修)
-                          </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleStatusIncrease(activeTab, item.id, '轉送'); }} 
-                            className="col-span-1 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-md text-[10px] sm:text-xs font-medium transition active:scale-95 border border-orange-100 flex items-center justify-center leading-none"
-                          >
-                            +1(轉送)
-                          </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleResetItem(activeTab, item.id); }} 
-                            className="col-span-2 py-1.5 bg-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-200 rounded-md text-[11px] sm:text-xs font-medium active:scale-95 transition-colors border border-transparent flex items-center justify-center leading-none"
-                          >
-                            歸零
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* --- 總表預覽 (圖片輸出區) --- */}
-            {activeTab === 'SUMMARY' && (
-              <div className="space-y-3 sm:space-y-4 animate-in fade-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 sm:gap-4 bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200">
-                  <div>
-                    <h2 className="text-base sm:text-lg font-bold text-slate-800">統計總表</h2>
-                    <p className="text-[11px] sm:text-sm text-slate-500 mt-0.5">提供最齊全的格式，支援複製到任何系統！</p>
-                  </div>
-                  
-                  {/* 改良的匯出工具列 */}
-                  <div className="flex flex-wrap sm:flex-nowrap w-full md:w-auto gap-2">
-                    <button 
-                      onClick={copyRichTextTable}
-                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 sm:px-4 sm:py-2 rounded-lg text-sm sm:text-base font-bold shadow-md transition-all active:scale-95"
-                    >
-                      <IconTable className="w-4 h-4 sm:w-5 sm:h-5"/> 
-                      <span className="whitespace-nowrap">複製表格</span>
-                    </button>
-                    <button 
-                      onClick={() => openMdModal('SUMMARY')}
-                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white px-3 py-2.5 sm:px-4 sm:py-2 rounded-lg text-sm sm:text-base font-bold shadow-md transition-all active:scale-95"
-                    >
-                      <IconFileText className="w-4 h-4 sm:w-5 sm:h-5"/> 
-                      <span className="whitespace-nowrap">匯出文字</span>
-                    </button>
-                    <button 
-                      onClick={exportAsImage}
-                      disabled={isExporting}
-                      className="w-full sm:w-auto flex-none flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2.5 sm:px-4 sm:py-2 rounded-lg text-sm sm:text-base font-bold shadow-md shadow-emerald-600/20 transition-all disabled:opacity-70 active:scale-95"
-                    >
-                      {isExporting ? '生成中...' : <><IconCamera className="w-4 h-4 sm:w-5 sm:h-5" /> <span className="whitespace-nowrap">儲存圖片</span></>}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="w-full max-w-[calc(100vw-1.2rem)] sm:max-w-full overflow-x-auto bg-white p-2 sm:p-4 rounded-xl shadow-sm border border-slate-200 custom-scrollbar">
-                  
-                  {/* === 即將被匯出為圖片/複製為表格的範圍 === */}
-                  <div ref={tableRef} className="bg-white p-4 min-w-[650px] report-table">
-                    
-                    {/* 表頭時間與標題 */}
-                    <div className="flex justify-between items-end mb-2 pb-1">
-                      <h2 className="text-xl font-bold text-black m-0 tracking-wider">空機點班統計表</h2>
-                      <div className="text-sm font-bold text-black bg-slate-100 px-3 py-1 rounded-sm border border-slate-300">
-                        統計時間：{currentTimeStr}
-                      </div>
-                    </div>
-                    
-                    {/* 嚴格的 Excel 格式表格 */}
-                    <table style={{ borderCollapse: 'collapse', width: '100%', color: '#000000', border: '1px solid black' }}>
-                      <thead>
-                        <tr>
-                          <th style={{ border: '1px solid black', padding: '6px 8px', backgroundColor: '#ffffff', fontWeight: 'bold' }}>空機統計</th>
-                          {AREAS.map(area => (
-                            <th key={area} style={{ border: '1px solid black', padding: '6px 8px', backgroundColor: '#ffffff', fontWeight: 'bold' }}>{area}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {ITEMS.map((item, idx) => (
-                          <tr key={item.id}>
-                            <td style={{ 
-                              border: '1px solid black', 
-                              padding: '6px 8px', 
-                              textAlign: 'left',
-                              backgroundColor: item.isYellow ? '#FFC000' : '#ffffff' 
-                            }}>
-                              {item.name}
-                            </td>
-                            {AREAS.map(area => {
-                              const spanInfo = cellSpans[area]?.[item.id] || { span: 1, skip: false };
-                              
-                              // 如果此格被上方合併，則不渲染
-                              if (spanInfo.skip) return null;
-
-                              const val = inventory[area]?.[item.id];
-                              const isNA = val === 'N/A';
-                              
-                              return (
-                                <td 
-                                  key={`${area}-${item.id}`} 
-                                  rowSpan={spanInfo.span}
-                                  style={{ 
-                                    border: '1px solid black', 
-                                    padding: '6px 8px', 
-                                    textAlign: 'center',
-                                    verticalAlign: 'middle',
-                                    backgroundColor: isNA ? '#D9D9D9' : '#ffffff',
-                                    fontWeight: isNA ? 'normal' : 'bold'
-                                  }}
-                                >
-                                  {val}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  {/* === 圖片/表格範圍結束 === */}
-
-                </div>
-              </div>
-            )}
-          </main>
         </div>
-      );
-    }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-  </script>
+        <!-- 篩選區 Step 2 -->
+        <div class="mb-8">
+            <div class="flex flex-nowrap md:flex-wrap justify-start md:justify-center gap-2 overflow-x-auto pb-2 hide-scrollbar" id="subTabs">
+                <button class="sub-tab active px-4 py-1.5 rounded-full text-xs font-bold border border-slate-300 text-slate-500 flex-shrink-0" data-sub="all">不限藥理</button>
+                <button class="sub-tab px-4 py-1.5 rounded-full text-xs font-bold border border-slate-300 text-slate-500 flex-shrink-0" data-sub="LABA+ICS">LABA + ICS</button>
+                <button class="sub-tab px-4 py-1.5 rounded-full text-xs font-bold border border-slate-300 text-slate-500 flex-shrink-0" data-sub="LABA+LAMA">LABA + LAMA</button>
+                <button class="sub-tab px-4 py-1.5 rounded-full text-xs font-bold border border-slate-300 text-slate-500 flex-shrink-0" data-sub="LAMA">LAMA</button>
+                <button class="sub-tab px-4 py-1.5 rounded-full text-xs font-bold border border-slate-300 text-slate-500 flex-shrink-0" data-sub="Triple">三合一 (Triple)</button>
+                <button class="sub-tab px-4 py-1.5 rounded-full text-xs font-bold border border-slate-300 text-slate-500 flex-shrink-0" data-sub="SABA">SABA (急救)</button>
+            </div>
+        </div>
+
+        <!-- 搜尋與下拉選單 -->
+        <div class="max-w-xl mx-auto mb-10 space-y-4 px-2">
+            <div class="relative">
+                <input type="text" id="searchInput" placeholder="搜尋商品名、中文名或成分..." 
+                       class="w-full pl-12 pr-4 py-4 bg-white border-none rounded-3xl shadow-md focus:ring-2 focus:ring-blue-500 outline-none text-base font-medium">
+                <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </span>
+            </div>
+            <select id="drugSelect" class="w-full px-5 py-4 bg-white border-none rounded-3xl shadow-md focus:ring-2 focus:ring-blue-500 outline-none text-base appearance-none cursor-pointer font-bold text-slate-700">
+                <option value="">快速挑選藥物...</option>
+            </select>
+        </div>
+
+        <!-- 網格渲染區 -->
+        <div id="medicineGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
+            <!-- 動態渲染 -->
+        </div>
+
+        <!-- 無結果顯示 -->
+        <div id="noResults" class="hidden text-center py-24">
+            <div class="inline-block p-6 bg-slate-100 rounded-full mb-4">
+                <svg class="w-12 h-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 9.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <p class="text-xl text-slate-400 font-black">找不到符合條件的藥物</p>
+        </div>
+    </div>
+
+    <!-- 視窗 Modal -->
+    <div id="videoModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm">
+        <div class="bg-black rounded-[2rem] overflow-hidden w-full max-w-4xl relative shadow-2xl">
+            <button onclick="closeVideo()" class="absolute top-6 right-6 text-white bg-white/10 p-2 rounded-full hover:bg-red-500 transition-colors z-10">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <video id="modalPlayer" controls class="w-full aspect-video"></video>
+        </div>
+    </div>
+
+    <script>
+        const medicines = [
+            // SMI
+            { main: 'smi', sub: 'LAMA', name: 'Spiriva', cn: '適喘樂', ing: 'Tiotropium', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB057E20230817171041.mp4' },
+            { main: 'smi', sub: 'LABA+LAMA', name: 'Spiolto', cn: '適倍樂', ing: 'Tiotropium / Olodaterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB057E20230817171041.mp4' },
+            // DPI - Ellipta
+            { main: 'dpi', sub: 'LABA+LAMA', name: 'Anoro Ellipta', cn: '安通樂', ing: 'Umeclidinium / Vilanterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB056E20250116120821.mp4' },
+            { main: 'dpi', sub: 'LABA+ICS', name: 'Relvar Ellipta', cn: '瑞克沙', ing: 'Fluticasone / Vilanterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB056E20250116120821.mp4' },
+            { main: 'dpi', sub: 'Triple', name: 'Trelegy Ellipta', cn: '喘立氣', ing: 'Fluticasone / Umeclidinium / Vilanterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB056E20250116120821.mp4' },
+            // DPI - Turbuhaler
+            { main: 'dpi', sub: 'LABA+ICS', name: 'Symbicort Turbuhaler', cn: '吸必擴 都保', ing: 'Budesonide / Formoterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PMA005E20230817090020.mp4' },
+            // DPI - Breezhaler
+            { main: 'dpi', sub: 'LABA+LAMA', name: 'Ultibro Breezhaler', cn: '昂必樂', ing: 'Indacaterol / Glycopyrronium', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB052E20230817165536.mp4' },
+            { main: 'dpi', sub: 'Triple', name: 'Enerzair Breezhaler', cn: '肺舒坦', ing: 'Indacaterol / Glycopyrronium / Mometasone', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB066E20250919154133.mp4' },
+            // DPI - Accuhaler
+            { main: 'dpi', sub: 'LABA+ICS', name: 'Seretide Accuhaler', cn: '使肺泰 準納', ing: 'Salmeterol / Fluticasone', video: 'https://webapp.cgmh.org.tw/stor/picture/PMA009E20230914192800.mp4' },
+            // MDI
+            { main: 'mdi', sub: 'SABA', name: 'Ventolin', cn: '萬托林', ing: 'Salbutamol', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB054E20231023172513.mp4' },
+            { main: 'mdi', sub: 'LABA+ICS', name: 'Symbicort Rapihaler', cn: '吸必擴 定量', ing: 'Budesonide / Formoterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PMA058E20230914191940.mp4' },
+            { main: 'mdi', sub: 'Triple', name: 'Trimbow', cn: '全盈', ing: 'Beclometasone / Formoterol / Glycopyrronium', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB063E20231023172741.mp4' },
+            // Nasal
+            { main: 'nasal', sub: 'Others', name: 'Avamys', cn: '艾敏釋', ing: 'Fluticasone furoate', video: 'https://webapp.cgmh.org.tw/stor/picture/PVA052E20241213175133.mp4' },
+            { main: 'nasal', sub: 'Others', name: 'Nasonex', cn: '內舒拿', ing: 'Mometasone furoate', video: 'https://webapp.cgmh.org.tw/stor/picture/PVA100E20241213180811.mp4' }
+        ];
+
+        // 核心渲染器：精美化 SVG 邏輯
+        const DeviceRenderer = {
+            // SMI (Respimat)
+            SMI(color = '#0ea5e9') {
+                return `
+                <g filter="url(#mainShadow)">
+                    <path d="M35 15 h30 a5 5 0 0 1 5 5 v20 h-40 v-20 a5 5 0 0 1 5 -5z" fill="${color}"/>
+                    <rect x="35" y="15" width="5" height="25" fill="#fff" opacity="0.3"/>
+                    <rect x="30" y="40" width="40" height="8" fill="#94a3b8"/>
+                    <rect x="38" y="50" width="24" height="30" rx="2" fill="url(#gradMetal)"/>
+                    <path d="M30 48 h40 v35 a5 5 0 0 1-5 5 h-30 a5 5 0 0 1-5-5z" fill="url(#gradGlass)" stroke="#cbd5e1" stroke-width="1.5"/>
+                    <rect x="46" y="55" width="8" height="18" fill="#fff" stroke="#94a3b8" stroke-width="1"/>
+                    <line x1="46" y1="64" x2="54" y2="64" stroke="#ef4444" stroke-width="2"/>
+                </g>`;
+            },
+            // Ellipta
+            Ellipta(color = '#ef4444') {
+                return `
+                <g filter="url(#mainShadow)">
+                    <ellipse cx="50" cy="52" rx="42" ry="38" fill="url(#gradPlastic)"/>
+                    <path d="M8 42 h22 v18 h-22 a5 5 0 0 1-5-5 v-8 a5 5 0 0 1 5-5z" fill="#f1f5f9" stroke="#cbd5e1"/>
+                    <path d="M50 14 a42 38 0 0 1 42 38 a42 38 0 0 1-42 38z" fill="${color}"/>
+                    <path d="M68 32 Q 80 52 68 72" fill="none" stroke="#000" stroke-opacity="0.1" stroke-width="4" stroke-linecap="round"/>
+                    <path d="M76 38 Q 86 52 76 66" fill="none" stroke="#000" stroke-opacity="0.1" stroke-width="4" stroke-linecap="round"/>
+                    <rect x="62" y="48" width="16" height="10" rx="2" fill="#1e293b"/>
+                    <text x="70" y="56" fill="#10b981" font-size="8" font-weight="900" text-anchor="middle" font-family="sans-serif">30</text>
+                </g>`;
+            },
+            // Turbuhaler
+            Turbuhaler(baseColor = '#ef4444') {
+                return `
+                <g filter="url(#mainShadow)">
+                    <path d="M38 10 h24 l2 20 h-28z" fill="#fff" stroke="#cbd5e1"/>
+                    <rect x="35" y="30" width="30" height="38" fill="url(#gradPlastic)"/>
+                    <path d="M35 68 h30 v16 a4 4 0 0 1-4 4 h-22 a4 4 0 0 1-4-4z" fill="${baseColor}"/>
+                    <rect x="40" y="10" width="4" height="78" fill="#fff" opacity="0.4"/>
+                    <rect x="39" y="68" width="22" height="2" fill="#000" opacity="0.1"/>
+                    <rect x="42" y="70" width="2" height="18" fill="#000" opacity="0.1"/>
+                    <rect x="56" y="70" width="2" height="18" fill="#000" opacity="0.1"/>
+                </g>`;
+            },
+            // MDI
+            MDI(bodyColor = '#475569', capColor = '#cbd5e1') {
+                return `
+                <g filter="url(#mainShadow)">
+                    <rect x="52" y="8" width="24" height="52" rx="4" fill="url(#gradMetal)"/>
+                    <path d="M46 36 h34 v46 a12 12 0 0 1-12 12 h-44 a12 12 0 0 1-12-12 v-24 a12 12 0 0 1 12-12 h22z" fill="${bodyColor}"/>
+                    <rect x="48" y="36" width="6" height="40" fill="#fff" opacity="0.15"/>
+                    <path d="M12 60 h20 v32 h-20 a6 6 0 0 1-6-6 v-20 a6 6 0 0 1 6-6z" fill="${capColor}"/>
+                    <path d="M14 62 h4 v28 h-4z" fill="#fff" opacity="0.2"/>
+                </g>`;
+            },
+            // Breezhaler
+            Breezhaler(btnColor = '#f97316') {
+                return `
+                <g filter="url(#mainShadow)">
+                    <path d="M42 12 h16 l-2 22 h-12z" fill="#fff" stroke="#cbd5e1"/>
+                    <rect x="25" y="50" width="10" height="22" rx="4" fill="${btnColor}"/>
+                    <rect x="65" y="50" width="10" height="22" rx="4" fill="${btnColor}"/>
+                    <path d="M30 34 h40 v38 a15 15 0 0 1-15 15 h-10 a15 15 0 0 1-15-15z" fill="url(#gradPlastic)"/>
+                    <circle cx="50" cy="62" r="14" fill="#f1f5f9" stroke="#cbd5e1"/>
+                    <rect x="45" y="56" width="10" height="12" rx="5" fill="#ef4444" opacity="0.7"/>
+                </g>`;
+            },
+            // Accuhaler
+            Accuhaler(color = '#9333ea') {
+                return `
+                <g filter="url(#mainShadow)">
+                    <circle cx="50" cy="50" r="42" fill="${color}"/>
+                    <path d="M50 8 a42 42 0 0 1 42 42 h-42z" fill="#c084fc"/>
+                    <path d="M82 38 h12 v24 h-12 a4 4 0 0 1-4-4 v-16 a4 4 0 0 1 4-4z" fill="#fff" stroke="#cbd5e1"/>
+                    <rect x="40" y="46" width="16" height="8" rx="1" fill="#fff"/>
+                    <text x="48" y="53" fill="#000" font-size="7" font-weight="900" text-anchor="middle">60</text>
+                    <ellipse cx="72" cy="50" rx="12" ry="6" fill="#000" opacity="0.2"/>
+                </g>`;
+            },
+            // Nasal
+            Nasal(labelColor = '#3b82f6') {
+                return `
+                <g filter="url(#mainShadow)">
+                    <rect x="47" y="30" width="6" height="15" fill="#cbd5e1"/>
+                    <path d="M44 8 l-2 25 h16 l-2-25z" fill="#fff" stroke="#e2e8f0"/>
+                    <rect x="30" y="33" width="40" height="8" rx="4" fill="#fff" stroke="#cbd5e1"/>
+                    <path d="M34 42 h32 c8 0 10 4 10 12 v28 c0 6-4 10-10 10 h-32 c-6 0-10-4-10-10 v-28 c0-8 2-12 10-12z" fill="url(#gradPlastic)"/>
+                    <rect x="28" y="55" width="44" height="28" fill="${labelColor}"/>
+                    <rect x="32" y="60" width="12" height="4" fill="#fff" opacity="0.4" rx="2"/>
+                </g>`;
+            },
+            Default() {
+                return `<rect x="30" y="20" width="40" height="60" rx="10" fill="#e2e8f0" stroke="#cbd5e1"/>`;
+            }
+        };
+
+        // 邏輯封裝：獲取藥物配置與渲染 SVG
+        function getDeviceSVG(med) {
+            const name = med.name.toLowerCase();
+            const main = med.main.toLowerCase();
+            
+            let content = '';
+            if (main === 'smi') {
+                let c = '#0ea5e9';
+                if (name.includes('spiolto')) c = '#84cc16';
+                if (name.includes('striverdi')) c = '#a3e635';
+                content = DeviceRenderer.SMI(c);
+            } else if (main === 'mdi') {
+                let b = '#475569', c = '#cbd5e1';
+                if (name.includes('ventolin')) { b = '#0d9488'; c = '#0f766e'; }
+                if (name.includes('symbicort')) { b = '#ef4444'; c = '#fee2e2'; }
+                if (name.includes('trimbow')) { b = '#e11d48'; c = '#ffe4e6'; }
+                content = DeviceRenderer.MDI(b, c);
+            } else if (name.includes('ellipta')) {
+                let c = '#cbd5e1';
+                if (name.includes('anoro')) c = '#ef4444';
+                if (name.includes('relvar')) c = '#eab308';
+                content = DeviceRenderer.Ellipta(c);
+            } else if (name.includes('turbuhaler')) {
+                content = DeviceRenderer.Turbuhaler('#ef4444');
+            } else if (name.includes('breezhaler')) {
+                let c = '#f97316';
+                if (name.includes('ultibro')) c = '#eab308';
+                if (name.includes('enerzair')) c = '#10b981';
+                content = DeviceRenderer.Breezhaler(c);
+            } else if (name.includes('accuhaler')) {
+                content = DeviceRenderer.Accuhaler('#9333ea');
+            } else if (main === 'nasal') {
+                let c = '#3b82f6';
+                if (name.includes('nasonex')) c = '#10b981';
+                content = DeviceRenderer.Nasal(c);
+            } else {
+                content = DeviceRenderer.Default();
+            }
+
+            return `<svg viewBox="0 0 100 100" class="svg-device w-full h-full max-w-[110px] max-h-[110px] object-contain">${content}</svg>`;
+        }
+
+        // 狀態與渲染
+        let state = { main: 'all', sub: 'all', search: '' };
+
+        function render() {
+            const grid = document.getElementById('medicineGrid');
+            const noResults = document.getElementById('noResults');
+            
+            const filtered = medicines.filter(m => {
+                const matchMain = state.main === 'all' || m.main === state.main;
+                const matchSub = state.sub === 'all' || m.sub === state.sub;
+                const matchSearch = m.name.toLowerCase().includes(state.search.toLowerCase()) || 
+                                   m.cn.includes(state.search) || 
+                                   m.ing.toLowerCase().includes(state.search.toLowerCase());
+                return matchMain && matchSub && matchSearch;
+            });
+
+            // 下拉選單更新
+            const select = document.getElementById('drugSelect');
+            select.innerHTML = '<option value="">快速挑選藥物...</option>';
+            [...new Set(filtered.map(m => m.name))].sort().forEach(n => {
+                const opt = document.createElement('option');
+                opt.value = n; opt.textContent = n;
+                if (state.search === n) opt.selected = true;
+                select.appendChild(opt);
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = ''; noResults.classList.remove('hidden'); return;
+            }
+
+            noResults.classList.add('hidden');
+            grid.innerHTML = filtered.map(m => `
+                <div class="med-card bg-white p-4 md:p-6 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col h-full ${getBorderClass(m.sub)} cursor-default">
+                    <div class="mb-5 rounded-[1.5rem] bg-slate-50 relative aspect-square flex items-center justify-center border border-slate-100 overflow-visible svg-container">
+                        ${getDeviceSVG(m)}
+                    </div>
+                    <div class="flex gap-2 mb-4">
+                        <span class="text-[9px] font-black px-2 py-0.5 bg-slate-100 rounded-lg text-slate-400 uppercase tracking-tighter">${m.main}</span>
+                        <span class="text-[9px] font-bold px-2 py-0.5 bg-blue-50 text-blue-500 rounded-lg uppercase tracking-tighter">${m.sub}</span>
+                    </div>
+                    <div class="mb-4">
+                        <h3 class="text-lg md:text-xl font-black text-slate-800 leading-tight truncate">${m.name}</h3>
+                        <p class="text-blue-600 font-bold text-sm md:text-base truncate">${m.cn}</p>
+                    </div>
+                    <div class="mb-6 flex-grow">
+                        <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">成分組成</p>
+                        <p class="text-xs md:text-sm text-slate-500 font-medium leading-snug">${m.ing}</p>
+                    </div>
+                    <button onclick="openVideo('${m.video}')" class="w-full bg-slate-800 text-white py-3 md:py-4 rounded-2xl text-xs md:text-sm font-black flex items-center justify-center gap-2 hover:bg-red-600 transition-all shadow-md active:scale-95">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+                        播放衛教影片
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function getBorderClass(sub) {
+            const map = { 'LABA+ICS': 'border-laba-ics', 'LABA+LAMA': 'border-laba-lama', 'LAMA': 'border-lama', 'Triple': 'border-triple', 'SABA': 'border-saba', 'ICS': 'border-ics' };
+            return map[sub] || 'border-others';
+        }
+
+        function openVideo(url) {
+            const p = document.getElementById('modalPlayer');
+            p.src = url;
+            document.getElementById('videoModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            p.play();
+        }
+
+        function closeVideo() {
+            document.getElementById('videoModal').classList.add('hidden');
+            document.getElementById('modalPlayer').pause();
+            document.body.style.overflow = 'auto';
+        }
+
+        // 事件監聽
+        document.getElementById('mainTabs').addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                document.querySelectorAll('.main-tab').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                state.main = e.target.dataset.main; render();
+            }
+        });
+
+        document.getElementById('subTabs').addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                document.querySelectorAll('.sub-tab').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                state.sub = e.target.dataset.sub; render();
+            }
+        });
+
+        document.getElementById('searchInput').addEventListener('input', (e) => { state.search = e.target.value; render(); });
+        document.getElementById('drugSelect').addEventListener('change', (e) => { state.search = e.target.value; document.getElementById('searchInput').value = e.target.value; render(); });
+
+        window.onclick = (e) => { if (e.target == document.getElementById('videoModal')) closeVideo(); };
+        window.onload = render;
+    </script>
 </body>
 </html>
-
-
