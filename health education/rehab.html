@@ -234,9 +234,9 @@
 <script>
 // 填入各影片的 URL 後，QR Code 會自動產生，按鈕也會啟用
 const videos = [
-  { id: 'qr1', btnId: 'btn1', url: '' },  // ← 填入第1支影片連結
-  { id: 'qr2', btnId: 'btn2', url: '' },  // ← 填入第2支影片連結
-  { id: 'qr3', btnId: 'btn3', url: '' },  // ← 填入第3支影片連結
+  { id: 'qr1', btnId: 'btn1', url: 'https://stream.new/v/Ue00d01wWWE8dwdQv191SxdZHMKPGyKPFsOsCmoUlDPEU' },
+  { id: 'qr2', btnId: 'btn2', url: 'https://stream.new/v/DdJ4aX6HHOPdaTNIy5602q48NCZ800Y00g8fqTGudKCX14' },
+  { id: 'qr3', btnId: 'btn3', url: 'https://stream.new/v/hJGYAHsi02FUn3uUrayonDjGjhutzm9WalyLZtcNYDC00' },
 ];
 
 videos.forEach(({ id, btnId, url }) => {
@@ -246,6 +246,7 @@ videos.forEach(({ id, btnId, url }) => {
   new QRCode(container, { text: url, width: 150, height: 150, colorDark: '#1a2630', colorLight: '#ffffff' });
   const btn = document.getElementById(btnId);
   btn.href = url;
+  btn.target = '_blank';
   btn.classList.remove('disabled');
 });
 </script>
