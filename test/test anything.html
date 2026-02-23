@@ -73,32 +73,6 @@
 </head>
 <body class="p-4 md:p-10">
 
-    <!-- 全局 SVG 定義 -->
-    <svg width="0" height="0" class="absolute hidden">
-        <defs>
-            <filter id="mainShadow" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="2" dy="4" stdDeviation="3" flood-color="#000" flood-opacity="0.2" />
-            </filter>
-            <!-- 漸層定義：金屬 -->
-            <linearGradient id="gradMetal" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#94a3b8" />
-                <stop offset="30%" stop-color="#f8fafc" />
-                <stop offset="60%" stop-color="#cbd5e1" />
-                <stop offset="100%" stop-color="#64748b" />
-            </linearGradient>
-            <!-- 漸層定義：塑膠 -->
-            <linearGradient id="gradPlastic" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#ffffff" />
-                <stop offset="100%" stop-color="#e2e8f0" />
-            </linearGradient>
-            <!-- 漸層定義：半透明外殼 -->
-            <linearGradient id="gradGlass" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="rgba(255,255,255,0.8)" />
-                <stop offset="100%" stop-color="rgba(203,213,225,0.4)" />
-            </linearGradient>
-        </defs>
-    </svg>
-
     <div class="max-w-7xl mx-auto">
         <header class="mb-10 text-center">
             <h1 class="text-3xl md:text-5xl font-black text-slate-800 mb-2 tracking-tight">呼吸道藥物 ‧ 圖鑑檢索</h1>
@@ -126,6 +100,7 @@
                 <button class="sub-tab px-4 py-1.5 rounded-full text-xs font-bold border border-slate-300 text-slate-500 flex-shrink-0" data-sub="LAMA">LAMA</button>
                 <button class="sub-tab px-4 py-1.5 rounded-full text-xs font-bold border border-slate-300 text-slate-500 flex-shrink-0" data-sub="Triple">三合一 (Triple)</button>
                 <button class="sub-tab px-4 py-1.5 rounded-full text-xs font-bold border border-slate-300 text-slate-500 flex-shrink-0" data-sub="SABA">SABA (急救)</button>
+                <button class="sub-tab px-4 py-1.5 rounded-full text-xs font-bold border border-slate-300 text-slate-500 flex-shrink-0" data-sub="ICS">ICS (單方)</button>
             </div>
         </div>
 
@@ -157,7 +132,7 @@
         </div>
     </div>
 
-    <!-- 視窗 Modal -->
+    <!-- 影片播放 Modal -->
     <div id="videoModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm">
         <div class="bg-black rounded-[2rem] overflow-hidden w-full max-w-4xl relative shadow-2xl">
             <button onclick="closeVideo()" class="absolute top-6 right-6 text-white bg-white/10 p-2 rounded-full hover:bg-red-500 transition-colors z-10">
@@ -167,35 +142,94 @@
         </div>
     </div>
 
+    <!-- 全螢幕 QR Code 放大 Modal -->
+    <div id="qrModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4 bg-slate-900/95 backdrop-blur-sm animate-in fade-in duration-300">
+        <div class="w-full max-w-sm bg-white rounded-[2.5rem] p-8 flex flex-col items-center shadow-2xl relative">
+            <button onclick="closeQRModal()" class="absolute top-4 right-4 p-2 text-slate-300 hover:text-slate-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            
+            <div id="qrModalContent" class="text-center w-full">
+                <p id="qrDrugName" class="text-xl font-black text-slate-800 mb-1 leading-tight">藥物名稱</p>
+                <p class="text-xs font-bold text-blue-500 mb-6 tracking-widest uppercase">掃描觀看衛教影片</p>
+                
+                <div class="bg-white p-4 rounded-3xl shadow-inner border border-slate-50 mb-8 mx-auto flex items-center justify-center">
+                    <img id="qrFullImage" src="" class="w-56 h-56 md:w-72 md:h-72 object-contain" alt="QR Code">
+                </div>
+                
+                <button onclick="closeQRModal()" class="w-full py-4 bg-slate-800 text-white rounded-2xl font-black tracking-widest active:scale-95 transition">
+                    關閉視窗
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // 完整的藥物清單
         const medicines = [
-            // SMI
+            // SMI (Respimat)
             { main: 'smi', sub: 'LAMA', name: 'Spiriva', cn: '適喘樂', ing: 'Tiotropium', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB057E20230817171041.mp4' },
+            { main: 'smi', sub: 'LABA', name: 'Striverdi', cn: '斯力瑞', ing: 'Olodaterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB057E20230817171041.mp4' },
             { main: 'smi', sub: 'LABA+LAMA', name: 'Spiolto', cn: '適倍樂', ing: 'Tiotropium / Olodaterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB057E20230817171041.mp4' },
-            // DPI - Ellipta
-            { main: 'dpi', sub: 'LABA+LAMA', name: 'Anoro Ellipta', cn: '安通樂', ing: 'Umeclidinium / Vilanterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB056E20250116120821.mp4' },
-            { main: 'dpi', sub: 'LABA+ICS', name: 'Relvar Ellipta', cn: '瑞克沙', ing: 'Fluticasone / Vilanterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB056E20250116120821.mp4' },
-            { main: 'dpi', sub: 'Triple', name: 'Trelegy Ellipta', cn: '喘立氣', ing: 'Fluticasone / Umeclidinium / Vilanterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB056E20250116120821.mp4' },
-            // DPI - Turbuhaler
-            { main: 'dpi', sub: 'LABA+ICS', name: 'Symbicort Turbuhaler', cn: '吸必擴 都保', ing: 'Budesonide / Formoterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PMA005E20230817090020.mp4' },
-            // DPI - Breezhaler
-            { main: 'dpi', sub: 'LABA+LAMA', name: 'Ultibro Breezhaler', cn: '昂必樂', ing: 'Indacaterol / Glycopyrronium', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB052E20230817165536.mp4' },
-            { main: 'dpi', sub: 'Triple', name: 'Enerzair Breezhaler', cn: '肺舒坦', ing: 'Indacaterol / Glycopyrronium / Mometasone', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB066E20250919154133.mp4' },
-            // DPI - Accuhaler
-            { main: 'dpi', sub: 'LABA+ICS', name: 'Seretide Accuhaler', cn: '使肺泰 準納', ing: 'Salmeterol / Fluticasone', video: 'https://webapp.cgmh.org.tw/stor/picture/PMA009E20230914192800.mp4' },
+
+            // DPI - Breezhaler & Ellipta & Turbuhaler & Accuhaler
+            { main: 'dpi', sub: 'LAMA', name: 'Seebri (Breezhaler)', cn: '喜必樂', ing: 'Glycopyrronium', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB052E20230817165536.mp4' },
+            { main: 'dpi', sub: 'LABA', name: 'Onbrez (Breezhaler)', cn: '昂舒', ing: 'Indacaterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB052E20230817165536.mp4' },
+            { main: 'dpi', sub: 'LABA+LAMA', name: 'Ultibro (Breezhaler)', cn: '昂必樂', ing: 'Indacaterol / Glycopyrronium', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB052E20230817165536.mp4' },
+            { main: 'dpi', sub: 'LABA+LAMA', name: 'Anoro (Ellipta)', cn: '安通樂', ing: 'Umeclidinium / Vilanterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB056E20250116120821.mp4' },
+            { main: 'dpi', sub: 'LABA+ICS', name: 'Relvar (Ellipta)', cn: '瑞克沙', ing: 'Fluticasone / Vilanterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB056E20250116120821.mp4' },
+            { main: 'dpi', sub: 'LABA+ICS', name: 'Seretide (Accuhaler)', cn: '使肺泰 準納', ing: 'Salmeterol / Fluticasone', video: 'https://webapp.cgmh.org.tw/stor/picture/PMA009E20230914192800.mp4' },
+            { main: 'dpi', sub: 'LABA+ICS', name: 'Symbicort (Turbuhaler)', cn: '吸必擴 都保', ing: 'Budesonide / Formoterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PMA005E20230817090020.mp4' },
+            { main: 'dpi', sub: 'Triple', name: 'Trelegy (Ellipta)', cn: '喘立氣', ing: 'Fluticasone / Umeclidinium / Vilanterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB056E20250116120821.mp4' },
+            { main: 'dpi', sub: 'Triple', name: 'Enerzair (Breezhaler)', cn: '肺舒坦', ing: 'Indacaterol / Glycopyrronium / Mometasone', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB066E20250919154133.mp4' },
+
             // MDI
-            { main: 'mdi', sub: 'SABA', name: 'Ventolin', cn: '萬托林', ing: 'Salbutamol', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB054E20231023172513.mp4' },
-            { main: 'mdi', sub: 'LABA+ICS', name: 'Symbicort Rapihaler', cn: '吸必擴 定量', ing: 'Budesonide / Formoterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PMA058E20230914191940.mp4' },
+            { main: 'mdi', sub: 'LABA+LAMA', name: 'Bevespi', cn: '比倍思', ing: 'Glycopyrronium / Formoterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB065E20231023173208.mp4' },
+            { main: 'mdi', sub: 'LABA+ICS', name: 'Seretide (Evohaler)', cn: '使肺泰 定量', ing: 'Salmeterol / Fluticasone', video: 'https://webapp.cgmh.org.tw/stor/picture/PMA013E20250917153840.mp4' },
+            { main: 'mdi', sub: 'LABA+ICS', name: 'Symbicort (Rapihaler)', cn: '吸必擴 定量', ing: 'Budesonide / Formoterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PMA058E20230914191940.mp4' },
+            { main: 'mdi', sub: 'LABA+ICS', name: 'Foster', cn: '複方定量', ing: 'Beclometasone / Formoterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PMA034E20240119095130.mp4' },
             { main: 'mdi', sub: 'Triple', name: 'Trimbow', cn: '全盈', ing: 'Beclometasone / Formoterol / Glycopyrronium', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB063E20231023172741.mp4' },
-            // Nasal
+            { main: 'mdi', sub: 'SABA', name: 'Ventolin', cn: '萬托林', ing: 'Salbutamol', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB054E20231023172513.mp4' },
+            { main: 'mdi', sub: 'SABA', name: 'Berotec', cn: '備勞喘', ing: 'Fenoterol', video: 'https://webapp.cgmh.org.tw/stor/picture/PQB015E20231023172308.mp4' },
+            { main: 'mdi', sub: 'ICS', name: 'Alvesco', cn: '安肺樂', ing: 'Ciclesonide', video: 'https://webapp.cgmh.org.tw/stor/picture/PMA054E20240119095228.mp4' },
+            { main: 'mdi', sub: 'ICS', name: 'Duasma', cn: '多適碼', ing: 'Budesonide', video: 'https://webapp.cgmh.org.tw/stor/picture/PMA007E20231122133102.mp4' },
+
+            // 鼻噴劑
             { main: 'nasal', sub: 'Others', name: 'Avamys', cn: '艾敏釋', ing: 'Fluticasone furoate', video: 'https://webapp.cgmh.org.tw/stor/picture/PVA052E20241213175133.mp4' },
-            { main: 'nasal', sub: 'Others', name: 'Nasonex', cn: '內舒拿', ing: 'Mometasone furoate', video: 'https://webapp.cgmh.org.tw/stor/picture/PVA100E20241213180811.mp4' }
+            { main: 'nasal', sub: 'Others', name: 'Nasonex', cn: '內舒拿', ing: 'Mometasone furoate', video: 'https://webapp.cgmh.org.tw/stor/picture/PVA100E20241213180811.mp4' },
+            { main: 'nasal', sub: 'Others', name: 'Tisonin', cn: '特索寧', ing: 'Triamcinolone', video: 'https://webapp.cgmh.org.tw/stor/picture/PVA001E20241213165924.mp4' },
+            { main: 'nasal', sub: 'Others', name: 'Dufanas', cn: '帝伏寧', ing: 'Azelastine / Fluticasone', video: 'https://webapp.cgmh.org.tw/stor/picture/PVA114E20241213173056.mp4' },
+            { main: 'nasal', sub: 'Others', name: 'Azetin', cn: '噴立停', ing: 'Azelastine', video: 'https://webapp.cgmh.org.tw/stor/picture/PVA106E20241213171944.mp4' },
+            { main: 'nasal', sub: 'Others', name: 'Allergocom', cn: '艾麗', ing: 'Cromolyn', video: 'https://webapp.cgmh.org.tw/stor/picture/PZA014E20241213173753.mp4' },
+            { main: 'nasal', sub: 'Others', name: 'Sindecon', cn: '醫鼻易', ing: 'Oxymetazoline', video: 'https://webapp.cgmh.org.tw/stor/picture/PVG010E20241213174519.mp4' },
+            { main: 'nasal', sub: 'Others', name: 'Butaxo', cn: '全安', ing: 'Butorphanol', video: 'https://webapp.cgmh.org.tw/stor/picture/017.mp4' }
         ];
 
-        // 核心渲染器：精美化 SVG 邏輯
+        // 為確保 SVG 百分之百顯示，將定義（漸層與濾鏡）直接嵌入每一個生成的 SVG 內
+        const svgDefs = `
+            <defs>
+                <filter id="mainShadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="2" dy="4" stdDeviation="3" flood-color="#000" flood-opacity="0.2" />
+                </filter>
+                <linearGradient id="gradMetal" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#94a3b8" />
+                    <stop offset="30%" stop-color="#f8fafc" />
+                    <stop offset="60%" stop-color="#cbd5e1" />
+                    <stop offset="100%" stop-color="#64748b" />
+                </linearGradient>
+                <linearGradient id="gradPlastic" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#ffffff" />
+                    <stop offset="100%" stop-color="#e2e8f0" />
+                </linearGradient>
+                <linearGradient id="gradGlass" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="rgba(255,255,255,0.8)" />
+                    <stop offset="100%" stop-color="rgba(203,213,225,0.4)" />
+                </linearGradient>
+            </defs>
+        `;
+
         const DeviceRenderer = {
-            // SMI (Respimat)
-            SMI(color = '#0ea5e9') {
+            SMI(color) {
                 return `
                 <g filter="url(#mainShadow)">
                     <path d="M35 15 h30 a5 5 0 0 1 5 5 v20 h-40 v-20 a5 5 0 0 1 5 -5z" fill="${color}"/>
@@ -207,8 +241,7 @@
                     <line x1="46" y1="64" x2="54" y2="64" stroke="#ef4444" stroke-width="2"/>
                 </g>`;
             },
-            // Ellipta
-            Ellipta(color = '#ef4444') {
+            Ellipta(color) {
                 return `
                 <g filter="url(#mainShadow)">
                     <ellipse cx="50" cy="52" rx="42" ry="38" fill="url(#gradPlastic)"/>
@@ -220,8 +253,7 @@
                     <text x="70" y="56" fill="#10b981" font-size="8" font-weight="900" text-anchor="middle" font-family="sans-serif">30</text>
                 </g>`;
             },
-            // Turbuhaler
-            Turbuhaler(baseColor = '#ef4444') {
+            Turbuhaler(baseColor) {
                 return `
                 <g filter="url(#mainShadow)">
                     <path d="M38 10 h24 l2 20 h-28z" fill="#fff" stroke="#cbd5e1"/>
@@ -233,8 +265,7 @@
                     <rect x="56" y="70" width="2" height="18" fill="#000" opacity="0.1"/>
                 </g>`;
             },
-            // MDI
-            MDI(bodyColor = '#475569', capColor = '#cbd5e1') {
+            MDI(bodyColor, capColor) {
                 return `
                 <g filter="url(#mainShadow)">
                     <rect x="52" y="8" width="24" height="52" rx="4" fill="url(#gradMetal)"/>
@@ -244,8 +275,7 @@
                     <path d="M14 62 h4 v28 h-4z" fill="#fff" opacity="0.2"/>
                 </g>`;
             },
-            // Breezhaler
-            Breezhaler(btnColor = '#f97316') {
+            Breezhaler(btnColor) {
                 return `
                 <g filter="url(#mainShadow)">
                     <path d="M42 12 h16 l-2 22 h-12z" fill="#fff" stroke="#cbd5e1"/>
@@ -256,8 +286,7 @@
                     <rect x="45" y="56" width="10" height="12" rx="5" fill="#ef4444" opacity="0.7"/>
                 </g>`;
             },
-            // Accuhaler
-            Accuhaler(color = '#9333ea') {
+            Accuhaler(color) {
                 return `
                 <g filter="url(#mainShadow)">
                     <circle cx="50" cy="50" r="42" fill="${color}"/>
@@ -268,8 +297,7 @@
                     <ellipse cx="72" cy="50" rx="12" ry="6" fill="#000" opacity="0.2"/>
                 </g>`;
             },
-            // Nasal
-            Nasal(labelColor = '#3b82f6') {
+            Nasal(labelColor) {
                 return `
                 <g filter="url(#mainShadow)">
                     <rect x="47" y="30" width="6" height="15" fill="#cbd5e1"/>
@@ -285,49 +313,69 @@
             }
         };
 
-        // 邏輯封裝：獲取藥物配置與渲染 SVG
         function getDeviceSVG(med) {
             const name = med.name.toLowerCase();
             const main = med.main.toLowerCase();
             
             let content = '';
+            
             if (main === 'smi') {
                 let c = '#0ea5e9';
                 if (name.includes('spiolto')) c = '#84cc16';
                 if (name.includes('striverdi')) c = '#a3e635';
                 content = DeviceRenderer.SMI(c);
-            } else if (main === 'mdi') {
+            } 
+            else if (main === 'mdi') {
                 let b = '#475569', c = '#cbd5e1';
                 if (name.includes('ventolin')) { b = '#0d9488'; c = '#0f766e'; }
                 if (name.includes('symbicort')) { b = '#ef4444'; c = '#fee2e2'; }
                 if (name.includes('trimbow')) { b = '#e11d48'; c = '#ffe4e6'; }
                 content = DeviceRenderer.MDI(b, c);
-            } else if (name.includes('ellipta')) {
-                let c = '#cbd5e1';
-                if (name.includes('anoro')) c = '#ef4444';
-                if (name.includes('relvar')) c = '#eab308';
-                content = DeviceRenderer.Ellipta(c);
-            } else if (name.includes('turbuhaler')) {
-                content = DeviceRenderer.Turbuhaler('#ef4444');
-            } else if (name.includes('breezhaler')) {
-                let c = '#f97316';
-                if (name.includes('ultibro')) c = '#eab308';
-                if (name.includes('enerzair')) c = '#10b981';
-                content = DeviceRenderer.Breezhaler(c);
-            } else if (name.includes('accuhaler')) {
-                content = DeviceRenderer.Accuhaler('#9333ea');
-            } else if (main === 'nasal') {
+            } 
+            else if (main === 'dpi') {
+                if (name.includes('ellipta') || name.includes('anoro') || name.includes('relvar') || name.includes('trelegy')) {
+                    let c = '#cbd5e1';
+                    if (name.includes('anoro')) c = '#ef4444';
+                    if (name.includes('relvar')) c = '#eab308';
+                    content = DeviceRenderer.Ellipta(c);
+                } else if (name.includes('turbuhaler') || name.includes('symbicort')) {
+                    content = DeviceRenderer.Turbuhaler('#ef4444');
+                } else if (name.includes('breezhaler') || name.includes('seebri') || name.includes('onbrez') || name.includes('ultibro') || name.includes('enerzair')) {
+                    let c = '#f97316';
+                    if (name.includes('ultibro')) c = '#eab308';
+                    if (name.includes('enerzair')) c = '#10b981';
+                    if (name.includes('onbrez')) c = '#1e293b';
+                    content = DeviceRenderer.Breezhaler(c);
+                } else if (name.includes('accuhaler') || name.includes('seretide')) {
+                    content = DeviceRenderer.Accuhaler('#9333ea');
+                } else {
+                    content = DeviceRenderer.Default();
+                }
+            } 
+            else if (main === 'nasal') {
                 let c = '#3b82f6';
                 if (name.includes('nasonex')) c = '#10b981';
+                if (name.includes('tisonin')) c = '#f59e0b';
+                if (name.includes('dufanas')) c = '#8b5cf6';
+                if (name.includes('azetin')) c = '#ef4444';
+                if (name.includes('allergocom')) c = '#6366f1';
+                if (name.includes('sindecon')) c = '#0ea5e9';
+                if (name.includes('butaxo')) c = '#475569';
                 content = DeviceRenderer.Nasal(c);
-            } else {
+            } 
+            else {
                 content = DeviceRenderer.Default();
             }
 
-            return `<svg viewBox="0 0 100 100" class="svg-device w-full h-full max-w-[110px] max-h-[110px] object-contain">${content}</svg>`;
+            // 確保每次渲染 SVG 時，都包含定義好的 defs，徹底解決圖形消失的問題！
+            return `
+                <svg viewBox="0 0 100 100" class="svg-device w-full h-full max-w-[110px] max-h-[110px] object-contain">
+                    ${svgDefs}
+                    ${content}
+                </svg>
+            `;
         }
 
-        // 狀態與渲染
         let state = { main: 'all', sub: 'all', search: '' };
 
         function render() {
@@ -343,7 +391,6 @@
                 return matchMain && matchSub && matchSearch;
             });
 
-            // 下拉選單更新
             const select = document.getElementById('drugSelect');
             select.innerHTML = '<option value="">快速挑選藥物...</option>';
             [...new Set(filtered.map(m => m.name))].sort().forEach(n => {
@@ -360,25 +407,37 @@
             noResults.classList.add('hidden');
             grid.innerHTML = filtered.map(m => `
                 <div class="med-card bg-white p-4 md:p-6 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col h-full ${getBorderClass(m.sub)} cursor-default">
+                    
                     <div class="mb-5 rounded-[1.5rem] bg-slate-50 relative aspect-square flex items-center justify-center border border-slate-100 overflow-visible svg-container">
                         ${getDeviceSVG(m)}
                     </div>
+                    
                     <div class="flex gap-2 mb-4">
                         <span class="text-[9px] font-black px-2 py-0.5 bg-slate-100 rounded-lg text-slate-400 uppercase tracking-tighter">${m.main}</span>
                         <span class="text-[9px] font-bold px-2 py-0.5 bg-blue-50 text-blue-500 rounded-lg uppercase tracking-tighter">${m.sub}</span>
                     </div>
+                    
                     <div class="mb-4">
                         <h3 class="text-lg md:text-xl font-black text-slate-800 leading-tight truncate">${m.name}</h3>
                         <p class="text-blue-600 font-bold text-sm md:text-base truncate">${m.cn}</p>
                     </div>
+                    
                     <div class="mb-6 flex-grow">
                         <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-1">成分組成</p>
                         <p class="text-xs md:text-sm text-slate-500 font-medium leading-snug">${m.ing}</p>
                     </div>
-                    <button onclick="openVideo('${m.video}')" class="w-full bg-slate-800 text-white py-3 md:py-4 rounded-2xl text-xs md:text-sm font-black flex items-center justify-center gap-2 hover:bg-red-600 transition-all shadow-md active:scale-95">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
-                        播放衛教影片
-                    </button>
+                    
+                    <!-- 按鈕並排區塊 (影片與掃碼) -->
+                    <div class="mt-auto flex gap-2 pt-2 border-t border-slate-50">
+                        <button onclick="openVideo('${m.video}')" class="flex-1 bg-red-500 text-white py-2.5 md:py-3 rounded-2xl text-xs md:text-base font-black flex items-center justify-center gap-1.5 hover:bg-red-600 transition-all shadow-sm active:scale-95">
+                            <svg class="w-4 h-4 md:w-5 md:h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+                            影片
+                        </button>
+                        <button onclick="openQRModal('${m.name}', '${m.video}')" class="flex-1 bg-slate-800 text-white py-2.5 md:py-3 rounded-2xl text-xs md:text-base font-black flex items-center justify-center gap-1.5 hover:bg-slate-900 transition-all shadow-sm active:scale-95">
+                            <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                            掃碼
+                        </button>
+                    </div>
                 </div>
             `).join('');
         }
@@ -402,7 +461,23 @@
             document.body.style.overflow = 'auto';
         }
 
-        // 事件監聽
+        function openQRModal(name, videoUrl) {
+            const modal = document.getElementById('qrModal');
+            const qrImg = document.getElementById('qrFullImage');
+            const nameLabel = document.getElementById('qrDrugName');
+            
+            nameLabel.textContent = name;
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(videoUrl)}`;
+            
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeQRModal() {
+            document.getElementById('qrModal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
         document.getElementById('mainTabs').addEventListener('click', (e) => {
             if (e.target.tagName === 'BUTTON') {
                 document.querySelectorAll('.main-tab').forEach(b => b.classList.remove('active'));
@@ -422,7 +497,10 @@
         document.getElementById('searchInput').addEventListener('input', (e) => { state.search = e.target.value; render(); });
         document.getElementById('drugSelect').addEventListener('change', (e) => { state.search = e.target.value; document.getElementById('searchInput').value = e.target.value; render(); });
 
-        window.onclick = (e) => { if (e.target == document.getElementById('videoModal')) closeVideo(); };
+        window.onclick = (e) => { 
+            if (e.target == document.getElementById('videoModal')) closeVideo(); 
+            if (e.target == document.getElementById('qrModal')) closeQRModal();
+        };
         window.onload = render;
     </script>
 </body>
