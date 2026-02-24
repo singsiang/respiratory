@@ -1,0 +1,474 @@
+import React, { useState, useEffect } from 'react';
+
+// --- 常數設定 ---
+const DRINK_SUGAR = ['正常糖', '少糖', '半糖', '微糖', '一分糖', '無糖'];
+const DRINK_ICE = ['正常冰', '少冰', '微冰', '去冰', '完全去冰', '常溫', '熱'];
+const DRINK_SIZE = ['大杯', '中杯'];
+
+// --- SVG Icons ---
+const Icons = {
+  Utensils: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>,
+  Coffee: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>,
+  Clipboard: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>,
+  Trash2: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>,
+  MessageSquare: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+  Info: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>,
+  EyeOff: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+};
+
+export default function App() {
+  // --- 狀態管理 ---
+  const [orders, setOrders] = useState([]);
+  const [activeTab, setActiveTab] = useState('manual');
+  const [toastMsg, setToastMsg] = useState('');
+  
+  // 輸出設定
+  const [isAnonymous, setIsAnonymous] = useState(true); // 預設開啟去識別化
+
+  // 表單狀態
+  const [formType, setFormType] = useState('food');
+  const [person, setPerson] = useState('');
+  const [itemName, setItemName] = useState('');
+  const [price, setPrice] = useState('');
+  const [sugar, setSugar] = useState('半糖');
+  const [ice, setIce] = useState('微冰');
+  const [size, setSize] = useState('大杯');
+
+  // 文字匯入狀態
+  const [importText, setImportText] = useState('');
+
+  // 初始載入 LocalStorage
+  useEffect(() => {
+    const savedOrders = localStorage.getItem('groupOrdersData');
+    if (savedOrders) {
+      try {
+        setOrders(JSON.parse(savedOrders));
+      } catch (e) {
+        console.error("Failed to parse local storage data");
+      }
+    }
+  }, []);
+
+  // 當 orders 改變時，存入 LocalStorage
+  useEffect(() => {
+    localStorage.setItem('groupOrdersData', JSON.stringify(orders));
+  }, [orders]);
+
+  // --- 輔助函式 ---
+  const showToast = (msg) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 3000);
+  };
+
+  const copyToClipboard = (text) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text);
+        showToast('✅ 統計文字已複製到剪貼簿！');
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+        showToast('✅ 統計文字已複製到剪貼簿！');
+      }
+    } catch (err) {
+      showToast('❌ 複製失敗，請手動全選文字複製。');
+    }
+  };
+
+  // --- 姓名去識別化邏輯 ---
+  const maskName = (name) => {
+    if (!name) return '';
+    const len = name.length;
+    if (len === 1) return name; // 單名不隱藏
+    if (len === 2) return name.charAt(0) + '○'; // 兩個字：王○
+    if (len === 3) return name.charAt(0) + '○' + name.charAt(2); // 三個字：王○明
+    // 四個字以上：第一字 + ○○... + 最後一字 (例如：P○○生)
+    return name.charAt(0) + '○'.repeat(len - 2) + name.charAt(len - 1);
+  };
+
+  // --- 功能：手動新增 ---
+  const handleAddOrder = (e) => {
+    e.preventDefault();
+    if (!person.trim() || !itemName.trim()) {
+      showToast('⚠️ 請填寫訂購人與品項名稱');
+      return;
+    }
+
+    const newOrder = {
+      id: crypto.randomUUID(),
+      type: formType,
+      person: person.trim(),
+      itemName: itemName.trim(),
+      price: parseInt(price) || 0,
+      sugar: formType === 'drink' ? sugar : null,
+      ice: formType === 'drink' ? ice : null,
+      size: formType === 'drink' ? size : null,
+    };
+
+    setOrders([...orders, newOrder]);
+    showToast(`已新增 ${person} 的 ${itemName}`);
+    setPerson('');
+  };
+
+  // --- 功能：刪除單筆 ---
+  const handleDelete = (id) => {
+    setOrders(orders.filter(o => o.id !== id));
+  };
+
+  // --- 功能：清空所有 ---
+  const handleClearAll = () => {
+    if(orders.length === 0) return;
+    setOrders([]);
+    showToast('🗑️ 已清空所有訂單');
+  };
+
+  // --- 功能：文字智慧匯入 ---
+  const handleImportText = () => {
+    if (!importText.trim()) return;
+
+    const lines = importText.split('\n');
+    let currentPerson = '';
+    const newOrders = [];
+    let importCount = 0;
+
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      const match = trimmed.match(/^([^：:]+)[：:](.+)$/);
+      
+      if (match) {
+        currentPerson = match[1].trim();
+        const item = match[2].trim();
+        if (item) {
+          newOrders.push({
+            id: crypto.randomUUID(),
+            type: 'food', 
+            person: currentPerson,
+            itemName: item,
+            price: 0
+          });
+          importCount++;
+        }
+      } else {
+        if (currentPerson && trimmed !== '今日便當' && trimmed.length > 0) {
+          newOrders.push({
+            id: crypto.randomUUID(),
+            type: 'food',
+            person: currentPerson,
+            itemName: trimmed,
+            price: 0
+          });
+          importCount++;
+        }
+      }
+    });
+
+    if (importCount > 0) {
+      setOrders([...orders, ...newOrders]);
+      setImportText('');
+      showToast(`✅ 成功匯入 ${importCount} 筆訂單！`);
+      setActiveTab('stats');
+    } else {
+      showToast('⚠️ 找不到符合格式的資料，請檢查冒號是否正確。');
+    }
+  };
+
+  // --- 統計資料處理 ---
+  const generateStats = () => {
+    const summary = {};
+    let totalPrice = 0;
+
+    orders.forEach(order => {
+      totalPrice += order.price;
+      
+      let displayItemName = order.itemName;
+      if (order.type === 'drink') {
+        displayItemName = `${order.itemName} (${order.size}/${order.sugar}/${order.ice})`;
+      }
+
+      if (!summary[displayItemName]) {
+        summary[displayItemName] = { count: 0, people: [], type: order.type };
+      }
+      summary[displayItemName].count += 1;
+      
+      // 套用去識別化
+      const displayName = isAnonymous ? maskName(order.person) : order.person;
+      summary[displayItemName].people.push(displayName);
+    });
+
+    return { summary, totalPrice };
+  };
+
+  const getExportText = () => {
+    const { summary, totalPrice } = generateStats();
+    let text = `【今日訂餐統計】\n`;
+    text += `總份數：${orders.length} 份\n`;
+    text += `總金額：$${totalPrice} 元\n\n`;
+    
+    text += `--- 📊 統計清單 (方便點餐) ---\n`;
+    Object.entries(summary).forEach(([itemName, data]) => {
+      const typeLabel = data.type === 'drink' ? '🥤' : '🍱';
+      text += `${typeLabel} ${itemName} x ${data.count}\n`;
+      text += `    └ 負責人：${data.people.join(', ')}\n`;
+    });
+
+    text += `\n--- 👤 個人明細 (方便發餐) ---\n`;
+    
+    // 依據人名分組
+    const personMap = {};
+    orders.forEach(o => {
+      const pName = isAnonymous ? maskName(o.person) : o.person;
+      if (!personMap[pName]) personMap[pName] = { total: 0, items: [] };
+      personMap[pName].total += o.price;
+      
+      let name = o.itemName;
+      if (o.type === 'drink') name += `(${o.size}/${o.sugar}/${o.ice})`;
+      personMap[pName].items.push(name);
+    });
+
+    Object.entries(personMap).forEach(([person, data]) => {
+      text += `[${person}] ${data.items.join('、')}`;
+      if (data.total > 0) text += ` ($${data.total})`;
+      text += `\n`;
+    });
+
+    return text;
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
+      {toastMsg && (
+        <div className="fixed top-5 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg z-50 flex items-center space-x-2 transition-all duration-300">
+          <Icons.Info />
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight flex justify-center items-center gap-2">
+            🍱 團購點餐小幫手 🥤
+          </h1>
+          <p className="text-slate-500 text-sm">適合辦公室、實驗室的午餐與飲料統計工具</p>
+        </div>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3 text-blue-800 shadow-sm">
+          <div className="mt-0.5"><Icons.Info /></div>
+          <div className="text-sm">
+            <strong>暫時記憶功能：</strong> 資料已自動儲存於瀏覽器中，不小心關閉網頁也不怕遺失！
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          {/* 左側：控制面板 */}
+          <div className="lg:col-span-5 space-y-4">
+            <div className="flex bg-white rounded-xl shadow-sm border border-slate-200 p-1">
+              <button
+                onClick={() => setActiveTab('manual')}
+                className={`flex-1 flex justify-center items-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === 'manual' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                <Icons.Utensils /> 手動新增
+              </button>
+              <button
+                onClick={() => setActiveTab('import')}
+                className={`flex-1 flex justify-center items-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === 'import' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                <Icons.MessageSquare /> 文字匯入
+              </button>
+            </div>
+
+            {/* 手動新增 */}
+            {activeTab === 'manual' && (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+                <form onSubmit={handleAddOrder} className="space-y-4">
+                  <div className="flex gap-4 mb-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" checked={formType === 'food'} onChange={() => setFormType('food')} className="text-indigo-600 focus:ring-indigo-500" />
+                      <span className="font-medium text-slate-700 flex items-center gap-1"><Icons.Utensils /> 便當/食物</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" checked={formType === 'drink'} onChange={() => setFormType('drink')} className="text-indigo-600 focus:ring-indigo-500" />
+                      <span className="font-medium text-slate-700 flex items-center gap-1"><Icons.Coffee /> 飲料</span>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-500 uppercase">訂購人</label>
+                      <input type="text" value={person} onChange={(e) => setPerson(e.target.value)} placeholder="如：王小明" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-500 uppercase">價格 (元)</label>
+                      <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="如：60" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-500 uppercase">品項名稱</label>
+                    <input type="text" value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="如：脆皮鴨肉" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                  </div>
+
+                  {formType === 'drink' && (
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        <span className="text-xs font-semibold text-slate-500 uppercase w-full">容量</span>
+                        {DRINK_SIZE.map(s => (
+                          <button key={s} type="button" onClick={() => setSize(s)} className={`px-3 py-1 text-sm rounded-full border transition-colors ${size === s ? 'bg-blue-100 border-blue-300 text-blue-800' : 'bg-white border-slate-200 text-slate-600'}`}>{s}</button>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="text-xs font-semibold text-slate-500 uppercase w-full">甜度</span>
+                        {DRINK_SUGAR.map(s => (
+                          <button key={s} type="button" onClick={() => setSugar(s)} className={`px-3 py-1 text-sm rounded-full border transition-colors ${sugar === s ? 'bg-amber-100 border-amber-300 text-amber-800' : 'bg-white border-slate-200 text-slate-600'}`}>{s}</button>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="text-xs font-semibold text-slate-500 uppercase w-full">冰塊</span>
+                        {DRINK_ICE.map(i => (
+                          <button key={i} type="button" onClick={() => setIce(i)} className={`px-3 py-1 text-sm rounded-full border transition-colors ${ice === i ? 'bg-cyan-100 border-cyan-300 text-cyan-800' : 'bg-white border-slate-200 text-slate-600'}`}>{i}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <button type="submit" className="w-full bg-indigo-600 text-white font-semibold py-2.5 rounded-xl hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-sm">
+                    新增至清單
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* 文字匯入 */}
+            {activeTab === 'import' && (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+                <textarea 
+                  value={importText}
+                  onChange={(e) => setImportText(e.target.value)}
+                  placeholder="貼上文字範例：&#10;王小明：脆皮鴨肉&#10;MI學生：脆皮鴨肉&#10;                 滷排骨"
+                  className="w-full h-48 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none font-mono text-sm"
+                />
+                <button 
+                  onClick={handleImportText}
+                  className="w-full bg-indigo-600 text-white font-semibold py-2.5 rounded-xl hover:bg-indigo-700 active:bg-indigo-800 transition-colors shadow-sm flex justify-center items-center gap-2"
+                >
+                  <Icons.MessageSquare /> 開始智慧解析與匯入
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 右側：統計與輸出 */}
+          <div className="lg:col-span-7 space-y-4">
+            
+            {/* 列表區 (管理員視角 - 顯示真實姓名) */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                  <Icons.Utensils /> 後台真實訂購清單 
+                  <span className="bg-indigo-100 text-indigo-700 text-xs py-0.5 px-2 rounded-full">{orders.length} 筆</span>
+                </h3>
+                {orders.length > 0 && (
+                  <button onClick={handleClearAll} className="text-red-500 text-sm hover:text-red-700 font-medium flex items-center gap-1">
+                    <Icons.Trash2 /> 清空所有
+                  </button>
+                )}
+              </div>
+              
+              <div className="max-h-64 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                {orders.length === 0 ? (
+                  <div className="text-center text-slate-400 py-10 flex flex-col items-center gap-2">
+                    <Icons.Clipboard />
+                    <p className="text-sm">尚未新增任何品項</p>
+                  </div>
+                ) : (
+                  orders.map(o => (
+                    <div key={o.id} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100 text-sm hover:border-slate-200 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
+                          {o.person.substring(0, 1)}
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-800">{o.person}</div>
+                          <div className="text-slate-600 flex items-center gap-1">
+                            {o.type === 'drink' ? <Icons.Coffee /> : <Icons.Utensils />}
+                            {o.itemName}
+                            {o.type === 'drink' && <span className="text-xs text-slate-400">({o.size}/{o.sugar}/{o.ice})</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="font-semibold text-slate-700">${o.price}</span>
+                        <button onClick={() => handleDelete(o.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                          <Icons.Trash2 />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* 統計與輸出文字區 */}
+            <div className="bg-indigo-600 rounded-2xl shadow-md p-5 text-white">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
+                <h3 className="font-bold text-lg flex items-center gap-2">
+                  <Icons.Clipboard /> 輸出與分享
+                </h3>
+                
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* 去識別化開關 */}
+                  <label className="flex items-center gap-2 cursor-pointer bg-indigo-700/50 px-3 py-1.5 rounded-lg border border-indigo-400/30 hover:bg-indigo-700 transition-colors">
+                    <input 
+                      type="checkbox" 
+                      checked={isAnonymous} 
+                      onChange={(e) => setIsAnonymous(e.target.checked)} 
+                      className="rounded border-indigo-300 text-indigo-500 focus:ring-indigo-400 w-4 h-4 cursor-pointer"
+                    />
+                    <span className="text-sm font-medium flex items-center gap-1">
+                      <Icons.EyeOff /> 姓名去識別化
+                    </span>
+                  </label>
+
+                  <button 
+                    onClick={() => copyToClipboard(getExportText())}
+                    disabled={orders.length === 0}
+                    className="bg-white text-indigo-700 px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm hover:bg-indigo-50 active:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <Icons.Clipboard /> 複製分享到..
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-indigo-900/40 rounded-xl p-4 font-mono text-sm whitespace-pre-wrap overflow-y-auto max-h-96 text-indigo-100 border border-indigo-500/30">
+                {orders.length === 0 ? (
+                  <span className="opacity-50">新增訂單後，統計文字會顯示在這裡。</span>
+                ) : (
+                  getExportText()
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+      `}} />
+    </div>
+  );
+}
+
+
