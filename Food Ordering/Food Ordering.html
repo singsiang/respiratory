@@ -8,11 +8,11 @@
   <!-- 載入 Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- 載入 React 與 ReactDOM (Production 版本，速度較快) -->
+  <!-- 載入 React 與 ReactDOM -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   
-  <!-- 載入 Babel 用於在瀏覽器中編譯 JSX -->
+  <!-- 載入 Babel -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <!-- 自訂捲軸樣式 -->
@@ -25,19 +25,15 @@
 </head>
 <body class="bg-slate-50 text-slate-800">
 
-  <!-- React 應用的掛載點 -->
   <div id="root"></div>
 
-  <!-- React 應用程式碼 -->
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    // --- 常數設定 ---
     const DRINK_SUGAR = ['正常糖', '少糖', '半糖', '微糖', '一分糖', '無糖'];
     const DRINK_ICE = ['正常冰', '少冰', '微冰', '去冰', '完全去冰', '常溫', '熱'];
     const DRINK_SIZE = ['大杯', '中杯'];
 
-    // --- SVG Icons ---
     const Icons = {
       Utensils: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>,
       Coffee: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>,
@@ -45,22 +41,21 @@
       Trash2: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>,
       MessageSquare: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
       Info: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>,
-      EyeOff: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+      EyeOff: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>,
+      Edit: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>,
+      Check: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>,
+      X: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
     };
 
-    // 生成唯一 ID 的安全函數 (適用於沒有 https 的本地測試環境)
     const generateId = () => Math.random().toString(36).substring(2, 11);
 
     function App() {
-      // --- 狀態管理 ---
       const [orders, setOrders] = useState([]);
-      const [activeTab, setActiveTab] = useState('manual');
+      const [activeTab, setActiveTab] = useState('import'); // 預設打開匯入頁面方便測試
       const [toastMsg, setToastMsg] = useState('');
       
-      // 輸出設定
-      const [isAnonymous, setIsAnonymous] = useState(true);
+      const [isAnonymous, setIsAnonymous] = useState(false);
 
-      // 表單狀態
       const [formType, setFormType] = useState('food');
       const [person, setPerson] = useState('');
       const [itemName, setItemName] = useState('');
@@ -69,27 +64,24 @@
       const [ice, setIce] = useState('微冰');
       const [size, setSize] = useState('大杯');
 
-      // 文字匯入狀態
       const [importText, setImportText] = useState('');
 
-      // 初始載入 LocalStorage
+      const [editingId, setEditingId] = useState(null);
+      const [editForm, setEditForm] = useState({ person: '', itemName: '', price: '', type: 'food', size: '', sugar: '', ice: '' });
+
       useEffect(() => {
         const savedOrders = localStorage.getItem('groupOrdersData');
         if (savedOrders) {
           try {
             setOrders(JSON.parse(savedOrders));
-          } catch (e) {
-            console.error("Failed to parse local storage data");
-          }
+          } catch (e) {}
         }
       }, []);
 
-      // 當 orders 改變時，存入 LocalStorage
       useEffect(() => {
         localStorage.setItem('groupOrdersData', JSON.stringify(orders));
       }, [orders]);
 
-      // --- 輔助函式 ---
       const showToast = (msg) => {
         setToastMsg(msg);
         setTimeout(() => setToastMsg(''), 3000);
@@ -118,7 +110,6 @@
         }
       };
 
-      // --- 姓名去識別化邏輯 ---
       const maskName = (name) => {
         if (!name) return '';
         const len = name.length;
@@ -128,7 +119,6 @@
         return name.charAt(0) + '○'.repeat(len - 2) + name.charAt(len - 1);
       };
 
-      // --- 功能：手動新增 ---
       const handleAddOrder = (e) => {
         e.preventDefault();
         if (!person.trim() || !itemName.trim()) {
@@ -152,19 +142,58 @@
         setPerson('');
       };
 
-      // --- 功能：刪除單筆 ---
       const handleDelete = (id) => {
         setOrders(orders.filter(o => o.id !== id));
       };
 
-      // --- 功能：清空所有 ---
+      const handleEditClick = (order) => {
+        setEditingId(order.id);
+        setEditForm({
+          person: order.person,
+          itemName: order.itemName,
+          price: order.price === 0 ? '' : order.price,
+          type: order.type || 'food',
+          size: order.size || '',
+          sugar: order.sugar || '',
+          ice: order.ice || ''
+        });
+      };
+
+      const handleSaveEdit = (id) => {
+        setOrders(orders.map(o => {
+          if (o.id === id) {
+            return {
+              ...o,
+              person: editForm.person.trim() || o.person,
+              itemName: editForm.itemName.trim() || o.itemName,
+              price: parseInt(editForm.price) || 0,
+              type: editForm.type,
+              size: editForm.type === 'drink' ? editForm.size.trim() : null,
+              sugar: editForm.type === 'drink' ? editForm.sugar.trim() : null,
+              ice: editForm.type === 'drink' ? editForm.ice.trim() : null,
+            };
+          }
+          return o;
+        }));
+        setEditingId(null);
+        showToast('✅ 訂單已更新');
+      };
+
+      const handleCancelEdit = () => {
+        setEditingId(null);
+      };
+
       const handleClearAll = () => {
         if(orders.length === 0) return;
         setOrders([]);
         showToast('🗑️ 已清空所有訂單');
       };
 
-      // --- 功能：文字智慧匯入 ---
+      // 智慧過濾：去除 LINE 上常見的禮貌用語
+      const cleanItemString = (str) => {
+        return str.replace(/(?:謝謝|感謝|感恩|麻煩了|辛苦了).*$/, '').trim();
+      };
+
       const handleImportText = () => {
         if (!importText.trim()) return;
 
@@ -175,13 +204,27 @@
 
         lines.forEach(line => {
           const trimmed = line.trim();
-          if (!trimmed) return;
+          if (!trimmed || trimmed.includes('今日便當') || trimmed.includes('今日飲料')) return;
 
-          const match = trimmed.match(/^([^：:]+)[：:](.+)$/);
+          // 判斷是否為前方有縮排的「連續點餐」(用來判斷同一個人的第二樣)
+          // 偵測開頭是否有兩個以上的半形空白，或是有全形空白
+          const isIndented = /^[ \t]{2,}/.test(line) || /^\u3000+/.test(line);
+
+          // 1. 優先嘗試「冒號」格式解析 (王小明：脆皮鴨肉)
+          let match = trimmed.match(/^([^：:]+)[：:](.+)$/);
           
-          if (match) {
+          // 2. 如果沒有冒號，且「不是縮排」，則嘗試「空格」格式解析 (王小明 脆皮鴨肉)
+          if (!match && !isIndented) {
+             // 假設第一個詞是名字 (限制10字以內避免誤判)，後面全是品項
+             match = trimmed.match(/^(\S{1,10})\s+(.+)$/);
+          }
+          
+          if (match && !isIndented) {
+            // 找到新的人名與品項
             currentPerson = match[1].trim();
-            const item = match[2].trim();
+            let item = match[2].trim();
+            item = cleanItemString(item); // 濾除謝謝等字眼
+
             if (item) {
               newOrders.push({
                 id: generateId(),
@@ -193,15 +236,19 @@
               importCount++;
             }
           } else {
-            if (currentPerson && trimmed !== '今日便當' && trimmed.length > 0) {
-              newOrders.push({
-                id: generateId(),
-                type: 'food',
-                person: currentPerson,
-                itemName: trimmed,
-                price: 0
-              });
-              importCount++;
+            // 是連續點餐項目，歸給上一個人
+            if (currentPerson && trimmed.length > 0) {
+              let item = cleanItemString(trimmed); // 濾除謝謝等字眼
+              if(item) {
+                newOrders.push({
+                  id: generateId(),
+                  type: 'food',
+                  person: currentPerson,
+                  itemName: item,
+                  price: 0
+                });
+                importCount++;
+              }
             }
           }
         });
@@ -209,14 +256,12 @@
         if (importCount > 0) {
           setOrders([...orders, ...newOrders]);
           setImportText('');
-          showToast(`✅ 成功匯入 ${importCount} 筆訂單！`);
-          setActiveTab('stats');
+          showToast(`✅ 成功匯入 ${importCount} 筆訂單！(已自動去除感謝用語)`);
         } else {
-          showToast('⚠️ 找不到符合格式的資料，請檢查冒號是否正確。');
+          showToast('⚠️ 找不到符合格式的資料，請確認每行有「姓名」及「品項」。');
         }
       };
 
-      // --- 統計資料處理 ---
       const generateStats = () => {
         const summary = {};
         let totalPrice = 0;
@@ -225,8 +270,9 @@
           totalPrice += order.price;
           
           let displayItemName = order.itemName;
-          if (order.type === 'drink') {
-            displayItemName = `${order.itemName} (${order.size}/${order.sugar}/${order.ice})`;
+          if (order.type === 'drink' && (order.size || order.sugar || order.ice)) {
+            const details = [order.size, order.sugar, order.ice].filter(Boolean).join('/');
+            if(details) displayItemName = `${order.itemName} (${details})`;
           }
 
           if (!summary[displayItemName]) {
@@ -245,13 +291,12 @@
         const { summary, totalPrice } = generateStats();
         let text = `【今日訂餐統計】\n`;
         text += `總份數：${orders.length} 份\n`;
-        text += `總金額：$${totalPrice} 元\n\n`;
+        if (totalPrice > 0) text += `總金額：$${totalPrice} 元\n`;
+        text += `\n--- 📊 統計清單 (方便點餐) ---\n`;
         
-        text += `--- 📊 統計清單 (方便點餐) ---\n`;
         Object.entries(summary).forEach(([itemName, data]) => {
-          const typeLabel = data.type === 'drink' ? '🥤' : '🍱';
-          text += `${typeLabel} ${itemName} x ${data.count}\n`;
-          text += `    └ 負責人：${data.people.join(', ')}\n`;
+          text += `▪ ${itemName} x ${data.count}\n`;
+          text += `  └ ${data.people.join(', ')}\n`;
         });
 
         text += `\n--- 👤 個人明細 (方便發餐) ---\n`;
@@ -263,7 +308,10 @@
           personMap[pName].total += o.price;
           
           let name = o.itemName;
-          if (o.type === 'drink') name += `(${o.size}/${o.sugar}/${o.ice})`;
+          if (o.type === 'drink' && (o.size || o.sugar || o.ice)) {
+            const details = [o.size, o.sugar, o.ice].filter(Boolean).join('/');
+            if(details) name += `(${details})`;
+          }
           personMap[pName].items.push(name);
         });
 
@@ -290,36 +338,27 @@
               <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight flex justify-center items-center gap-2">
                 🍱 團購點餐小幫手 🥤
               </h1>
-              <p className="text-slate-500 text-sm">適合辦公室、實驗室的午餐與飲料統計工具</p>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3 text-blue-800 shadow-sm">
-              <div className="mt-0.5"><Icons.Info /></div>
-              <div className="text-sm">
-                <strong>暫時記憶功能：</strong> 資料已自動儲存於瀏覽器中，不小心關閉網頁也不怕遺失！
-              </div>
+              <p className="text-slate-500 text-sm">支援 LINE 空格、冒號混排智慧匯入</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               
-              {/* 左側：控制面板 */}
               <div className="lg:col-span-5 space-y-4">
                 <div className="flex bg-white rounded-xl shadow-sm border border-slate-200 p-1">
-                  <button
-                    onClick={() => setActiveTab('manual')}
-                    className={`flex-1 flex justify-center items-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === 'manual' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                  >
-                    <Icons.Utensils /> 手動新增
-                  </button>
                   <button
                     onClick={() => setActiveTab('import')}
                     className={`flex-1 flex justify-center items-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === 'import' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                   >
                     <Icons.MessageSquare /> 文字匯入
                   </button>
+                  <button
+                    onClick={() => setActiveTab('manual')}
+                    className={`flex-1 flex justify-center items-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === 'manual' ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    <Icons.Utensils /> 手動新增
+                  </button>
                 </div>
 
-                {/* 手動新增 */}
                 {activeTab === 'manual' && (
                   <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                     <form onSubmit={handleAddOrder} className="space-y-4">
@@ -347,7 +386,7 @@
 
                       <div className="space-y-1">
                         <label className="text-xs font-semibold text-slate-500 uppercase">品項名稱</label>
-                        <input type="text" value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="如：脆皮鴨肉" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <input type="text" value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder={formType === 'drink' ? '如：芒果果粒波波' : '如：脆皮鴨肉'} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                       </div>
 
                       {formType === 'drink' && (
@@ -380,13 +419,16 @@
                   </div>
                 )}
 
-                {/* 文字匯入 */}
                 {activeTab === 'import' && (
                   <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+                    <div className="bg-amber-50 text-amber-800 p-3 rounded-lg text-sm border border-amber-200">
+                      <p className="font-semibold mb-1">💡 全新升級：支援空格與自動過濾</p>
+                      <p className="text-xs">你現在可以直接貼上像「<strong className="text-amber-900">貝貝彬 芒果果粒波波 謝謝 (感謝)</strong>」這樣的文字，系統會自動辨識並幫你過濾掉「謝謝」！</p>
+                    </div>
                     <textarea 
                       value={importText}
                       onChange={(e) => setImportText(e.target.value)}
-                      placeholder="貼上文字範例：&#10;王小明：脆皮鴨肉&#10;林小安：脆皮鴨肉&#10;                 滷排骨"
+                      placeholder="貼上文字範例：&#10;貝貝彬 芒果果粒波波 謝謝 (感謝)&#10;林小安 脆皮鴨肉"
                       className="w-full h-48 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none font-mono text-sm"
                     />
                     <button 
@@ -399,10 +441,8 @@
                 )}
               </div>
 
-              {/* 右側：統計與輸出 */}
               <div className="lg:col-span-7 space-y-4">
                 
-                {/* 列表區 */}
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="font-bold text-slate-800 flex items-center gap-2">
@@ -425,32 +465,111 @@
                     ) : (
                       orders.map(o => (
                         <div key={o.id} className="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100 text-sm hover:border-slate-200 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
-                              {o.person.substring(0, 1)}
-                            </div>
-                            <div>
-                              <div className="font-bold text-slate-800">{o.person}</div>
-                              <div className="text-slate-600 flex items-center gap-1">
-                                {o.type === 'drink' ? <Icons.Coffee /> : <Icons.Utensils />}
-                                {o.itemName}
-                                {o.type === 'drink' && <span className="text-xs text-slate-400">({o.size}/{o.sugar}/{o.ice})</span>}
+                          {editingId === o.id ? (
+                            <div className="flex-1 flex flex-col gap-2 w-full">
+                              <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center w-full">
+                                <select
+                                  value={editForm.type}
+                                  onChange={(e) => setEditForm({...editForm, type: e.target.value})}
+                                  className="px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white text-slate-700"
+                                >
+                                  <option value="food">🍱便當</option>
+                                  <option value="drink">🥤飲料</option>
+                                </select>
+                                <input
+                                  type="text"
+                                  value={editForm.person}
+                                  onChange={(e) => setEditForm({...editForm, person: e.target.value})}
+                                  className="w-full sm:w-20 px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                  placeholder="姓名"
+                                />
+                                <input
+                                  type="text"
+                                  value={editForm.itemName}
+                                  onChange={(e) => setEditForm({...editForm, itemName: e.target.value})}
+                                  className="flex-1 w-full px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                  placeholder="品項"
+                                />
+                                <div className="flex items-center gap-2 w-full sm:w-auto">
+                                  <span className="text-slate-500 hidden sm:inline">$</span>
+                                  <input
+                                    type="number"
+                                    value={editForm.price}
+                                    onChange={(e) => setEditForm({...editForm, price: e.target.value})}
+                                    className="w-16 px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    placeholder="價格"
+                                  />
+                                  <div className="flex gap-1 ml-auto sm:ml-2">
+                                    <button onClick={() => handleSaveEdit(o.id)} className="p-1.5 text-green-600 hover:bg-green-100 rounded-lg transition-colors bg-green-50" title="儲存">
+                                      <Icons.Check />
+                                    </button>
+                                    <button onClick={handleCancelEdit} className="p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600 rounded-lg transition-colors bg-slate-100" title="取消">
+                                      <Icons.X />
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
+                              {editForm.type === 'drink' && (
+                                <div className="flex flex-wrap gap-2 items-center pl-1 mt-1">
+                                  <input
+                                    type="text"
+                                    list="size-options"
+                                    value={editForm.size}
+                                    onChange={(e) => setEditForm({...editForm, size: e.target.value})}
+                                    className="w-24 px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    placeholder="容量(如:大杯)"
+                                  />
+                                  <input
+                                    type="text"
+                                    list="sugar-options"
+                                    value={editForm.sugar}
+                                    onChange={(e) => setEditForm({...editForm, sugar: e.target.value})}
+                                    className="w-24 px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    placeholder="甜度(如:半糖)"
+                                  />
+                                  <input
+                                    type="text"
+                                    list="ice-options"
+                                    value={editForm.ice}
+                                    onChange={(e) => setEditForm({...editForm, ice: e.target.value})}
+                                    className="w-24 px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    placeholder="冰塊(如:去冰)"
+                                  />
+                                </div>
+                              )}
                             </div>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <span className="font-semibold text-slate-700">${o.price}</span>
-                            <button onClick={() => handleDelete(o.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                              <Icons.Trash2 />
-                            </button>
-                          </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">
+                                  {o.person.substring(0, 1)}
+                                </div>
+                                <div>
+                                  <div className="font-bold text-slate-800">{o.person}</div>
+                                  <div className="text-slate-600 flex items-center gap-1">
+                                    {o.type === 'drink' ? <Icons.Coffee /> : <Icons.Utensils />}
+                                    {o.itemName}
+                                    {o.type === 'drink' && (o.size || o.sugar || o.ice) && <span className="text-xs text-slate-400">({[o.size, o.sugar, o.ice].filter(Boolean).join('/')})</span>}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {o.price > 0 && <span className="font-semibold text-slate-700 mr-2">${o.price}</span>}
+                                <button onClick={() => handleEditClick(o)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="編輯">
+                                  <Icons.Edit />
+                                </button>
+                                <button onClick={() => handleDelete(o.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="刪除">
+                                  <Icons.Trash2 />
+                                </button>
+                              </div>
+                            </>
+                          )}
                         </div>
                       ))
                     )}
                   </div>
                 </div>
 
-                {/* 統計與輸出文字區 */}
                 <div className="bg-indigo-600 rounded-2xl shadow-md p-5 text-white">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
                     <h3 className="font-bold text-lg flex items-center gap-2">
@@ -491,16 +610,31 @@
 
               </div>
             </div>
+            
+            {/* 隱藏的選項清單，提供給修改飲料時的自動提示 */}
+            <datalist id="size-options">
+              {DRINK_SIZE.map(s => <option key={s} value={s} />)}
+            </datalist>
+            <datalist id="sugar-options">
+              {DRINK_SUGAR.map(s => <option key={s} value={s} />)}
+            </datalist>
+            <datalist id="ice-options">
+              {DRINK_ICE.map(i => <option key={i} value={i} />)}
+            </datalist>
+
           </div>
         </div>
       );
     }
 
-    // 啟動 React 應用程式
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
   </script>
 </body>
 </html>
+
+
+
+
 
 
