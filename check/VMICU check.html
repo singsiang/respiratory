@@ -2,7 +2,7 @@
 <html lang="zh-TW" class="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>大夜補物料 Check list</title>
     <!-- 引入 Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -23,39 +23,42 @@
     </script>
     <style>
         /* 自訂捲軸與隱藏不需要的預設樣式 */
-        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         .dark ::-webkit-scrollbar-thumb { background: #475569; }
         .transition-colors { transition-duration: 200ms; }
         /* 隱藏數字輸入框的上下箭頭，讓介面更簡潔 */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
+        
+        /* 避免長單字撐破版面 */
+        .break-words { word-break: break-word; overflow-wrap: break-word; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors font-sans pb-24">
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors font-sans pb-24 overflow-x-hidden w-full">
 
     <!-- 頂部導覽列 -->
     <header class="bg-white dark:bg-slate-800 shadow-sm sticky top-0 z-10 transition-colors">
-        <div class="max-w-5xl mx-auto px-4 py-4">
-            <div class="flex justify-between items-center mb-4">
-                <h1 class="text-xl md:text-2xl font-bold flex items-center gap-2 text-teal-600 dark:text-teal-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <div class="max-w-5xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
+            <div class="flex justify-between items-center mb-3 sm:mb-4">
+                <h1 class="text-lg sm:text-xl md:text-2xl font-bold flex items-center gap-1 sm:gap-2 text-teal-600 dark:text-teal-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                     大夜補物料 Check list
                 </h1>
-                <button id="theme-toggle" class="p-2 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-yellow-300 hover:opacity-80 transition-opacity" title="切換深淺色">
+                <button id="theme-toggle" class="p-2 rounded-full shrink-0 bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-yellow-300 hover:opacity-80 transition-opacity" title="切換深淺色">
                     <!-- 預設顯示月亮 (淺色模式時) -->
-                    <svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                    <svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
                 </button>
             </div>
 
             <!-- 進度條 -->
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 sm:gap-3">
                 <div class="flex-1 h-2 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700">
                     <div id="progress-bar" class="h-full bg-teal-500 transition-all duration-500 ease-out" style="width: 0%"></div>
                 </div>
-                <span id="progress-text" class="text-sm font-medium whitespace-nowrap">
+                <span id="progress-text" class="text-xs sm:text-sm font-medium whitespace-nowrap">
                     0 / 0 (0%)
                 </span>
             </div>
@@ -63,30 +66,30 @@
     </header>
 
     <!-- 主要內容區塊 -->
-    <main class="max-w-5xl mx-auto px-4 py-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <main class="max-w-5xl mx-auto px-2 sm:px-4 py-4 sm:py-6 w-full box-border">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             <!-- 左欄 -->
-            <div id="col-left" class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 md:p-6 transition-colors"></div>
+            <div id="col-left" class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-3 sm:p-4 md:p-6 transition-colors w-full box-border overflow-hidden"></div>
             <!-- 右欄 -->
-            <div id="col-right" class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 md:p-6 transition-colors"></div>
+            <div id="col-right" class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-3 sm:p-4 md:p-6 transition-colors w-full box-border overflow-hidden"></div>
         </div>
     </main>
 
     <!-- 底部浮動操作列 -->
     <footer class="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] transition-colors z-20">
-        <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center gap-2 md:gap-4">
-            <button id="reset-btn" class="flex items-center justify-center gap-1 md:gap-2 px-2 md:px-4 py-3 rounded-lg font-medium transition-colors flex-1 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-slate-700 dark:text-red-400 dark:hover:bg-slate-600 text-sm md:text-base">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+        <div class="max-w-5xl mx-auto px-2 sm:px-4 py-2 sm:py-3 flex justify-between items-center gap-2 sm:gap-4 w-full box-border">
+            <button id="reset-btn" class="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 p-2 sm:px-4 sm:py-3 rounded-lg font-medium transition-colors flex-1 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-slate-700 dark:text-red-400 dark:hover:bg-slate-600 text-xs sm:text-base">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
                 <span>重置</span>
             </button>
 
-            <button id="qr-btn" class="flex items-center justify-center gap-1 md:gap-2 px-2 md:px-4 py-3 rounded-lg font-medium transition-colors flex-1 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-slate-700 dark:text-blue-400 dark:hover:bg-slate-600 text-sm md:text-base">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><rect x="7" y="7" width="3" height="3"/><rect x="14" y="7" width="3" height="3"/><rect x="7" y="14" width="3" height="3"/><path d="M14 14h.01"/><path d="M17 14h.01"/><path d="M14 17h.01"/><path d="M17 17h.01"/></svg>
+            <button id="qr-btn" class="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 p-2 sm:px-4 sm:py-3 rounded-lg font-medium transition-colors flex-1 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-slate-700 dark:text-blue-400 dark:hover:bg-slate-600 text-xs sm:text-base">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><rect x="7" y="7" width="3" height="3"/><rect x="14" y="7" width="3" height="3"/><rect x="7" y="14" width="3" height="3"/><path d="M14 14h.01"/><path d="M17 14h.01"/><path d="M14 17h.01"/><path d="M17 17h.01"/></svg>
                 <span>QR碼</span>
             </button>
 
-            <button id="copy-btn" class="flex items-center justify-center gap-1 md:gap-2 px-3 md:px-6 py-3 rounded-lg font-medium text-white transition-all flex-[2] bg-teal-600 hover:bg-teal-700 text-sm md:text-base">
-                <svg id="copy-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <button id="copy-btn" class="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 p-2 sm:px-6 sm:py-3 rounded-lg font-medium text-white transition-all flex-[1.5] sm:flex-[2] bg-teal-600 hover:bg-teal-700 text-xs sm:text-base">
+                <svg id="copy-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
                 <span id="copy-text" class="whitespace-nowrap">複製報告</span>
             </button>
         </div>
@@ -110,13 +113,11 @@
 
     <!-- JavaScript 邏輯 -->
     <script>
-        // SVG 圖示字串 (優化效能，不依賴外部 Icon 庫)
-        const iconSquare = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 dark:text-slate-500 group-hover:text-teal-400 transition-colors"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>`;
-        const iconCheckSquare = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-teal-500 dark:text-teal-400 scale-110 transition-transform"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`;
-        const iconSun = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`;
-        const iconMoon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
-        const iconCopy = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
-        const iconCheckCircle = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+        // SVG 圖示字串
+        const iconSquare = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400 dark:text-slate-500 group-hover:text-teal-400 transition-colors shrink-0"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>`;
+        const iconCheckSquare = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-teal-500 dark:text-teal-400 scale-110 transition-transform shrink-0"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`;
+        const iconCopy = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
+        const iconCheckCircle = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
 
         // 資料結構
         const leftColData = [
@@ -188,16 +189,6 @@
             document.getElementById('qr-modal').addEventListener('click', (e) => {
                 if (e.target.id === 'qr-modal') closeQRCode();
             });
-            
-            // 綁定其他輸入框
-            const otherInput = document.getElementById('input-other');
-            if (otherInput) {
-                otherInput.value = state.otherText;
-                otherInput.addEventListener('input', (e) => {
-                    state.otherText = e.target.value;
-                    saveState();
-                });
-            }
         }
 
         // 渲染欄位
@@ -212,11 +203,12 @@
                 const isIndent = row[0]?.isIndent;
                 const items = isIndent ? row.slice(1) : row;
                 
-                html += `<div class="flex flex-wrap items-center gap-x-4 gap-y-3 py-2 border-b last:border-0 border-slate-200 dark:border-slate-700 ${isIndent ? 'ml-8' : ''}">`;
+                // RWD調整：縮小間距(gap-x-2)與縮排(ml-3)
+                html += `<div class="flex flex-wrap items-center gap-x-2 sm:gap-x-4 gap-y-2 sm:gap-y-3 py-2 border-b last:border-0 border-slate-200 dark:border-slate-700 ${isIndent ? 'ml-3 sm:ml-8' : ''} w-full">`;
                 
                 items.forEach(item => {
                     if (item.isLabelOnly) {
-                        html += `<span class="font-medium">${item.label}</span>`;
+                        html += `<span class="font-medium text-sm sm:text-base whitespace-nowrap">${item.label}</span>`;
                         return;
                     }
 
@@ -225,20 +217,24 @@
                     if (item.highlight === 'yellow') highlightClass = 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-700/50';
                     if (item.highlight === 'red') highlightClass = 'bg-red-50 border-red-200 dark:bg-red-900/30 dark:border-red-700/50';
 
+                    // RWD調整：讓每個項目內部可以在小螢幕換行，文字設定 break-words
                     html += `
-                        <div class="flex items-center gap-2 cursor-pointer group ${item.highlight ? `p-2 rounded border ${highlightClass} w-full` : ''}" onclick="toggleCheck('${item.id}')">
-                            <div class="relative flex items-center justify-center icon-container" id="icon-${item.id}">
-                                ${isChecked ? iconCheckSquare : iconSquare}
+                        <div class="flex flex-wrap sm:flex-nowrap items-center gap-1 sm:gap-2 cursor-pointer group ${item.highlight ? `p-2 rounded border ${highlightClass} w-full` : ''}" onclick="toggleCheck('${item.id}')">
+                            <div class="flex items-center gap-1 sm:gap-2">
+                                <div class="relative flex items-center justify-center icon-container" id="icon-${item.id}">
+                                    ${isChecked ? iconCheckSquare : iconSquare}
+                                </div>
+                                <span id="label-${item.id}" class="select-none text-sm sm:text-base break-words ${isChecked ? 'text-slate-500 dark:text-slate-400' : ''} ${item.highlight ? 'font-medium' : ''}">${item.label}</span>
                             </div>
-                            <span id="label-${item.id}" class="select-none text-base md:text-sm ${isChecked ? 'text-slate-500 dark:text-slate-400' : ''} ${item.highlight ? 'font-medium' : ''}">${item.label}</span>
                             
-                            <!-- 新增：補充數量輸入框 -->
-                            <div class="flex items-center ml-1" onclick="event.stopPropagation()">
+                            <!-- 補充數量輸入框 -->
+                            <div class="flex items-center ml-1 sm:ml-0 shrink-0" onclick="event.stopPropagation()">
                                 <span class="text-xs text-slate-400 dark:text-slate-500 mr-1 select-none">補:</span>
-                                <input type="number" min="0" id="qty-${item.id}" value="${state.quantities[item.id] || ''}" oninput="updateQty('${item.id}', this.value)" class="w-12 px-1 py-0.5 text-center text-sm rounded border outline-none transition-colors shadow-sm bg-white border-slate-300 focus:border-teal-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:focus:border-teal-400" placeholder="0">
+                                <input type="number" min="0" id="qty-${item.id}" value="${state.quantities[item.id] || ''}" oninput="updateQty('${item.id}', this.value)" class="w-10 sm:w-12 px-1 py-0.5 text-center text-sm rounded border outline-none transition-colors shadow-sm bg-white border-slate-300 focus:border-teal-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:focus:border-teal-400" placeholder="0">
                             </div>
 
-                            ${item.hasInput ? `<input type="text" id="input-${item.id}" onclick="event.stopPropagation()" class="ml-2 px-3 py-1 rounded-md border flex-1 min-w-[150px] outline-none transition-colors bg-white border-slate-300 focus:border-teal-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:focus:border-teal-400" placeholder="請輸入事項...">` : ''}
+                            <!-- 文字輸入框：小螢幕自動換行並填滿 -->
+                            ${item.hasInput ? `<div class="w-full sm:w-auto flex-1 mt-1 sm:mt-0"><input type="text" id="input-${item.id}" value="${state.otherText}" oninput="updateOtherText(this.value)" onclick="event.stopPropagation()" class="w-full px-2 sm:px-3 py-1 text-sm sm:text-base rounded-md border outline-none transition-colors bg-white border-slate-300 focus:border-teal-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white dark:focus:border-teal-400" placeholder="輸入事項..."></div>` : ''}
                         </div>
                     `;
                 });
@@ -246,13 +242,19 @@
             });
             container.innerHTML = html;
         }
+        
+        // 更新其他文字
+        function updateOtherText(val) {
+            state.otherText = val;
+            saveState();
+        }
 
         // 切換打勾狀態
         function toggleCheck(id) {
             state.checks[id] = !state.checks[id];
             saveState();
             
-            // 局部更新 UI (不用重繪整個DOM)
+            // 局部更新 UI
             const iconContainer = document.getElementById(`icon-${id}`);
             const labelEl = document.getElementById(`label-${id}`);
             const isChecked = state.checks[id];
@@ -292,12 +294,8 @@
                 state.checks = {};
                 state.quantities = {};
                 state.otherText = '';
-                const otherInput = document.getElementById('input-other');
-                if (otherInput) otherInput.value = '';
                 saveState();
-                
-                // 重繪UI
-                init(); 
+                init(); // 重繪UI
             }
         }
 
@@ -309,11 +307,11 @@
             if (state.theme === 'dark') {
                 htmlClass.add('dark');
                 htmlClass.remove('light');
-                themeIcon.outerHTML = `<svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`;
+                themeIcon.outerHTML = `<svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`;
             } else {
                 htmlClass.add('light');
                 htmlClass.remove('dark');
-                themeIcon.outerHTML = `<svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
+                themeIcon.outerHTML = `<svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
             }
         }
 
@@ -466,5 +464,3 @@
     </script>
 </body>
 </html>
-
-
