@@ -14,10 +14,12 @@
   .dept-name { font-size: clamp(1.5rem, 5vw, 2.5rem); font-weight: 900; color: var(--dark); }
   .divider { width: 60px; height: 4px; background: linear-gradient(90deg, var(--teal), var(--gold)); margin: 1.25rem auto; border-radius: 2px; }
   .subtitle { color: #666; font-size: 1rem; letter-spacing: 0.05em; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 1.5rem; width: 100%; max-width: 680px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; width: 100%; max-width: 900px; }
   .card { background: white; border-radius: 20px; padding: 2.5rem 2rem; text-align: center; text-decoration: none; color: inherit; box-shadow: 0 4px 24px rgba(10,126,120,0.10); border: 2px solid transparent; transition: all 0.3s ease; position: relative; overflow: hidden; }
   .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: linear-gradient(90deg, var(--teal), var(--teal-light)); }
   .card:nth-child(2)::before { background: linear-gradient(90deg, var(--gold), #e8c97a); }
+  .card:nth-child(3)::before { background: linear-gradient(90deg, #1a6e4a, #28a86e); }
+  .card:nth-child(3) .card-arrow { background: #1a6e4a; }
   .card:hover { transform: translateY(-6px); box-shadow: 0 12px 36px rgba(10,126,120,0.18); border-color: var(--teal-light); }
   .card-icon { font-size: 3rem; margin-bottom: 1rem; }
   .card-title { font-size: 1.4rem; font-weight: 900; color: var(--dark); margin-bottom: 0.75rem; line-height: 1.4; }
@@ -45,6 +47,12 @@
     <div class="card-icon">📋</div>
     <div class="card-title">常見疾病衛教</div>
     <div class="card-desc">心臟、癌症、神經等<br>16項常見疾病<br>衛教資訊一覽</div>
+    <div class="card-arrow">前往查閱 →</div>
+  </a>
+  <a class="card" href="k9a.html">
+    <div class="card-icon">🫀</div>
+    <div class="card-title">K9A病房<br>衛教資料</div>
+    <div class="card-desc">肝膽腸胃、癌症等<br>12項常見疾病<br>衛教資訊一覽</div>
     <div class="card-arrow">前往查閱 →</div>
   </a>
 </div>
