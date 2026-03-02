@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <!-- 針對 iPad 與行動裝置的終極鎖定：禁止縮放、禁止雙擊放大、適配瀏海螢幕 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <!-- 支援加入 iOS 主畫面變成全螢幕 App -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>寶寶著色本</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 防止 iPad 上的預設反白、拖曳與滾動行為 */
+        body {
+            overscroll-behavior-y: none;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        /* 選中顏色的按鈕會有放大與陰影效果 */
+        .color-btn {
+            transition: all 0.2s ease;
+        }
+        .color-btn.active {
+            transform: scale(1.2);
+            box-shadow: 0 0 0 4px white, 0 0 0 8px currentColor;
+        }
+        /* 畫布容器：固定比例以適應不同螢幕 */
+        .canvas-container {
+            aspect-ratio: 4 / 3;
+            max-width: 100%;
+            max-height: 100%;
+        }
+        /* 隱藏捲軸但保留滾動功能 (針對顏色列) */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-blue-50 w-screen h-screen overflow-hidden flex flex-col md:flex-row text-gray-800 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+
+    <!-- 工具列 (左側或下方) -->
+    <div class="w-full md:w-36 lg:w-40 bg-white shadow-xl flex md:flex-col items-center justify-between p-3 md:py-6 z-30 order-2 md:order-1 flex-shrink-0">
+        
+        <!-- 工具按鈕 (清除畫布) -->
+        <button id="clearBtn" class="w-14 h-14 md:w-16 md:h-16 flex-shrink-0 bg-red-100 text-red-600 rounded-full flex items-center justify-center shadow-sm active:bg-red-200 active:scale-95 transition-transform">
+            <svg class="w-7 h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"/>
+            </svg>
+        </button>
+
+        <!-- 顏色選擇區 -->
+        <div class="flex md:flex-col gap-4 md:gap-5 overflow-x-auto md:overflow-y-auto hide-scrollbar flex-1 items-center justify-start md:justify-center px-4 py-2 w-full">
+            <!-- 顏色按鈕由 JS 動態生成 -->
+            <div id="colorPalette" class="flex md:flex-col gap-4"></div>
+        </div>
+
+        <!-- 翻頁按鈕區 (上一張 / 下一張) -->
+        <div class="flex md:flex-row flex-col gap-2 md:w-full justify-center mt-auto">
+            <button id="prevBtn" class="w-14 h-14 md:w-full md:h-14 bg-green-100 text-green-600 rounded-2xl md:rounded-xl flex items-center justify-center shadow-sm active:bg-green-200 active:scale-95 transition-transform">
+                <svg class="w-8 h-8 md:w-10 md:h-10 transform md:-rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 19l-7-7 7-7" />
+                </svg>
+            </button>
+            <button id="nextBtn" class="w-14 h-14 md:w-full md:h-14 bg-green-100 text-green-600 rounded-2xl md:rounded-xl flex items-center justify-center shadow-sm active:bg-green-200 active:scale-95 transition-transform">
+                <svg class="w-8 h-8 md:w-10 md:h-10 transform md:-rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 5l7 7-7 7" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- 繪圖區 (右側或上方) -->
+    <div class="flex-1 flex justify-center items-center p-4 md:p-8 relative order-1 md:order-2 h-full min-h-0">
+        <!-- 畫布外框 -->
+        <div id="canvasWrapper" class="canvas-container relative bg-white rounded-3xl shadow-2xl overflow-hidden w-full h-full max-h-[75vh] md:max-h-[90vh] border-4 border-white">
+            
+            <!-- 繪圖用的 Canvas (底層) -->
+            <canvas id="drawingCanvas" class="absolute inset-0 w-full h-full touch-none z-10"></canvas>
+            
+            <!-- SVG 輪廓圖案 (頂層，忽略點擊事件) -->
+            <div id="svgContainer" class="absolute inset-0 w-full h-full pointer-events-none z-20 flex justify-center items-center p-4 md:p-8">
+                <!-- SVG 會透過 JS 插入在這裡 -->
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // === 顏色設定 (鮮豔、適合幼兒) ===
+        const colors = [
+            '#ef4444', // 蘋果紅
+            '#f97316', // 橘子橘
+            '#fcd34d', // 太陽黃
+            '#22c55e', // 青草綠
+            '#3b82f6', // 天空藍
+            '#a855f7', // 葡萄紫
+            '#ec4899', // 櫻花粉
+            '#1f2937'  // 黑筆
+        ];
+
+        // === 擴充著色圖案庫 (14種極簡風格 SVG) ===
+        const strokeStyle = `fill="none" stroke="#1f2937" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"`;
+        
+        const templates = [
+            // 1. 快樂小星星
+            `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                <path d="M50,5 L63,38 L98,38 L69,59 L80,95 L50,73 L20,95 L31,59 L2,38 L37,38 Z" ${strokeStyle}/>
+                <circle cx="40" cy="50" r="3" fill="#1f2937" />
+                <circle cx="60" cy="50" r="3" fill="#1f2937" />
+                <path d="M45,65 Q50,70 55,65" ${strokeStyle}/>
+            </svg>`,
+            // 2. 胖胖小蘋果
+            `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                <path d="M50,85 C80,85 90,60 90,40 C90,15 65,15 50,30 C35,15 10,15 10,40 C10,60 20,85 50,85 Z" ${strokeStyle}/>
+                <path d="M50,30 Q45,15 55,5" ${strokeStyle}/>
+                <path d="M55,15 Q70,10 75,25 Q60,30 55,15 Z" ${strokeStyle}/>
+            </svg>`,
+            // 3. 嘟嘟小汽車
+            `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                <path d="M20,60 L10,60 Q5,60 5,55 L5,45 Q5,40 10,40 L25,40 L35,25 Q40,20 45,20 L65,20 Q70,20 75,25 L85,40 L90,40 Q95,40 95,45 L95,55 Q95,60 90,60 L80,60 M20,60 L20,40 M80,60 L80,40" ${strokeStyle}/>
+                <circle cx="25" cy="65" r="10" ${strokeStyle} />
+                <circle cx="75" cy="65" r="10" ${strokeStyle} />
+                <path d="M35,40 L40,25 L60,25 L65,40 Z" ${strokeStyle}/>
+            </svg>`,
+            // 4. 喵喵小貓咪
+            `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                <path d="M20,40 L20,10 L40,25 Q50,20 60,25 L80,10 L80,40 C95,55 90,90 50,90 C10,90 5,55 20,40 Z" ${strokeStyle}/>
+                <path d="M35,50 L45,50 M55,50 L65,50 M45,60 L50,65 L55,60" ${strokeStyle}/>
+                <path d="M20,60 L5,55 M20,65 L5,65 M20,70 L5,75 M80,60 L95,55 M80,65 L95,65 M80,70 L95,75" fill="none" stroke="#1f2937" stroke-width="3" stroke-linecap="round"/>
+            </svg>`,
+            // 5. 游游小魚
+            `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                <path d="M 25,50 C 25,10 80,20 80,50 C 80,80 25,90 25,50 Z" ${strokeStyle}/>
+                <path d="M 25,50 L 5,30 L 5,70 Z" ${strokeStyle}/>
+                <circle cx="65" cy="45" r="4" fill="#1f2937" />
+                <path d="M 50,35 Q 55,50 50,65" ${strokeStyle}/>
+                <path d="M 75,55 Q 85,55 90,50" ${strokeStyle}/>
+            </svg>`,
+            // 6. 漂亮小花朵
+            `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                <path d="M50,55 L50,95 M50,80 Q65,70 75,65" ${strokeStyle}/>
+                <path d="M 50 35 C 20 5, 80 5, 50 35" ${strokeStyle}/>
+                <path d="M 65 50 C 95 20, 95 80, 65 50" ${strokeStyle}/>
+                <path d="M 50 65 C 80 95, 20 95, 50 65" ${strokeStyle}/>
+                <path d="M 35 50 C 5 80, 5 20, 35 50" ${strokeStyle}/>
+                <circle cx="50" cy="50" r="15" ${strokeStyle} fill="white" />
+            </svg>`,
+            // 7. 溫馨小房子
+            `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                <rect x="20" y="45" width="60" height="45" ${strokeStyle}/>
+                <path d="M10,45 L50,15 L90,45 Z" ${strokeStyle}/>
+                <rect x="40" y="60" width="20" height="30" ${strokeStyle}/>
+                <rect x="25" y="55" width="10" height="10" ${strokeStyle}/>
+                <rect x="65" y="55" width="10" height="10" ${strokeStyle}/>
+            </svg>`,
+            // 8. 甜甜冰淇淋
+            `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                <path d="M35,50 L50,90 L65,50 Z" ${strokeStyle}/>
+                <path d="M 30,50 C 30,20 70,20 70,50" ${strokeStyle}/>
+                <path d="M25,50 C35,60 45,50 50,50 C55,50 65,60 75,50 Z" ${strokeStyle}/>
+                <circle cx="50" cy="18" r="6" ${strokeStyle}/>
+                <path d="M42,55 L50,75 M58,55 L50,75" ${strokeStyle}/>
+            </svg>`,
+            // 9. 燦爛大太陽
+            `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                <circle cx="50" cy="50" r="20" ${strokeStyle}/>
+                <path d="M50,10 L50,22 M50,78 L50,90 M10,50 L22,50 M78,50 L90,50" ${strokeStyle}/>
+                <path d="M22,22 L30,30 M78,78 L70,70 M22,78 L30,70 M78,22 L70,30" ${strokeStyle}/>
+                <circle cx="42" cy="45" r="2.5" fill="#1f2937" />
+                <circle cx="58" cy="45" r="2.5" fill="#1f2937" />
+                <path d="M45,55 Q50,60 55,55" ${strokeStyle}/>
+            </svg>`,
+            // 10. 茂盛大樹
+            `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                <path d="M40,95 L40,65 L60,65 L60,95 Z" ${strokeStyle}/>
+                <path d="M 30,65 C 10,65 10,40 25,35 C 25,15 50,5 65,15 C 80,5 95,25 85,45 C 100,55 90,80 70,75 C 65,85 45,85 30,65 Z" ${strokeStyle}/>
+            </svg>`,
+            // 11. 乘風小帆船
+            `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                <path d="M20,65 L80,65 L70,85 L30,85 Z" ${strokeStyle}/>
+                <line x1="50" y1="65" x2="50" y2="15" ${strokeStyle}/>
+                <path d="M52,18 L85,55 L52,55 Z" ${strokeStyle}/>
+                <path d="M48,25 L20,55 L48,55 Z" ${strokeStyle}/>
+                <path d="M10,90 Q25,98 40,90 T70,90 T90,90" fill="none" stroke="#3b82f6" stroke-width="4" stroke-linecap="round"/>
+            </svg>`,
+            // 12. 蹦蹦小兔子
+            `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                <circle cx="50" cy="65" r="22" ${strokeStyle}/>
+                <path d="M38,45 C25,10 45,5 45,45 Z" ${strokeStyle}/>
+                <path d="M62,45 C75,10 55,5 55,45 Z" ${strokeStyle}/>
+                <circle cx="42" cy="60" r="3" fill="#1f2937"/>
+                <circle cx="58" cy="60" r="3" fill="#1f2937"/>
+                <circle cx="50" cy="67" r="2" fill="#1f2937"/>
+                <path d="M45,72 Q50,77 55,72" ${strokeStyle}/>
+            </svg>`,
+            // 13. 衝刺小火箭
+            `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                <path d="M50,10 C75,30 70,70 50,80 C30,70 25,30 50,10 Z" ${strokeStyle}/>
+                <path d="M35,60 L15,80 L32,75 Z" ${strokeStyle}/>
+                <path d="M65,60 L85,80 L68,75 Z" ${strokeStyle}/>
+                <circle cx="50" cy="45" r="10" ${strokeStyle}/>
+                <path d="M40,80 L50,95 L60,80" ${strokeStyle}/>
+            </svg>`,
+            // 14. 飛舞小蝴蝶
+            `<svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+                <ellipse cx="50" cy="50" rx="6" ry="25" ${strokeStyle}/>
+                <path d="M48,25 Q40,10 35,15" ${strokeStyle}/>
+                <path d="M52,25 Q60,10 65,15" ${strokeStyle}/>
+                <path d="M45,40 C10,10 10,65 45,55 C15,70 25,95 45,70" ${strokeStyle}/>
+                <path d="M55,40 C90,10 90,65 55,55 C85,70 75,95 55,70" ${strokeStyle}/>
+                <circle cx="30" cy="40" r="4" ${strokeStyle}/>
+                <circle cx="70" cy="40" r="4" ${strokeStyle}/>
+            </svg>`
+        ];
+
+        let currentTemplateIndex = 0;
+        let currentColor = colors[0];
+        let isDrawing = false;
+        
+        // 幼兒專用超粗筆刷
+        const brushSize = 35; 
+
+        // === 初始化 UI 與 Canvas ===
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const canvasWrapper = document.getElementById('canvasWrapper');
+        const svgContainer = document.getElementById('svgContainer');
+        const colorPalette = document.getElementById('colorPalette');
+
+        // 建立顏色按鈕
+        colors.forEach((color, index) => {
+            const btn = document.createElement('button');
+            btn.className = `color-btn w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-full flex-shrink-0 cursor-pointer ${index === 0 ? 'active' : ''}`;
+            btn.style.backgroundColor = color;
+            btn.style.color = color;
+            
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentColor = color;
+            });
+            colorPalette.appendChild(btn);
+        });
+
+        // 載入圖案
+        function loadTemplate() {
+            svgContainer.innerHTML = templates[currentTemplateIndex];
+            clearCanvas();
+        }
+
+        // 清除畫布
+        function clearCanvas() {
+            // 重置矩陣確保清除整個範圍
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // 重新套用縮放
+            const dpr = window.devicePixelRatio || 1;
+            ctx.scale(dpr, dpr);
+        }
+
+        // 調整 Canvas 解析度 (完美對應 Retina 螢幕)
+        function resizeCanvas() {
+            const rect = canvasWrapper.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            
+            ctx.scale(dpr, dpr);
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // 重新繪製當前內容，避免縮放時清空（在此簡單版中直接清空重載）
+            clearCanvas();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // === 核心繪圖邏輯 (Pointer Events) ===
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        canvas.addEventListener('pointerdown', (e) => {
+            isDrawing = true;
+            canvas.setPointerCapture(e.pointerId);
+            const pos = getPos(e);
+            
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            
+            ctx.fillStyle = currentColor;
+            ctx.arc(pos.x, pos.y, brushSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        });
+
+        canvas.addEventListener('pointermove', (e) => {
+            if (!isDrawing) return;
+            // 增加繪圖的防手震與流暢度
+            const pos = getPos(e);
+            ctx.strokeStyle = currentColor;
+            ctx.lineWidth = brushSize;
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        });
+
+        const stopDrawing = () => { isDrawing = false; };
+        canvas.addEventListener('pointerup', stopDrawing);
+        canvas.addEventListener('pointercancel', stopDrawing);
+
+        // === 工具按鈕事件 ===
+        document.getElementById('clearBtn').addEventListener('click', clearCanvas);
+        
+        // 下一張
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            currentTemplateIndex = (currentTemplateIndex + 1) % templates.length;
+            loadTemplate();
+        });
+
+        // 上一張
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            currentTemplateIndex = (currentTemplateIndex - 1 + templates.length) % templates.length;
+            loadTemplate();
+        });
+
+        // 啟動應用
+        // 延遲一下執行 resize 以確保 DOM 完全渲染
+        setTimeout(() => {
+            resizeCanvas();
+            loadTemplate();
+        }, 100);
+        
+    </script>
+</body>
+</html>
