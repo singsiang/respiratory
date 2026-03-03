@@ -94,42 +94,81 @@
         
         const strokeStyle = `fill="none" stroke="#1f2937" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"`;
         const templates = [
-            // Baby Shark (鯊魚寶寶) - 新增！
+            // 1. Baby Shark (鯊魚寶寶)
             `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet">
-                <!-- 頂部背鰭 -->
                 <path d="M 40,32 L 48,10 L 55,33" ${strokeStyle}/>
-                <!-- 底部胸鰭 -->
                 <path d="M 45,65 L 50,85 L 60,65" ${strokeStyle}/>
-                <!-- 身體與尾巴 -->
                 <path d="M 15,55 C 20,25 65,25 75,45 L 95,30 L 90,55 L 95,80 L 75,65 C 65,85 20,85 15,55 Z" ${strokeStyle}/>
-                <!-- 大眼睛 -->
                 <circle cx="32" cy="45" r="4" fill="#1f2937" />
-                <!-- 嘴巴 (微笑) -->
                 <path d="M 20,55 Q 26,62 34,55" ${strokeStyle}/>
-                <!-- 鰓裂 -->
                 <path d="M 45,45 L 45,55 M 50,46 L 50,54" stroke="#1f2937" stroke-width="3" stroke-linecap="round" fill="none"/>
             </svg>`,
-            // 星星
+            // 2. 胖胖小企鵝
+            `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet">
+                <path d="M 50,10 C 20,10 15,55 20,80 C 30,90 70,90 80,80 C 85,55 80,10 50,10 Z" ${strokeStyle}/>
+                <path d="M 50,35 C 30,35 25,65 30,82 C 40,88 60,88 70,82 C 75,65 70,35 50,35 Z" ${strokeStyle}/>
+                <circle cx="38" cy="28" r="4" fill="#1f2937" />
+                <circle cx="62" cy="28" r="4" fill="#1f2937" />
+                <path d="M 45,35 L 55,35 L 50,42 Z" ${strokeStyle}/>
+                <path d="M 17,45 C -5,55 5,75 12,65" ${strokeStyle}/>
+                <path d="M 83,45 C 105,55 95,75 88,65" ${strokeStyle}/>
+                <path d="M 30,85 C 30,98 15,98 25,84" ${strokeStyle}/>
+                <path d="M 70,85 C 70,98 85,98 75,84" ${strokeStyle}/>
+            </svg>`,
+            // 3. Hello Kitty (新增！)
+            `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet">
+                <!-- 頭部與耳朵輪廓 -->
+                <path d="M 22,45 L 20,15 L 38,28 C 45,25 55,25 62,28 L 80,15 L 78,45 C 95,60 85,90 50,90 C 15,90 5,60 22,45 Z" ${strokeStyle}/>
+                <!-- 蝴蝶結左圈 -->
+                <path d="M 70,32 L 58,22 C 55,30 55,40 58,40 Z" ${strokeStyle}/>
+                <!-- 蝴蝶結右圈 -->
+                <path d="M 78,32 L 90,22 C 93,30 93,40 90,40 Z" ${strokeStyle}/>
+                <!-- 蝴蝶結中心 -->
+                <circle cx="74" cy="32" r="4" ${strokeStyle}/>
+                <!-- 眼睛 -->
+                <ellipse cx="35" cy="55" rx="3.5" ry="5.5" fill="#1f2937"/>
+                <ellipse cx="65" cy="55" rx="3.5" ry="5.5" fill="#1f2937"/>
+                <!-- 鼻子 -->
+                <ellipse cx="50" cy="62" rx="4.5" ry="3.5" fill="none" stroke="#1f2937" stroke-width="3"/>
+                <!-- 鬍鬚 -->
+                <path d="M 22,50 L 5,45 M 20,58 L 5,58 M 22,66 L 5,71 M 78,50 L 95,45 M 80,58 L 95,58 M 78,66 L 95,71" stroke="#1f2937" stroke-width="4" stroke-linecap="round" fill="none"/>
+            </svg>`,
+            // 4. 櫻桃冰淇淋 (新增！)
+            `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet">
+                <!-- 甜筒 -->
+                <path d="M 33,60 L 50,95 L 67,60" ${strokeStyle}/>
+                <!-- 甜筒格紋 -->
+                <path d="M 40,73 L 48,90 M 47,60 L 55,80 M 60,73 L 52,90 M 53,60 L 45,80" stroke="#1f2937" stroke-width="2" stroke-linecap="round" fill="none"/>
+                <!-- 冰淇淋本體與波浪裙邊 -->
+                <path d="M 25,55 C 25,20 75,20 75,55 C 75,65 62,65 58,55 C 58,65 42,65 38,55 C 38,65 25,65 25,55 Z" ${strokeStyle}/>
+                <!-- 頂部櫻桃 -->
+                <circle cx="50" cy="18" r="7" ${strokeStyle}/>
+                <!-- 櫻桃梗 -->
+                <path d="M 50,11 C 55,5 65,5 70,10" ${strokeStyle}/>
+                <!-- 巧克力米裝飾 -->
+                <path d="M 40,35 L 45,40 M 55,30 L 60,32 M 60,45 L 65,40 M 35,45 L 38,50" stroke="#1f2937" stroke-width="4" stroke-linecap="round" fill="none"/>
+            </svg>`,
+            // 5. 星星
             `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet"><path d="M50,5 L63,38 L98,38 L69,59 L80,95 L50,73 L20,95 L31,59 L2,38 L37,38 Z" ${strokeStyle}/><circle cx="40" cy="50" r="3" fill="#1f2937" /><circle cx="60" cy="50" r="3" fill="#1f2937" /><path d="M45,65 Q50,70 55,65" ${strokeStyle}/></svg>`,
-            // 蘋果
+            // 6. 蘋果
             `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet"><path d="M50,85 C80,85 90,60 90,40 C90,15 65,15 50,30 C35,15 10,15 10,40 C10,60 20,85 50,85 Z" ${strokeStyle}/><path d="M50,30 Q45,15 55,5" ${strokeStyle}/><path d="M55,15 Q70,10 75,25 Q60,30 55,15 Z" ${strokeStyle}/></svg>`,
-            // 汽車
+            // 7. 汽車
             `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet"><path d="M20,60 L10,60 Q5,60 5,55 L5,45 Q5,40 10,40 L25,40 L35,25 Q40,20 45,20 L65,20 Q70,20 75,25 L85,40 L90,40 Q95,40 95,45 L95,55 Q95,60 90,60 L80,60 M20,60 L20,40 M80,60 L80,40" ${strokeStyle}/><circle cx="25" cy="65" r="10" ${strokeStyle} /><circle cx="75" cy="65" r="10" ${strokeStyle} /><path d="M35,40 L40,25 L60,25 L65,40 Z" ${strokeStyle}/></svg>`,
-            // 貓咪
+            // 8. 貓咪
             `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet"><path d="M20,40 L20,10 L40,25 Q50,20 60,25 L80,10 L80,40 C95,55 90,90 50,90 C10,90 5,55 20,40 Z" ${strokeStyle}/><path d="M35,50 L45,50 M55,50 L65,50 M45,60 L50,65 L55,60" ${strokeStyle}/><path d="M20,60 L5,55 M20,65 L5,65 M20,70 L5,75 M80,60 L95,55 M80,65 L95,65 M80,70 L95,75" fill="none" stroke="#1f2937" stroke-width="3" stroke-linecap="round"/></svg>`,
-            // 魚
+            // 9. 魚
             `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet"><path d="M 25,50 C 25,10 80,20 80,50 C 80,80 25,90 25,50 Z" ${strokeStyle}/><path d="M 25,50 L 5,30 L 5,70 Z" ${strokeStyle}/><circle cx="65" cy="45" r="4" fill="#1f2937" /><path d="M 50,35 Q 55,50 50,65" ${strokeStyle}/><path d="M 75,55 Q 85,55 90,50" ${strokeStyle}/></svg>`,
-            // 花朵
+            // 10. 花朵
             `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet"><path d="M50,55 L50,95 M50,80 Q65,70 75,65" ${strokeStyle}/><path d="M 50 35 C 20 5, 80 5, 50 35" ${strokeStyle}/><path d="M 65 50 C 95 20, 95 80, 65 50" ${strokeStyle}/><path d="M 50 65 C 80 95, 20 95, 50 65" ${strokeStyle}/><path d="M 35 50 C 5 80, 5 20, 35 50" ${strokeStyle}/><circle cx="50" cy="50" r="15" ${strokeStyle} fill="white" /></svg>`,
-            // 房子
+            // 11. 房子
             `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet"><rect x="20" y="45" width="60" height="45" ${strokeStyle}/><path d="M10,45 L50,15 L90,45 Z" ${strokeStyle}/><rect x="40" y="60" width="20" height="30" ${strokeStyle}/><rect x="25" y="55" width="10" height="10" ${strokeStyle}/><rect x="65" y="55" width="10" height="10" ${strokeStyle}/></svg>`,
-            // 太陽
+            // 12. 太陽
             `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet"><circle cx="50" cy="50" r="20" ${strokeStyle}/><path d="M50,10 L50,22 M50,78 L50,90 M10,50 L22,50 M78,50 L90,50" ${strokeStyle}/><path d="M22,22 L30,30 M78,78 L70,70 M22,78 L30,70 M78,22 L70,30" ${strokeStyle}/><circle cx="42" cy="45" r="2.5" fill="#1f2937" /><circle cx="58" cy="45" r="2.5" fill="#1f2937" /><path d="M45,55 Q50,60 55,55" ${strokeStyle}/></svg>`,
-            // 大樹
+            // 13. 大樹
             `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet"><path d="M40,95 L40,65 L60,65 L60,95 Z" ${strokeStyle}/><path d="M 30,65 C 10,65 10,40 25,35 C 25,15 50,5 65,15 C 80,5 95,25 85,45 C 100,55 90,80 70,75 C 65,85 45,85 30,65 Z" ${strokeStyle}/></svg>`,
-            // 火箭
+            // 14. 火箭
             `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet"><path d="M50,10 C75,30 70,70 50,80 C30,70 25,30 50,10 Z" ${strokeStyle}/><path d="M35,60 L15,80 L32,75 Z" ${strokeStyle}/><path d="M65,60 L85,80 L68,75 Z" ${strokeStyle}/><circle cx="50" cy="45" r="10" ${strokeStyle}/><path d="M40,80 L50,95 L60,80" ${strokeStyle}/></svg>`,
-            // 蝴蝶
+            // 15. 蝴蝶
             `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet"><ellipse cx="50" cy="50" rx="6" ry="25" ${strokeStyle}/><path d="M48,25 Q40,10 35,15" ${strokeStyle}/><path d="M52,25 Q60,10 65,15" ${strokeStyle}/><path d="M45,40 C10,10 10,65 45,55 C15,70 25,95 45,70" ${strokeStyle}/><path d="M55,40 C90,10 90,65 55,55 C85,70 75,95 55,70" ${strokeStyle}/><circle cx="30" cy="40" r="4" ${strokeStyle}/><circle cx="70" cy="40" r="4" ${strokeStyle}/></svg>`
         ];
 
