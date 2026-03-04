@@ -3,32 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>K9A病房衛教資料 — 基隆長庚醫院</title>
+<title>腹膜透析衛教資料 — 基隆長庚醫院</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root { --green: #1a6e4a; --green-light: #28a86e; --cream: #f5f8f5; --dark: #1a2e20; }
-  body { font-family: 'Noto Sans TC', sans-serif; background: linear-gradient(150deg, #e8f5ee 0%, var(--cream) 70%); min-height: 100vh; padding: 2rem 1rem 4rem; }
+  :root { --blue: #1a5080; --blue-light: #2a7abf; --sky: #e8f4fb; --cream: #f5f8fc; --dark: #1a2030; }
+  body { font-family: 'Noto Sans TC', sans-serif; background: linear-gradient(150deg, #ddeef8 0%, var(--cream) 70%); min-height: 100vh; padding: 2rem 1rem 4rem; }
 
-  .back { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--green); text-decoration: none; font-weight: 700; font-size: 0.9rem; margin-bottom: 2rem; opacity: 0.85; transition: opacity 0.2s; }
+  .back { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--blue); text-decoration: none; font-weight: 700; font-size: 0.9rem; margin-bottom: 2rem; opacity: 0.85; transition: opacity 0.2s; }
   .back:hover { opacity: 1; }
 
   .header { text-align: center; margin-bottom: 2.5rem; animation: fadeDown 0.5s ease; }
-  .tag { display: inline-block; background: var(--green); color: white; font-size: 0.75rem; font-weight: 700; padding: 0.3rem 1rem; border-radius: 100px; letter-spacing: 0.12em; margin-bottom: 0.9rem; }
+  .tag { display: inline-block; background: var(--blue); color: white; font-size: 0.75rem; font-weight: 700; padding: 0.3rem 1rem; border-radius: 100px; letter-spacing: 0.12em; margin-bottom: 0.9rem; }
   h1 { font-size: clamp(1.6rem, 5vw, 2.4rem); font-weight: 900; color: var(--dark); line-height: 1.3; }
   .sub { color: #777; margin-top: 0.5rem; font-size: 0.92rem; }
 
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.25rem; max-width: 1000px; margin: 0 auto; }
 
-  .card { background: white; border-radius: 16px; padding: 1.5rem 1rem; text-align: center; box-shadow: 0 2px 16px rgba(26,110,74,0.08); border-top: 4px solid var(--green-light); transition: transform 0.2s, box-shadow 0.2s; animation: fadeUp 0.5s ease both; }
-  .card:hover { transform: translateY(-4px); box-shadow: 0 8px 28px rgba(26,110,74,0.16); }
-  .card h2 { font-size: 1rem; font-weight: 900; color: var(--dark); margin-bottom: 1rem; line-height: 1.5; }
+  .card { background: white; border-radius: 16px; padding: 1.5rem 1rem; text-align: center; box-shadow: 0 2px 16px rgba(26,80,128,0.08); border-top: 4px solid var(--blue-light); transition: transform 0.2s, box-shadow 0.2s; animation: fadeUp 0.5s ease both; }
+  .card:hover { transform: translateY(-4px); box-shadow: 0 8px 28px rgba(26,80,128,0.16); }
+  .card h2 { font-size: 0.95rem; font-weight: 900; color: var(--dark); margin-bottom: 1rem; line-height: 1.5; min-height: 2.8em; display: flex; align-items: center; justify-content: center; }
 
   .qr-wrapper { display: flex; justify-content: center; margin-bottom: 1rem; min-height: 120px; align-items: center; }
 
-  .btn { display: inline-block; padding: 0.45rem 1.2rem; background: var(--green); color: white; border-radius: 100px; text-decoration: none; font-size: 0.82rem; font-weight: 700; transition: background 0.2s, transform 0.15s; }
-  .btn:hover { background: var(--green-light); transform: scale(1.03); }
+  .btn { display: inline-block; padding: 0.45rem 1.2rem; background: var(--blue); color: white; border-radius: 100px; text-decoration: none; font-size: 0.82rem; font-weight: 700; transition: background 0.2s, transform 0.15s; }
+  .btn:hover { background: var(--blue-light); transform: scale(1.03); }
 
   .note { text-align: center; margin-top: 3rem; color: #aaa; font-size: 0.8rem; }
 
@@ -70,37 +70,41 @@
   <a class="nav-item" href="index.html"><span class="nav-icon">🏠</span> 首頁總覽</a>
   <a class="nav-item" href="rehab.html"><span class="nav-icon">🫁</span> 早期肺部復健 <span class="nav-count">3</span></a>
   <a class="nav-item" href="diseases.html"><span class="nav-icon">📋</span> 外科加護疾病 <span class="nav-count">16</span></a>
-  <a class="nav-item active" href="k9a.html"><span class="nav-icon">🫀</span> K9A病房衛教 <span class="nav-count">12</span></a>
-  <a class="nav-item" href="dialysis.html"><span class="nav-icon">💧</span> 腹膜透析衛教 <span class="nav-count">16</span></a>
+  <a class="nav-item" href="k9a.html"><span class="nav-icon">🫀</span> K9A病房衛教 <span class="nav-count">12</span></a>
+  <a class="nav-item active" href="dialysis.html"><span class="nav-icon">💧</span> 腹膜透析衛教 <span class="nav-count">16</span></a>
 </nav>
 
 <div class="main-wrap">
 <a class="back" href="index.html">← 返回首頁</a>
 
 <div class="header">
-  <div class="tag">K9A 病房</div>
-  <h1>🏥 衛教 QR Code 資料</h1>
-  <div class="sub">基隆長庚醫院 K9A病房與您一起關心身體健康</div>
+  <div class="tag">腹膜透析室</div>
+  <h1>💧 腹膜透析衛教資料</h1>
+  <div class="sub">基隆長庚醫院腹膜透析室　關心您的健康</div>
 </div>
 
 <div class="grid" id="grid"></div>
 
-<div class="note">基隆長庚醫院 K9A病房　·　人本濟世　勤勞樸實</div>
+<div class="note">基隆長庚醫院腹膜透析室　·　人本濟世　勤勞樸實</div>
 
 <script>
 const topics = [
-  { name: 'B型肝炎',     url: 'https://www.cgmh.org.tw/asproot/healthedu/view/health_cntt.aspx?artno=00514&s=q' },
-  { name: '肝硬化',       url: 'https://www.cgmh.org.tw/asproot/healthedu/view/health_cntt.aspx?artno=00349&s=q' },
-  { name: '肝癌',         url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00178&s=q' },
-  { name: '膽道結石',     url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00045&s=q' },
-  { name: '膽管阻塞',     url: 'https://www.cgmh.org.tw/asproot/healthedu/view/health_cntt.aspx?artno=00467&s=q' },
-  { name: '上腸胃道出血', url: 'https://www.cgmh.org.tw/asproot/healthedu/view/health_cntt.aspx?artno=00083&s=q' },
-  { name: '消化性潰瘍',   url: 'https://www.cgmh.org.tw/asproot/healthedu/view/health_cntt.aspx?artno=00126&s=q' },
-  { name: '胃癌',         url: 'https://www.cgmh.org.tw/asproot/healthedu/view/health_cntt.aspx?artno=00481&s=q' },
-  { name: '胰臟炎',       url: 'https://www.cgmh.org.tw/asproot/healthedu/view/health_cntt.aspx?artno=00208&s=q' },
-  { name: '憩室炎',       url: 'https://www.cgmh.org.tw/asproot/healthedu/view/health_cntt.aspx?artno=00475&s=q' },
-  { name: '大腸直腸癌',   url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00034&s=q' },
-  { name: '腸道阻塞',     url: 'https://www.cgmh.org.tw/asproot/healthedu/view/health_cntt.aspx?artno=00453&s=q' },
+  { name: '腹膜透析環境介紹',     url: 'https://drive.google.com/file/d/17c6jxag6QtLzP6p109HJ4jWTHf3UN15Z/view?usp=drive_link' },
+  { name: '全自動腹膜透析換液流程', url: 'https://drive.google.com/file/d/10PlAn6EfB7S5vN1iDA8zJ-s8OTwf7ghw/view?usp=sharing' },
+  { name: '連續性腹膜透析換液流程', url: 'https://drive.google.com/file/d/19s7ChvcOZGj8aCJyeJzeaG2GX4hBCAuJ/view?usp=drive_link' },
+  { name: '透析液進出異常',       url: 'https://drive.google.com/file/d/1KqrXitwCNMiMeMLe2TSh5f4JL5z0JpTe/view?usp=sharing' },
+  { name: '導管意外事件',         url: 'https://drive.google.com/file/d/1zuAeRNtQf-TkKQytpujllj01wNLVo2R0/view?usp=sharing' },
+  { name: '腹膜炎',               url: 'https://drive.google.com/file/d/1isWQbwg_3ZPTZ7JjfDSI6D7SART0BtQ8/view?usp=sharing' },
+  { name: '導管出口感染',         url: 'https://drive.google.com/file/d/1psxzkVrGwhWvFgfKJn6FM0LBhx8NoLzb/view?usp=sharing' },
+  { name: '導管出口照護',         url: 'https://drive.google.com/file/d/1RiXu54gFxZs3Ukq1KLyVaNZKEAzQKc_W/view?usp=sharing' },
+  { name: '居家注意事項',         url: 'https://drive.google.com/file/d/1sQ3HYJgy1y3PZ_X28wdpCe2LFsysVGon/view?usp=sharing' },
+  { name: '透析飲食',             url: 'https://drive.google.com/file/d/1FZ_6uzTnM-oIHt7bLYhw16YTfCsVZaWg/view?usp=sharing' },
+  { name: '水分控制',             url: 'https://drive.google.com/file/d/1cWbQg8VE_NwhMqhAsbX5Lr3vMs8ZLAgX/view?usp=sharing' },
+  { name: '透析機清潔及連線步驟', url: 'https://drive.google.com/file/d/15df56t5DrSXsH24X9AeEOZLxdxR6UpT8/view?usp=sharing' },
+  { name: '預防跌倒',             url: 'https://drive.google.com/file/d/1JZwVdM9IDF7FgHKub0HpAhorBOOrswec/view?usp=sharing' },
+  { name: '出國相關衛教',         url: 'https://drive.google.com/file/d/1XcjJ8QQAdFezpC-HWfikbx4puUDKZ_ys/view?usp=sharing' },
+  { name: '醫病共享決策輔助表',   url: 'https://drive.google.com/file/d/1ukG55jEp91dOa68x9eFVuieP7r9pdHwj/view?usp=sharing' },
+  { name: '腎移植衛教',           url: 'https://drive.google.com/file/d/18wJQNUqkWKwxK_P6iHrInPWLXbTfH5Ur/view?usp=sharing' },
 ];
 
 const grid = document.getElementById('grid');
@@ -108,7 +112,7 @@ const grid = document.getElementById('grid');
 topics.forEach((t, i) => {
   const card = document.createElement('div');
   card.className = 'card';
-  card.style.animationDelay = `${i * 0.05}s`;
+  card.style.animationDelay = `${i * 0.04}s`;
 
   const qrId = `qr-${i}`;
   card.innerHTML = `
@@ -120,7 +124,7 @@ topics.forEach((t, i) => {
 
   setTimeout(() => {
     const wrapper = document.getElementById(qrId);
-    new QRCode(wrapper, { text: t.url, width: 120, height: 120, colorDark: '#1a2e20', colorLight: '#ffffff' });
+    new QRCode(wrapper, { text: t.url, width: 120, height: 120, colorDark: '#1a2030', colorLight: '#ffffff' });
   }, 0);
 });
 </script>
