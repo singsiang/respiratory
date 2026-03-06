@@ -7,210 +7,79 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --teal: #0a7c6b;
-    --teal-light: #14a88f;
-    --cream: #f7f4ef;
-    --dark: #1a2630;
-  }
-  body {
-    font-family: 'Noto Sans TC', sans-serif;
-    background: linear-gradient(160deg, #e8f5f2 0%, var(--cream) 60%);
-    min-height: 100vh;
-    padding: 2rem 1rem 4rem;
-  }
-  .back {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    color: var(--teal);
-    text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 500;
-    margin-bottom: 1.5rem;
-    opacity: 0.8;
-    transition: opacity 0.2s;
-  }
-  .back:hover { opacity: 1; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --teal: #0a7c6b; --teal-light: #14a88f;
+  --sidebar-bg: #1a2e2d; --teal-nav: #14b8a6;
+  --cream: #f7f4ef; --dark: #1a2630;
+}
+html, body { height: 100%; }
+body { font-family: 'Noto Sans TC', sans-serif; display: flex; min-height: 100vh; background: linear-gradient(160deg, #e8f5f2 0%, var(--cream) 60%); }
 
-  header {
-    text-align: center;
-    margin-bottom: 2.5rem;
-    animation: fadeDown 0.5s ease;
-  }
-  .tag {
-    display: inline-block;
-    background: var(--teal);
-    color: white;
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    padding: 0.3rem 0.9rem;
-    border-radius: 99px;
-    margin-bottom: 0.8rem;
-  }
-  h1 {
-    font-size: clamp(1.8rem, 5vw, 2.6rem);
-    font-weight: 900;
-    color: var(--dark);
-    line-height: 1.2;
-    margin-bottom: 0.5rem;
-  }
-  .benefits {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.5rem;
-    margin-top: 1rem;
-  }
-  .benefit-chip {
-    background: white;
-    border: 1.5px solid #c8e8e3;
-    color: var(--teal);
-    font-size: 0.82rem;
-    font-weight: 500;
-    padding: 0.35rem 0.9rem;
-    border-radius: 99px;
-  }
-
-  .section-title {
-    text-align: center;
-    font-size: 1rem;
-    font-weight: 700;
-    color: #555;
-    margin-bottom: 1.5rem;
-    letter-spacing: 0.05em;
-  }
-
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 1.5rem;
-    max-width: 860px;
-    margin: 0 auto;
-  }
-
-  .card {
-    background: white;
-    border-radius: 20px;
-    padding: 1.8rem 1.5rem;
-    text-align: center;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.07);
-    animation: fadeUp 0.5s ease both;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-  }
-  .card:nth-child(1) { animation-delay: 0.1s; }
-  .card:nth-child(2) { animation-delay: 0.2s; }
-  .card:nth-child(3) { animation-delay: 0.3s; }
-
-  .card-number {
-    width: 32px;
-    height: 32px;
-    background: var(--teal);
-    color: white;
-    border-radius: 50%;
-    font-size: 0.85rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .card-title {
-    font-size: 1.1rem;
-    font-weight: 900;
-    color: var(--dark);
-  }
-
-  .qr-wrapper {
-    width: 160px;
-    height: 160px;
-    background: #f5f5f5;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
-  }
-  .qr-wrapper canvas, .qr-wrapper img { border-radius: 8px; }
-
-  .placeholder-text {
-    font-size: 0.72rem;
-    color: #bbb;
-    line-height: 1.5;
-    text-align: center;
-    padding: 0.5rem;
-  }
-
-  .btn {
-    display: inline-block;
-    background: var(--teal);
-    color: white;
-    text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 700;
-    padding: 0.65rem 1.6rem;
-    border-radius: 99px;
-    transition: background 0.2s, transform 0.15s;
-  }
-  .btn:hover {
-    background: var(--teal-light);
-    transform: scale(1.03);
-  }
-  .btn.disabled {
-    background: #ccc;
-    cursor: not-allowed;
-    pointer-events: none;
-  }
-
-  footer {
-    text-align: center;
-    margin-top: 3rem;
-    font-size: 0.78rem;
-    color: #aaa;
-  }
-
-  @keyframes fadeDown { from { opacity:0; transform:translateY(-16px);} to { opacity:1; transform:none;} }
-  @keyframes fadeUp { from { opacity:0; transform:translateY(20px);} to { opacity:1; transform:none;} }
-
-  html, body { height: 100%; }
-  body { display: flex; min-height: 100vh; }
-    }
-
-  
 /* SIDEBAR */
-.sidebar { width: 260px; flex-shrink: 0; background: #1a2e2d; color: white; display: flex; flex-direction: column; padding: 2rem 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.sidebar { width: 260px; flex-shrink: 0; background: var(--sidebar-bg); color: white; display: flex; flex-direction: column; padding: 2rem 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
 .sidebar-header { padding: 0 1.5rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 1rem; }
-.sidebar-hospital { font-size: 0.75rem; color: #14b8a6; font-weight: 700; letter-spacing: 0.12em; margin-bottom: 0.4rem; }
+.sidebar-hospital { font-size: 0.75rem; color: var(--teal-nav); font-weight: 700; letter-spacing: 0.12em; margin-bottom: 0.4rem; }
 .sidebar-title { font-size: 1.1rem; font-weight: 900; line-height: 1.4; }
 .nav-label { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.15em; color: rgba(255,255,255,0.35); padding: 0.5rem 1.5rem 0.4rem; }
 .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.5rem; text-decoration: none; color: rgba(255,255,255,0.65); font-size: 0.9rem; font-weight: 500; transition: all 0.2s; border-left: 3px solid transparent; }
 .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.07); color: white; }
-.nav-item.active { border-left-color: #14b8a6; }
+.nav-item.active { border-left-color: var(--teal-nav); }
 .nav-icon { font-size: 1.15rem; flex-shrink: 0; }
 .nav-count { margin-left: auto; font-size: 0.7rem; background: rgba(255,255,255,0.12); padding: 0.15rem 0.5rem; border-radius: 99px; color: rgba(255,255,255,0.45); }
+
+/* MAIN */
+.main-wrap { flex: 1; padding: 2.5rem; min-width: 0; }
+
+header { text-align: center; margin-bottom: 2.5rem; animation: fadeDown 0.5s ease; }
+.tag { display: inline-block; background: var(--teal); color: white; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; padding: 0.3rem 0.9rem; border-radius: 99px; margin-bottom: 0.8rem; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 900; color: var(--dark); line-height: 1.2; margin-bottom: 0.5rem; }
+.benefits { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; margin-top: 1rem; }
+.benefit-chip { background: white; border: 1.5px solid #c8e8e3; color: var(--teal); font-size: 0.82rem; font-weight: 500; padding: 0.35rem 0.9rem; border-radius: 99px; }
+
+.section-title { text-align: center; font-size: 1rem; font-weight: 700; color: #555; margin-bottom: 1.5rem; letter-spacing: 0.05em; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; max-width: 860px; margin: 0 auto; }
+
+.card { background: white; border-radius: 20px; padding: 1.8rem 1.5rem; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.07); animation: fadeUp 0.5s ease both; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+.card:nth-child(1) { animation-delay: 0.1s; }
+.card:nth-child(2) { animation-delay: 0.2s; }
+.card:nth-child(3) { animation-delay: 0.3s; }
+
+.card-number { width: 32px; height: 32px; background: var(--teal); color: white; border-radius: 50%; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.card-title { font-size: 1.1rem; font-weight: 900; color: var(--dark); }
+
+.qr-wrapper { width: 150px; height: 150px; background: #f5f5f5; border-radius: 12px; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
+.qr-wrapper canvas, .qr-wrapper img { border-radius: 8px; }
+
+.btn { display: inline-block; background: var(--teal); color: white; text-decoration: none; font-size: 0.9rem; font-weight: 700; padding: 0.65rem 1.6rem; border-radius: 99px; transition: background 0.2s, transform 0.15s; width: 100%; text-align: center; }
+.btn:hover { background: var(--teal-light); transform: scale(1.03); }
+.btn.disabled { background: #ccc; cursor: not-allowed; pointer-events: none; }
+
+footer { text-align: center; margin-top: 3rem; font-size: 0.78rem; color: #aaa; }
+
+@keyframes fadeDown { from { opacity:0; transform:translateY(-16px);} to { opacity:1; transform:none;} }
+@keyframes fadeUp { from { opacity:0; transform:translateY(20px);} to { opacity:1; transform:none;} }
+
 /* MOBILE */
 .mobile-topbar { display: none; }
 .mobile-nav { display: none; }
 @media (max-width: 768px) {
-  body { flex-direction: column !important; padding-bottom: 72px; }
+  body { flex-direction: column; padding-bottom: 72px; }
   .sidebar { display: none; }
-  .mobile-topbar { display: flex; position: sticky; top: 0; z-index: 100; background: #1a2e2d; color: white; padding: 0.85rem 1.2rem; align-items: center; justify-content: space-between; }
-  .mobile-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 200; background: #1a2e2d; border-top: 1px solid rgba(255,255,255,0.12); justify-content: space-around; padding: 0.4rem 0 calc(0.4rem + env(safe-area-inset-bottom)); }
+  .mobile-topbar { display: flex; position: sticky; top: 0; z-index: 100; background: var(--sidebar-bg); padding: 0.85rem 1.2rem; align-items: center; justify-content: space-between; }
+  .mobile-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 200; background: var(--sidebar-bg); border-top: 1px solid rgba(255,255,255,0.12); justify-content: space-around; padding: 0.4rem 0 calc(0.4rem + env(safe-area-inset-bottom)); }
   .mnav-item { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; text-decoration: none; color: rgba(255,255,255,0.5); font-size: 0.58rem; font-weight: 600; padding: 0.3rem 0.4rem; border-radius: 8px; min-width: 44px; }
-  .mnav-item.active { color: #14b8a6; background: rgba(20,184,166,0.12); }
+  .mnav-item.active { color: var(--teal-nav); background: rgba(20,184,166,0.12); }
   .mnav-icon { font-size: 1.25rem; }
-  .main-wrap, main { padding: 1.2rem 1rem 1.5rem !important; }
-  .grid, .cards { grid-template-columns: repeat(2, 1fr) !important; gap: 0.75rem !important; }
-  .qr-wrapper { min-height: 95px; }
-  .qr-wrapper canvas, .qr-wrapper img { width: 95px !important; height: 95px !important; }
+  .main-wrap { padding: 1.2rem 1rem 1.5rem; }
+  .grid { grid-template-columns: 1fr !important; max-width: 100%; }
+  .qr-wrapper { width: 130px; height: 130px; }
+  .qr-wrapper canvas, .qr-wrapper img { width: 120px !important; height: 120px !important; }
+  .btn { font-size: 0.85rem; padding: 0.55rem 1.2rem; }
+  h1 { font-size: 1.5rem; }
+  .benefit-chip { font-size: 0.75rem; }
 }
-
 </style>
 </head>
 <body>
@@ -220,6 +89,7 @@
   <div style="font-size:0.95rem;font-weight:900;color:white;">衛教資源中心</div>
   <div style="width:40px;"></div>
 </div>
+
 <nav class="sidebar">
   <div class="sidebar-header">
     <div class="sidebar-hospital">基隆長庚紀念醫院</div>
@@ -233,8 +103,8 @@
   <a class="nav-item" href="dialysis.html"><span class="nav-icon">💧</span> 腹膜透析衛教 <span class="nav-count">16</span></a>
   <a class="nav-item" href="k09b.html"><span class="nav-icon">🏥</span> K09B病房衛教 <span class="nav-count">23</span></a>
 </nav>
+
 <div class="main-wrap">
-<a href="index.html" class="back">← 返回首頁</a>
 
 <header>
   <div class="tag">外科加護病房</div>
@@ -249,54 +119,39 @@
 <p class="section-title">復健運動示範影片</p>
 
 <div class="grid">
-
-  <!-- 卡片 1 -->
   <div class="card">
     <div class="card-number">1</div>
     <div class="card-title">上肢被動運動</div>
-    <div class="qr-wrapper" id="qr1">
-      <div class="placeholder-text">待填入<br>影片連結</div>
-    </div>
+    <div class="qr-wrapper" id="qr1"></div>
     <a href="#" class="btn disabled" id="btn1">觀看影片</a>
   </div>
-
-  <!-- 卡片 2 -->
   <div class="card">
     <div class="card-number">2</div>
     <div class="card-title">上肢主動運動</div>
-    <div class="qr-wrapper" id="qr2">
-      <div class="placeholder-text">待填入<br>影片連結</div>
-    </div>
+    <div class="qr-wrapper" id="qr2"></div>
     <a href="#" class="btn disabled" id="btn2">觀看影片</a>
   </div>
-
-  <!-- 卡片 3 -->
   <div class="card">
     <div class="card-number">3</div>
     <div class="card-title">下肢被動運動</div>
-    <div class="qr-wrapper" id="qr3">
-      <div class="placeholder-text">待填入<br>影片連結</div>
-    </div>
+    <div class="qr-wrapper" id="qr3"></div>
     <a href="#" class="btn disabled" id="btn3">觀看影片</a>
   </div>
-
 </div>
 
 <footer>外科加護病房團隊製作 · 基隆長庚醫院</footer>
 
 <script>
-// 填入各影片的 URL 後，QR Code 會自動產生，按鈕也會啟用
 const videos = [
   { id: 'qr1', btnId: 'btn1', url: 'https://stream.new/v/Ue00d01wWWE8dwdQv191SxdZHMKPGyKPFsOsCmoUlDPEU' },
   { id: 'qr2', btnId: 'btn2', url: 'https://stream.new/v/DdJ4aX6HHOPdaTNIy5602q48NCZ800Y00g8fqTGudKCX14' },
   { id: 'qr3', btnId: 'btn3', url: 'https://stream.new/v/hJGYAHsi02FUn3uUrayonDjGjhutzm9WalyLZtcNYDC00' },
 ];
-
 videos.forEach(({ id, btnId, url }) => {
   if (!url) return;
   const container = document.getElementById(id);
   container.innerHTML = '';
-  new QRCode(container, { text: url, width: 150, height: 150, colorDark: '#1a2630', colorLight: '#ffffff' });
+  new QRCode(container, { text: url, width: 140, height: 140, colorDark: '#1a2630', colorLight: '#ffffff' });
   const btn = document.getElementById(btnId);
   btn.href = url;
   btn.target = '_blank';
