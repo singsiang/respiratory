@@ -19,7 +19,8 @@
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 font-sans min-h-[100dvh] flex flex-col">
+<!-- 加入 overflow-x-hidden 和 w-full 徹底阻斷手機版橫向微幅抖動，並將 dvh 改回 screen 避免網址列收合時的重繪 -->
+<body class="bg-slate-50 text-slate-900 font-sans min-h-screen flex flex-col overflow-x-hidden w-full">
 
     <!-- 頂部導覽列 -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
@@ -214,23 +215,25 @@
 
                 return `
                     <!-- 將 hover:-translate-y-1 變更為 md:hover:-translate-y-1 防止手機端誤觸發抖動 -->
-                    <div class="bg-white rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm md:hover:shadow-xl transition-all duration-300 md:hover:-translate-y-1 hover:border-blue-300 flex flex-col overflow-hidden group">
+                    <!-- 加入 isolate 與 transform-gpu 獨立渲染圖層 -->
+                    <div class="bg-white rounded-xl sm:rounded-2xl border border-slate-200 shadow-sm md:hover:shadow-xl transition-all duration-300 md:hover:-translate-y-1 hover:border-blue-300 flex flex-col overflow-hidden group isolate transform-gpu">
                         
                         <!-- 縮圖區塊 (Live Iframe Thumbnail) -->
-                        <div class="relative w-full aspect-video bg-slate-100 border-b border-slate-100 overflow-hidden">
+                        <!-- 加入 transform: translateZ(0) 強制硬體加速，防止滑動時破圖或抖動 -->
+                        <div class="relative w-full aspect-video bg-slate-100 border-b border-slate-100 overflow-hidden transform-gpu" style="transform: translateZ(0);">
                             <!-- 載入中佔位符 -->
                             <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-slate-50">
                                 <i data-lucide="image" class="w-6 h-6 sm:w-8 sm:h-8 mb-1 sm:mb-2 opacity-30"></i>
                                 <span class="text-[10px] sm:text-xs font-medium tracking-wide">預覽載入中...</span>
                             </div>
                             
-                            <!-- Iframe 縮圖: 加入 scrolling="no" 及 sandbox 屬性防止 iframe 內部元素搶奪焦點導致畫面跳動 -->
+                            <!-- Iframe 縮圖: 加入 transform-gpu 與 backface-hidden 防治 iOS Safari 滾動抖動 -->
                             <iframe 
                                 src="${pagesUrl}" 
                                 loading="lazy" 
                                 scrolling="no"
                                 sandbox="allow-scripts allow-same-origin"
-                                class="absolute top-0 left-0 w-[400%] h-[400%] origin-top-left scale-[0.25] pointer-events-none opacity-0 transition-opacity duration-700 ease-in-out no-scrollbar" 
+                                class="absolute top-0 left-0 w-[400%] h-[400%] origin-top-left scale-[0.25] pointer-events-none opacity-0 transition-opacity duration-700 ease-in-out no-scrollbar transform-gpu backface-hidden" 
                                 onload="this.classList.remove('opacity-0')"
                                 tabindex="-1">
                             </iframe>
@@ -309,4 +312,3 @@
     </script>
 </body>
 </html>
-
