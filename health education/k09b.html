@@ -7,141 +7,96 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --purple: #5a3e8a; --purple-light: #7c5cbf;
-    --sidebar-bg: #1a2e2d; --teal-light: #14b8a6;
-    --cream: #f8f6fb; --dark: #1a1a2e;
-  }
-  html, body { height: 100%; }
-  body { font-family: 'Noto Sans TC', sans-serif; display: flex; min-height: 100vh; background: var(--cream); }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --purple: #5a3e8a; --purple-light: #7c5cbf;
+  --chest: #2a7abf; --general: #7c5cbf;
+  --plastic: #c9784c; --exam: #4a8a5a; --diet: #c9a84c;
+  --sidebar-bg: #1a2e2d; --teal-light: #14b8a6;
+  --cream: #f8f6fb; --dark: #1a1a2e;
+}
+html, body { height: 100%; }
+body { font-family: 'Noto Sans TC', sans-serif; display: flex; min-height: 100vh; background: var(--cream); }
 
-  /* SIDEBAR */
-  .sidebar { width: 260px; flex-shrink: 0; background: var(--sidebar-bg); color: white; display: flex; flex-direction: column; padding: 2rem 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
-  .sidebar-header { padding: 0 1.5rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 1rem; }
-  .sidebar-hospital { font-size: 0.75rem; color: var(--teal-light); font-weight: 700; letter-spacing: 0.12em; margin-bottom: 0.4rem; }
-  .sidebar-title { font-size: 1.1rem; font-weight: 900; line-height: 1.4; }
-  .nav-label { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.15em; color: rgba(255,255,255,0.35); padding: 0.5rem 1.5rem 0.4rem; }
-  .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.5rem; text-decoration: none; color: rgba(255,255,255,0.65); font-size: 0.9rem; font-weight: 500; transition: all 0.2s; border-left: 3px solid transparent; }
-  .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.07); color: white; }
-  .nav-item.active { border-left-color: var(--teal-light); }
-  .nav-icon { font-size: 1.15rem; flex-shrink: 0; }
-  .nav-count { margin-left: auto; font-size: 0.7rem; background: rgba(255,255,255,0.12); padding: 0.15rem 0.5rem; border-radius: 99px; color: rgba(255,255,255,0.45); }
+/* SIDEBAR */
+.sidebar { width: 260px; flex-shrink: 0; background: var(--sidebar-bg); color: white; display: flex; flex-direction: column; padding: 2rem 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.sidebar-header { padding: 0 1.5rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 1rem; }
+.sidebar-hospital { font-size: 0.75rem; color: var(--teal-light); font-weight: 700; letter-spacing: 0.12em; margin-bottom: 0.4rem; }
+.sidebar-title { font-size: 1.1rem; font-weight: 900; line-height: 1.4; }
+.nav-label { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.15em; color: rgba(255,255,255,0.35); padding: 0.5rem 1.5rem 0.4rem; }
+.nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.5rem; text-decoration: none; color: rgba(255,255,255,0.65); font-size: 0.9rem; font-weight: 500; transition: all 0.2s; border-left: 3px solid transparent; }
+.nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.07); color: white; }
+.nav-item.active { border-left-color: var(--teal-light); }
+.nav-icon { font-size: 1.15rem; flex-shrink: 0; }
+.nav-count { margin-left: auto; font-size: 0.7rem; background: rgba(255,255,255,0.12); padding: 0.15rem 0.5rem; border-radius: 99px; color: rgba(255,255,255,0.45); }
 
-  /* MAIN */
-  .main-wrap { flex: 1; padding: 2.5rem 2.5rem; min-width: 0; }
-  .page-header { margin-bottom: 2rem; }
-  .page-tag { display: inline-block; background: var(--purple); color: white; font-size: 0.72rem; font-weight: 700; padding: 0.25rem 0.9rem; border-radius: 99px; letter-spacing: 0.1em; margin-bottom: 0.7rem; }
-  .page-title { font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 900; color: var(--dark); line-height: 1.3; }
-  .page-sub { color: #888; margin-top: 0.4rem; font-size: 0.9rem; }
+/* MAIN */
+.main-wrap { flex: 1; padding: 2.5rem; min-width: 0; }
+.page-header { margin-bottom: 2rem; }
+.page-tag { display: inline-block; background: var(--purple); color: white; font-size: 0.72rem; font-weight: 700; padding: 0.25rem 0.9rem; border-radius: 99px; letter-spacing: 0.1em; margin-bottom: 0.7rem; }
+.page-title { font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 900; color: var(--dark); }
+.page-sub { color: #888; margin-top: 0.4rem; font-size: 0.9rem; }
 
-  /* SECTIONS */
-  .section { margin-bottom: 2.5rem; }
-  .section-title {
-    display: flex; align-items: center; gap: 0.6rem;
-    font-size: 1rem; font-weight: 900; color: var(--dark);
-    margin-bottom: 1.2rem; padding-bottom: 0.6rem;
-    border-bottom: 2px solid #e8e0f0;
-  }
-  .section-badge {
-    display: inline-block; padding: 0.2rem 0.75rem;
-    border-radius: 99px; font-size: 0.78rem; font-weight: 700; color: white;
-  }
-  .badge-chest   { background: #2a7abf; }
-  .badge-general { background: #7c5cbf; }
-  .badge-plastic { background: #c9784c; }
-  .badge-exam    { background: #4a8a5a; }
-  .badge-diet    { background: #c9a84c; }
+/* SECTIONS */
+.section { margin-bottom: 2.5rem; }
+.section-title { margin-bottom: 1.2rem; padding-bottom: 0.6rem; border-bottom: 2px solid #e8e0f0; }
+.section-badge { display: inline-block; padding: 0.25rem 0.9rem; border-radius: 99px; font-size: 0.82rem; font-weight: 700; color: white; }
+.badge-chest   { background: var(--chest); }
+.badge-general { background: var(--general); }
+.badge-plastic { background: var(--plastic); }
+.badge-exam    { background: var(--exam); }
+.badge-diet    { background: var(--diet); }
 
-  /* GRID */
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 1rem; }
-  .card { background: white; border-radius: 14px; padding: 1.2rem 1rem; text-align: center; box-shadow: 0 2px 12px rgba(0,0,0,0.07); border-top: 3px solid #ddd; transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.7rem; animation: fadeUp 0.4s ease both; }
-  .card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
-  .card.chest   { border-top-color: #2a7abf; }
-  .card.general { border-top-color: #7c5cbf; }
-  .card.plastic { border-top-color: #c9784c; }
-  .card.exam    { border-top-color: #4a8a5a; }
-  .card.diet    { border-top-color: #c9a84c; }
+/* GRID & CARDS */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 1rem; }
+.card { background: white; border-radius: 14px; padding: 1.2rem 1rem; text-align: center; box-shadow: 0 2px 12px rgba(0,0,0,0.07); border-top: 3px solid #ddd; transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; align-items: center; gap: 0.7rem; animation: fadeUp 0.4s ease both; }
+.card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+.card.chest   { border-top-color: var(--chest); }
+.card.general { border-top-color: var(--general); }
+.card.plastic { border-top-color: var(--plastic); }
+.card.exam    { border-top-color: var(--exam); }
+.card.diet    { border-top-color: var(--diet); }
+.card h3 { font-size: 0.88rem; font-weight: 900; color: var(--dark); line-height: 1.4; min-height: 2.4em; display: flex; align-items: center; justify-content: center; }
+.qr-wrapper { display: flex; justify-content: center; min-height: 110px; align-items: center; }
+.btn { display: inline-block; padding: 0.38rem 1rem; border-radius: 99px; font-size: 0.78rem; font-weight: 700; color: white; text-decoration: none; width: 100%; text-align: center; transition: opacity 0.2s; }
+.btn:hover { opacity: 0.85; }
+.btn.chest   { background: var(--chest); }
+.btn.general { background: var(--general); }
+.btn.plastic { background: var(--plastic); }
+.btn.exam    { background: var(--exam); }
+.btn.diet    { background: var(--diet); }
 
-  .card h3 { font-size: 0.88rem; font-weight: 900; color: var(--dark); line-height: 1.4; min-height: 2.4em; display: flex; align-items: center; justify-content: center; }
-  .qr-wrapper { display: flex; justify-content: center; min-height: 110px; align-items: center; }
-  .btn { display: inline-block; padding: 0.38rem 1rem; border-radius: 99px; font-size: 0.78rem; font-weight: 700; color: white; text-decoration: none; transition: opacity 0.2s; width: 100%; }
-  .btn:hover { opacity: 0.85; }
-  .btn.chest   { background: #2a7abf; }
-  .btn.general { background: #7c5cbf; }
-  .btn.plastic { background: #c9784c; }
-  .btn.exam    { background: #4a8a5a; }
-  .btn.diet    { background: #c9a84c; }
+footer { margin-top: 2rem; font-size: 0.78rem; color: #bbb; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
 
-  footer { margin-top: 2rem; font-size: 0.78rem; color: #bbb; }
-
-  @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
-
-  
-    .sidebar { width: 100%; height: auto; position: static; flex-direction: row; flex-wrap: wrap; padding: 0.75rem; gap: 0.3rem; }
-    .sidebar-header, .nav-label { display: none; }
-    .nav-item { padding: 0.5rem 0.75rem; border-left: none; border-radius: 8px; font-size: 0.78rem; flex-direction: column; gap: 0.1rem; text-align: center; }
-    .nav-count { display: none; }
-    .main-wrap { padding: 1.5rem 1rem; }
-    .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
-  }
-
-  /* ── MOBILE BOTTOM NAV ── */
-  @media (max-width: 768px) {
-    body { flex-direction: column; padding-bottom: 70px; }
-
-    .sidebar {
-      display: none;
-    }
-
-    /* Top bar */
-    .mobile-topbar {
-      display: flex !important;
-    }
-
-    /* Bottom nav */
-    .mobile-nav {
-      display: flex !important;
-    }
-
-    .main-wrap, .main {
-      padding: 1.2rem 1rem 1.5rem;
-    }
-
-    .page-title { font-size: 1.4rem; }
-
-    /* Cards: 2-column on mobile */
-    .cards, .grid {
-      grid-template-columns: repeat(2, 1fr) !important;
-      gap: 0.75rem !important;
-    }
-
-    .card { padding: 1rem 0.75rem; }
-    .card-icon { font-size: 1.8rem; }
-    .card-title { font-size: 0.92rem; }
-    .card-desc { font-size: 0.75rem; }
-    .card-btn { font-size: 0.72rem; padding: 0.35rem 0.7rem; }
-
-    .qr-wrapper { min-height: 90px; }
-    .qr-wrapper canvas { width: 90px !important; height: 90px !important; }
-
-    .card h3 { font-size: 0.82rem; min-height: 2.2em; }
-    .btn { font-size: 0.72rem; padding: 0.35rem 0.6rem; }
-
-    .section-title { font-size: 0.9rem; }
-    .section-badge { font-size: 0.72rem; }
-
-    /* Rehab cards full width */
-    .rehab-grid { grid-template-columns: 1fr !important; }
-  }
-
-  @media (min-width: 769px) {
-    .mobile-topbar, .mobile-nav { display: none !important; }
-  }
-
+/* MOBILE */
+.mobile-topbar { display: none; }
+.mobile-nav { display: none; }
+@media (max-width: 768px) {
+  body { flex-direction: column; padding-bottom: 72px; }
+  .sidebar { display: none; }
+  .mobile-topbar { display: flex; position: sticky; top: 0; z-index: 100; background: var(--sidebar-bg); padding: 0.85rem 1.2rem; align-items: center; justify-content: space-between; }
+  .mobile-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 200; background: var(--sidebar-bg); border-top: 1px solid rgba(255,255,255,0.12); justify-content: space-around; padding: 0.4rem 0 calc(0.4rem + env(safe-area-inset-bottom)); }
+  .mnav-item { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; text-decoration: none; color: rgba(255,255,255,0.5); font-size: 0.58rem; font-weight: 600; padding: 0.3rem 0.4rem; border-radius: 8px; min-width: 44px; }
+  .mnav-item.active { color: var(--teal-light); background: rgba(20,184,166,0.12); }
+  .mnav-icon { font-size: 1.25rem; }
+  .main-wrap { padding: 1.2rem 1rem 1.5rem; }
+  .grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+  .card { padding: 1rem 0.75rem; }
+  .card h3 { font-size: 0.78rem; min-height: 2em; }
+  .qr-wrapper { min-height: 95px; }
+  .qr-wrapper canvas { width: 95px !important; height: 95px !important; }
+  .btn { font-size: 0.7rem; padding: 0.35rem 0.6rem; }
+}
 </style>
 </head>
 <body>
+
+<div class="mobile-topbar">
+  <div style="font-size:0.65rem;color:#14b8a6;font-weight:700;letter-spacing:0.1em;">基隆長庚紀念醫院</div>
+  <div style="font-size:0.95rem;font-weight:900;color:white;">衛教資源中心</div>
+  <div style="width:40px;"></div>
+</div>
 
 <nav class="sidebar">
   <div class="sidebar-header">
@@ -164,107 +119,81 @@
     <div class="page-sub">基隆長庚醫院 K09B病房製作</div>
   </div>
 
-  <!-- 心臟胸腔外科 -->
   <div class="section">
-    <div class="section-title">
-      <span class="section-badge badge-chest">心臟胸腔外科</span>
-    </div>
+    <div class="section-title"><span class="section-badge badge-chest">心臟胸腔外科</span></div>
     <div class="grid" id="chest-grid"></div>
   </div>
-
-  <!-- 一般外科 -->
   <div class="section">
-    <div class="section-title">
-      <span class="section-badge badge-general">一般外科</span>
-    </div>
+    <div class="section-title"><span class="section-badge badge-general">一般外科</span></div>
     <div class="grid" id="general-grid"></div>
   </div>
-
-  <!-- 整形外科 -->
   <div class="section">
-    <div class="section-title">
-      <span class="section-badge badge-plastic">整形外科</span>
-    </div>
+    <div class="section-title"><span class="section-badge badge-plastic">整形外科</span></div>
     <div class="grid" id="plastic-grid"></div>
   </div>
-
-  <!-- 檢查須知 -->
   <div class="section">
-    <div class="section-title">
-      <span class="section-badge badge-exam">檢查須知</span>
-    </div>
+    <div class="section-title"><span class="section-badge badge-exam">檢查須知</span></div>
     <div class="grid" id="exam-grid"></div>
   </div>
-
-  <!-- 飲食衛教 -->
   <div class="section">
-    <div class="section-title">
-      <span class="section-badge badge-diet">飲食衛教</span>
-    </div>
+    <div class="section-title"><span class="section-badge badge-diet">飲食衛教</span></div>
     <div class="grid" id="diet-grid"></div>
   </div>
 
   <footer>基隆長庚醫院 K09B病房　·　人本濟世　勤勞樸實</footer>
 </div>
 
+<nav class="mobile-nav">
+  <a class="mnav-item" href="index.html"><span class="mnav-icon">🏠</span>首頁</a>
+  <a class="mnav-item" href="rehab.html"><span class="mnav-icon">🫁</span>肺部復健</a>
+  <a class="mnav-item" href="diseases.html"><span class="mnav-icon">📋</span>外科加護</a>
+  <a class="mnav-item" href="k9a.html"><span class="mnav-icon">🫀</span>K9A</a>
+  <a class="mnav-item" href="dialysis.html"><span class="mnav-icon">💧</span>腹膜透析</a>
+  <a class="mnav-item active" href="k09b.html"><span class="mnav-icon">🏥</span>K09B</a>
+</nav>
+
 <script>
 const sections = {
-  'chest-grid': {
-    type: 'chest',
-    items: [
-      { name: '胸腔鏡手術',       url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=713&s=q' },
-      { name: '氣切造口術',       url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=687&s=q' },
-      { name: '肋骨骨折',         url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=655&s=q' },
-      { name: '創傷性血胸照護',   url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00538&s=q' },
-      { name: '食道癌衛教手冊',   url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00539&s=q' },
-      { name: '認識肺癌',         url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00324&s=q' },
-      { name: '開心術後心臟復健', url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00549&s=q' },
-      { name: '動脈瘤',           url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00450&s=q' },
-    ]
-  },
-  'general-grid': {
-    type: 'general',
-    items: [
-      { name: '認識胃癌',     url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00481&s=q' },
-      { name: '疝氣',         url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00242&s=q' },
-      { name: '認識肝癌',     url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00178&s=q' },
-      { name: '甲狀腺手術後須知', url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00553&s=q' },
-      { name: '認識膽道阻塞', url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00467&s=q' },
-      { name: '認識闌尾炎',   url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00466&s=q' },
-      { name: '認識腸道阻塞', url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00453&s=q' },
-      { name: '胰臟癌',       url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00464&s=q' },
-    ]
-  },
-  'plastic-grid': {
-    type: 'plastic',
-    items: [
-      { name: '顏面骨折手術', url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=658&s=q' },
-    ]
-  },
-  'exam-grid': {
-    type: 'exam',
-    items: [
-      { name: '腹部超音波',       url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00157&s=q' },
-      { name: '電腦斷層',         url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00260&s=q' },
-      { name: '逆行性膽胰管攝影', url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00449&s=q' },
-    ]
-  },
-  'diet-grid': {
-    type: 'diet',
-    items: [
-      { name: '各種飲食',   url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00488&s=q' },
-      { name: '胃切除飲食', url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00426&s=q' },
-      { name: '腫瘤病人飲食', url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00534&s=q' },
-    ]
-  }
+  'chest-grid': { type: 'chest', items: [
+    { name: '胸腔鏡手術',       url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=713&s=q' },
+    { name: '氣切造口術',       url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=687&s=q' },
+    { name: '肋骨骨折',         url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=655&s=q' },
+    { name: '創傷性血胸照護',   url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00538&s=q' },
+    { name: '食道癌衛教手冊',   url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00539&s=q' },
+    { name: '認識肺癌',         url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00324&s=q' },
+    { name: '開心術後心臟復健', url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00549&s=q' },
+    { name: '動脈瘤',           url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00450&s=q' },
+  ]},
+  'general-grid': { type: 'general', items: [
+    { name: '認識胃癌',         url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00481&s=q' },
+    { name: '疝氣',             url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00242&s=q' },
+    { name: '認識肝癌',         url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00178&s=q' },
+    { name: '甲狀腺手術後須知', url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00553&s=q' },
+    { name: '認識膽道阻塞',     url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00467&s=q' },
+    { name: '認識闌尾炎',       url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00466&s=q' },
+    { name: '認識腸道阻塞',     url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00453&s=q' },
+    { name: '胰臟癌',           url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00464&s=q' },
+  ]},
+  'plastic-grid': { type: 'plastic', items: [
+    { name: '顏面骨折手術', url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=658&s=q' },
+  ]},
+  'exam-grid': { type: 'exam', items: [
+    { name: '腹部超音波',       url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00157&s=q' },
+    { name: '電腦斷層',         url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00260&s=q' },
+    { name: '逆行性膽胰管攝影', url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00449&s=q' },
+  ]},
+  'diet-grid': { type: 'diet', items: [
+    { name: '各種飲食',     url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00488&s=q' },
+    { name: '胃切除飲食',   url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00426&s=q' },
+    { name: '腫瘤病人飲食', url: 'https://webapp.cgmh.org.tw/healthedu/view/health_cntt.aspx?artno=00534&s=q' },
+  ]},
 };
 
-let cardIndex = 0;
+let idx = 0;
 Object.entries(sections).forEach(([gridId, { type, items }]) => {
   const grid = document.getElementById(gridId);
   items.forEach((item, i) => {
-    const qrId = `qr-${cardIndex}`;
-    cardIndex++;
+    const qrId = `qr-${idx++}`;
     const card = document.createElement('div');
     card.className = `card ${type}`;
     card.style.animationDelay = `${i * 0.05}s`;
@@ -283,6 +212,5 @@ Object.entries(sections).forEach(([gridId, { type, items }]) => {
   });
 });
 </script>
-
 </body>
 </html>
