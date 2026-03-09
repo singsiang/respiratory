@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>呼吸器天數計算器 - 雙版本</title>
+    <title>呼吸器天數計算器 - 智能輸入版</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
@@ -18,7 +18,6 @@
             --border-color: #e2e8f0;
             --input-bg: #f8fafc;
             --danger-color: #ef4444;
-            --danger-hover: #dc2626;
             --success-color: #10b981;
             --invasive-bg: #fee2e2;
             --invasive-text: #b91c1c;
@@ -54,12 +53,7 @@
             }
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
             font-family: 'Inter', -apple-system, 'Microsoft JhengHei', sans-serif;
@@ -73,118 +67,105 @@
             transition: background-color 0.3s ease;
         }
 
-        .container {
-            width: 100%;
-            max-width: 800px;
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
+        .container { width: 100%; max-width: 850px; display: flex; flex-direction: column; gap: 1.5rem; }
 
         /* 頁籤設計 */
-        .tabs-container {
-            background-color: var(--card-bg);
-            border-radius: 16px;
-            padding: 0.5rem;
+        .tabs-container { background-color: var(--card-bg); border-radius: 16px; padding: 0.5rem; display: flex; box-shadow: var(--shadow); margin-bottom: 0.5rem; }
+        .tab-btn { flex: 1; padding: 0.75rem 1rem; border: none; background: transparent; border-radius: 12px; font-size: 1rem; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: all 0.3s ease; }
+        .tab-btn.active { background-color: var(--primary-color); color: white; box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3); }
+
+        .view-section { display: none; animation: fadeIn 0.4s ease; }
+        .view-section.active { display: flex; flex-direction: column; gap: 1.5rem; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card { background-color: var(--card-bg); border-radius: 20px; box-shadow: var(--shadow); padding: 1.5rem; transition: all 0.3s ease; }
+        .card-center { max-width: 400px; margin: 0 auto; text-align: center; padding: 2.5rem 2rem; box-shadow: var(--shadow-lg); width: 100%; }
+
+        /* Hybrid 輸入框設計 */
+        .input-group { margin-bottom: 1.5rem; text-align: left; }
+        .input-group label, .form-group label { display: block; font-size: 0.875rem; font-weight: 500; color: var(--text-muted); margin-bottom: 0.6rem; margin-left: 0.25rem; }
+        
+        .datetime-wrapper {
+            position: relative;
             display: flex;
-            box-shadow: var(--shadow);
-            margin-bottom: 0.5rem;
-        }
-
-        .tab-btn {
-            flex: 1;
-            padding: 0.75rem 1rem;
-            border: none;
-            background: transparent;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .tab-btn.active {
-            background-color: var(--primary-color);
-            color: white;
-            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-        }
-
-        /* 視圖切換 */
-        .view-section {
-            display: none;
-            animation: fadeIn 0.4s ease;
-        }
-
-        .view-section.active {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(5px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* 卡片共用樣式 */
-        .card {
-            background-color: var(--card-bg);
-            border-radius: 20px;
-            box-shadow: var(--shadow);
-            padding: 1.5rem;
-            transition: all 0.3s ease;
-        }
-
-        .card-center {
-            max-width: 400px;
-            margin: 0 auto;
-            text-align: center;
-            padding: 2.5rem 2rem;
-            box-shadow: var(--shadow-lg);
+            align-items: center;
+            border: 2px solid var(--border-color);
+            border-radius: 14px;
+            background-color: var(--input-bg);
+            transition: all 0.2s ease;
+            overflow: hidden; /* 防止子元素溢出圓角 */
             width: 100%;
         }
+        .datetime-wrapper:focus-within { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        
+        /* 錯誤狀態的紅框與動畫 */
+        .datetime-wrapper.has-error {
+            border-color: var(--danger-color);
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+            animation: shake 0.4s ease-in-out;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+        .field-error-msg {
+            color: var(--danger-color);
+            font-size: 0.75rem;
+            margin-top: 0.4rem;
+            margin-left: 0.25rem;
+            display: none;
+            font-weight: 500;
+        }
+        .datetime-wrapper.has-error + .field-error-msg {
+            display: block;
+        }
 
-        /* ========== 簡易版專屬樣式 ========== */
+        .datetime-text {
+            flex: 1;
+            padding: 0.875rem 0.75rem;
+            border: none;
+            background: transparent;
+            font-size: 0.95rem;
+            color: var(--text-main);
+            outline: none;
+            font-family: inherit;
+            min-width: 0; /* 絕對防止 Flex 子元素撐爆父容器 */
+        }
+
+        .icon-container {
+            position: relative;
+            width: 45px;
+            flex-shrink: 0; /* 防止被擠壓 */
+            height: 100%;
+            align-self: stretch;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--clear-btn-bg);
+            border-left: 1px solid var(--border-color);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.2s, background-color 0.2s;
+        }
+        .icon-container:hover { background-color: var(--border-color); color: var(--primary-color); }
+        
+        .datetime-native {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0; /* 隱藏原生外觀，但保留點擊功能 */
+            cursor: pointer;
+        }
+
+        .btn-clear { background: transparent; border: none; padding: 0.5rem; margin-right: 0.25rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); transition: all 0.2s; opacity: 0; visibility: hidden; }
+        .btn-clear.visible { opacity: 1; visibility: visible; }
+        .btn-clear:hover { background: var(--danger-color); color: white; transform: rotate(90deg); }
+
+        /* 其他元件樣式 */
         header { margin-bottom: 2.5rem; }
         h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; letter-spacing: -0.025em; }
         .subtitle { font-size: 0.875rem; color: var(--text-muted); }
-
-        .input-group { position: relative; margin-bottom: 1.5rem; text-align: left; }
-        .input-group label { display: block; font-size: 0.875rem; font-weight: 500; color: var(--text-muted); margin-bottom: 0.6rem; margin-left: 0.25rem; }
-        
-        .date-input-container { position: relative; display: flex; align-items: center; }
-        
-        input[type="datetime-local"], input[type="date"] {
-            width: 100%;
-            padding: 0.875rem 1rem;
-            border: 2px solid var(--border-color);
-            border-radius: 14px;
-            font-size: 1rem;
-            font-family: inherit;
-            color: var(--text-main);
-            background-color: var(--input-bg);
-            transition: all 0.2s ease;
-            outline: none;
-        }
-        
-        input[type="datetime-local"]:focus, input[type="date"]:focus {
-            border-color: var(--primary-color);
-        }
-
-        /* 針對深色模式調整日期選擇器圖標 */
-        @media (prefers-color-scheme: dark) {
-            input[type="date"]::-webkit-calendar-picker-indicator,
-            input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-                filter: invert(0.8);
-            }
-        }
-
-        .btn-clear {
-            position: absolute; right: 12px; background: var(--clear-btn-bg); border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); transition: all 0.2s; opacity: 0; visibility: hidden; z-index: 2;
-        }
-        .btn-clear.visible { opacity: 1; visibility: visible; }
-        .btn-clear:hover { background: var(--danger-color); color: white; transform: rotate(90deg); }
 
         .simple-result { background-color: var(--result-bg); border-radius: 24px; padding: 2.25rem 1.5rem; margin-bottom: 1.5rem; display: none; opacity: 0; transform: translateY(10px); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .simple-result.show { display: block; opacity: 1; transform: translateY(0); }
@@ -193,9 +174,8 @@
         .unit { font-size: 1.125rem; font-weight: 500; color: var(--text-muted); }
 
         .error-msg { color: var(--danger-color); font-size: 0.875rem; margin-bottom: 1.5rem; display: none; padding: 1rem; background: rgba(239, 68, 68, 0.1); border-radius: 12px; border-left: 4px solid var(--danger-color); text-align: left; }
-        .info-footer { font-size: 0.75rem; color: var(--text-muted); line-height: 1.6; padding-top: 1.5rem; border-top: 1px solid var(--border-color); margin-top: 1rem; text-align: center; }
+        .info-footer { font-size: 0.75rem; color: var(--text-muted); line-height: 1.6; padding-top: 1.5rem; border-top: 1px solid var(--border-color); margin-top: 1rem; text-align: left; }
 
-        /* ========== 複雜版專屬樣式 ========== */
         .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         .metric-card { background-color: var(--result-bg); border-radius: 16px; padding: 1.5rem; text-align: center; display: flex; flex-direction: column; justify-content: center; }
         .metric-card.success { background-color: rgba(16, 185, 129, 0.1); }
@@ -206,16 +186,26 @@
 
         .header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
         h2 { font-size: 1.25rem; font-weight: 600; }
-        
         .btn { padding: 0.6rem 1.2rem; border-radius: 10px; font-weight: 500; font-size: 0.875rem; cursor: pointer; transition: all 0.2s; border: none; display: inline-flex; align-items: center; gap: 0.5rem; }
         .btn-primary { background-color: var(--primary-color); color: white; }
         .btn-primary:hover { background-color: var(--primary-hover); transform: translateY(-1px); }
 
         .record-list { display: flex; flex-direction: column; gap: 1rem; }
-        .record-item { display: grid; grid-template-columns: auto 1fr 1fr auto; gap: 1rem; align-items: center; padding: 1rem; border: 1px solid var(--border-color); border-radius: 12px; background-color: var(--card-bg); }
         
-        .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
-        .form-group label { font-size: 0.75rem; color: var(--text-muted); font-weight: 500; }
+        /* 防跑版的終極 Grid 設定：使用 minmax(0, 1fr) 嚴格控制不撐開版面 */
+        .record-item { 
+            display: grid; 
+            grid-template-columns: 110px minmax(0, 1fr) minmax(0, 1fr) 40px; 
+            gap: 1rem; 
+            align-items: center; 
+            padding: 1rem; 
+            border: 1px solid var(--border-color); 
+            border-radius: 12px; 
+            background-color: var(--card-bg); 
+        }
+        
+        .form-group { display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; }
+        
         select { width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--border-color); border-radius: 14px; background-color: var(--input-bg); color: var(--text-main); font-family: inherit; font-size: 1rem; outline: none; transition: border-color 0.2s; }
         select:focus { border-color: var(--primary-color); }
         select.type-select { font-weight: 600; }
@@ -225,7 +215,8 @@
         .btn-icon:hover { background-color: rgba(239, 68, 68, 0.1); color: var(--danger-color); }
         .empty-state { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.875rem; border: 2px dashed var(--border-color); border-radius: 12px; }
 
-        @media (max-width: 640px) {
+        /* 擴大響應式折行斷點至 768px (平板以下)，徹底解決螢幕過窄的擠壓跑版 */
+        @media (max-width: 768px) {
             .record-item { grid-template-columns: 1fr; gap: 0.75rem; position: relative; }
             .delete-btn-container { position: absolute; top: 1rem; right: 1rem; }
             .dashboard { grid-template-columns: 1fr; }
@@ -251,17 +242,33 @@
                 </header>
 
                 <div class="input-group">
-                    <label for="simpleStartDate">初始呼吸器日期</label>
-                    <div class="date-input-container">
-                        <!-- 簡易版使用預設 date，確保乾淨簡單 -->
-                        <input type="date" id="simpleStartDate" required>
+                    <label>初始呼吸器日期</label>
+                    <div class="datetime-wrapper">
+                        <input 
+                            type="text" 
+                            id="simpleDateText"
+                            class="datetime-text" 
+                            placeholder="滿8碼自動執行 (例: 20260228)"
+                            onblur="handleSimpleTextBlur(this)"
+                            oninput="handleSimpleTextInput(this)"
+                            onkeyup="if(event.key === 'Enter') this.blur();"
+                        >
                         <button class="btn-clear" id="simpleClearBtn" title="清除內容">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
+                        <div class="icon-container" title="開啟日曆選單">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                            <input 
+                                type="date" 
+                                id="simpleDateNative"
+                                class="datetime-native" 
+                                onchange="handleSimpleNativeChange(this)"
+                            >
+                        </div>
                     </div>
+                    <!-- 簡易版的局部錯誤提示 -->
+                    <div class="field-error-msg"></div>
                 </div>
-
-                <div id="simpleErrorMsg" class="error-msg"></div>
 
                 <div id="simpleResultSection" class="simple-result">
                     <div class="result-label">呼吸器使用天數</div>
@@ -269,8 +276,7 @@
                     <div class="unit">Days Total</div>
                 </div>
 
-                <div class="info-footer">
-                    提示：點擊上方日期選擇器開始。<br>
+                <div class="info-footer" style="text-align: center;">
                     系統將依據「包含起始日」原則計算至今日。
                 </div>
             </div>
@@ -287,7 +293,7 @@
                     </div>
                 </div>
                 <div class="metric-card success">
-                    <div class="metric-title">脫離天數 (自最後拔管起算)</div>
+                    <div class="metric-title">脫離天數 (自最後結束日)</div>
                     <div>
                         <span class="metric-value-complex" id="weaningDays">0</span>
                         <span class="metric-unit">天</span>
@@ -305,13 +311,13 @@
                 </div>
 
                 <div id="recordList" class="record-list">
-                    <!-- 紀錄項目會透過 JS 動態生成 -->
+                    <!-- 動態生成 -->
                 </div>
 
                 <div class="info-footer">
-                    提示：可以直接點擊欄位各部分(年/月/日)使用鍵盤數字盲打輸入，或點擊右側小日曆圖示展開原生選單。<br>
-                    「今日呼吸器天數」從最早起始日計算至今日(若未結束)或最後結束日(若皆已結束)。<br>
-                    「脫離天數」從最後一次結束時間計算至今日(不分侵襲或非侵襲)。
+                    <strong>💡 智能輸入秘訣：</strong><br>
+                    • <strong>自動觸發：</strong> 直接打滿 8 碼數字 (例 <code>02281225</code>)，系統會<strong>自動 Enter 執行</strong>並轉換！<br>
+                    • 也可點擊最右側的「日曆圖示」叫出系統選單操作。
                 </div>
             </div>
         </div>
@@ -319,6 +325,96 @@
     </div>
 
     <script>
+        /* ==============================================================
+           共用日期解析與格式化引擎 (Smart Parse)
+        ============================================================== */
+        function parseCustomDate(str) {
+            if (!str) return null;
+            
+            const cleanDigits = str.replace(/\D/g, '');
+            
+            // 1. 完整 12 碼 (例: 202602281225 -> 2026-02-28 12:25)
+            if (cleanDigits.length === 12 && !str.includes('/') && !str.includes('-')) {
+                const y = parseInt(cleanDigits.slice(0,4));
+                const m = parseInt(cleanDigits.slice(4,6)) - 1;
+                const d = parseInt(cleanDigits.slice(6,8));
+                const h = parseInt(cleanDigits.slice(8,10));
+                const min = parseInt(cleanDigits.slice(10,12));
+                return new Date(y, m, d, h, min);
+            }
+            
+            // 2. 8 碼 (需判斷是 YYYYMMDD 還是 MMDDHHmm)
+            if (cleanDigits.length === 8 && !str.includes('/') && !str.includes('-') && !str.includes(':')) {
+                const firstTwo = parseInt(cleanDigits.slice(0,2));
+                if (firstTwo === 19 || firstTwo === 20) {
+                    const y = parseInt(cleanDigits.slice(0,4));
+                    const m = parseInt(cleanDigits.slice(4,6)) - 1;
+                    const d = parseInt(cleanDigits.slice(6,8));
+                    return new Date(y, m, d);
+                } else {
+                    const y = new Date().getFullYear();
+                    const m = parseInt(cleanDigits.slice(0,2)) - 1;
+                    const d = parseInt(cleanDigits.slice(2,4));
+                    const h = parseInt(cleanDigits.slice(4,6));
+                    const min = parseInt(cleanDigits.slice(6,8));
+                    return new Date(y, m, d, h, min);
+                }
+            }
+
+            // 3. 4 碼 (例: 0228 -> 今年 02-28 00:00)
+            if (cleanDigits.length === 4 && !str.includes('/') && !str.includes('-')) {
+                const y = new Date().getFullYear();
+                const m = parseInt(cleanDigits.slice(0,2)) - 1;
+                const d = parseInt(cleanDigits.slice(2,4));
+                return new Date(y, m, d);
+            }
+
+            // 4. 標準解析
+            const cleanStr = str.replace('T', ' ').replace(/-/g, '/');
+            const dateObj = new Date(cleanStr);
+            if (isNaN(dateObj.getTime())) return null;
+            return dateObj;
+        }
+
+        function formatNiceDate(dateObj) {
+            if (!dateObj || isNaN(dateObj.getTime())) return '';
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            const h = String(dateObj.getHours()).padStart(2, '0');
+            const min = String(dateObj.getMinutes()).padStart(2, '0');
+            return `${y}-${m}-${d} ${h}:${min}`;
+        }
+
+        function formatNiceDateOnly(dateObj) {
+            if (!dateObj || isNaN(dateObj.getTime())) return '';
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function formatForNative(str, isTime) {
+            if(!str) return '';
+            const d = parseCustomDate(str);
+            if(!d) return '';
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            if (isTime) {
+                const h = String(d.getHours()).padStart(2, '0');
+                const min = String(d.getMinutes()).padStart(2, '0');
+                return `${y}-${m}-${day}T${h}:${min}`;
+            }
+            return `${y}-${m}-${day}`;
+        }
+
+        function getMidnightDate(dateObj) {
+            const d = new Date(dateObj);
+            d.setHours(0, 0, 0, 0);
+            return d;
+        }
+
         /* ==============================================================
            切換頁籤邏輯
         ============================================================== */
@@ -329,103 +425,124 @@
             document.getElementById('view-' + viewId).classList.add('active');
         }
 
-        function getMidnightDate(dateObj) {
-            const d = new Date(dateObj);
-            d.setHours(0, 0, 0, 0);
-            return d;
-        }
 
         /* ==============================================================
-           簡易版邏輯 (已修復顯示問題)
+           簡易版邏輯
         ============================================================== */
-        const simpleDateInput = document.getElementById('simpleStartDate');
+        const simpleDateText = document.getElementById('simpleDateText');
+        const simpleDateNative = document.getElementById('simpleDateNative');
         const simpleClearBtn = document.getElementById('simpleClearBtn');
         const simpleResultSection = document.getElementById('simpleResultSection');
         const simpleDaysDisplay = document.getElementById('simpleDaysDisplay');
-        const simpleErrorMsg = document.getElementById('simpleErrorMsg');
 
-        function handleSimpleCalculation() {
-            const val = simpleDateInput.value;
+        // 設定簡易版原生選擇器的最大值為今日
+        simpleDateNative.max = formatNiceDateOnly(new Date());
 
-            if (!val) {
-                resetSimpleUI();
-                return;
+        // 自動觸發 Enter 效果 (簡易版)
+        function handleSimpleTextInput(inputEl) {
+            hideSimpleError(); // 打字修改時立即消除錯誤紅框
+            const val = inputEl.value;
+            // 只要打滿 8 碼純數字 (YYYYMMDD) 且沒摻雜其他符號，就自動 blur 觸發計算
+            if (/^\d{8}$/.test(val)) {
+                inputEl.blur();
             }
+        }
 
-            simpleClearBtn.classList.add('visible');
-
-            try {
-                const [y, m, d] = val.split('-').map(Number);
-                const startDate = getMidnightDate(new Date(y, m - 1, d));
-                const today = getMidnightDate(new Date());
-
-                if (startDate > today) {
-                    showSimpleError("日期不可晚於今天");
-                    return;
-                }
-
-                hideSimpleError();
-                const diffMs = today.getTime() - startDate.getTime();
-                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                
-                // 起始日即為第 1 天
-                const result = diffDays + 1;
-
-                simpleDaysDisplay.textContent = result;
-                simpleResultSection.classList.add('show');
-            } catch (err) {
+        function handleSimpleTextBlur(inputEl) {
+            const val = inputEl.value.trim();
+            if (!val) { resetSimpleUI(); return; }
+            
+            const dateObj = parseCustomDate(val);
+            if (dateObj) {
+                const formatted = formatNiceDateOnly(dateObj);
+                inputEl.value = formatted;
+                simpleDateNative.value = formatted; 
+                executeSimpleCalc(dateObj);
+            } else {
                 showSimpleError("請輸入有效的日期格式");
             }
         }
 
+        function handleSimpleNativeChange(inputEl) {
+            const val = inputEl.value;
+            if (val) {
+                const dateObj = parseCustomDate(val);
+                simpleDateText.value = val;
+                executeSimpleCalc(dateObj);
+            } else {
+                resetSimpleUI();
+            }
+        }
+
+        function executeSimpleCalc(startDate) {
+            simpleClearBtn.classList.add('visible');
+            const today = getMidnightDate(new Date());
+            const startMidnight = getMidnightDate(startDate);
+            
+            if (startMidnight > today) {
+                showSimpleError("日期不可晚於今天");
+                return;
+            }
+            hideSimpleError();
+            
+            const diffMs = today.getTime() - startMidnight.getTime();
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            simpleDaysDisplay.textContent = diffDays + 1;
+            simpleResultSection.classList.add('show');
+        }
+
         function resetSimpleUI() {
+            simpleDateText.value = '';
+            simpleDateNative.value = '';
             simpleClearBtn.classList.remove('visible');
             simpleResultSection.classList.remove('show');
             hideSimpleError();
-            simpleDaysDisplay.textContent = '0';
         }
 
         function showSimpleError(msg) {
-            simpleErrorMsg.textContent = "⚠️ " + msg;
-            simpleErrorMsg.style.display = 'block';
+            const wrapper = document.querySelector('#view-simple .datetime-wrapper');
+            const errorEl = wrapper.nextElementSibling;
+            wrapper.classList.add('has-error');
+            errorEl.textContent = "⚠️ " + msg;
             simpleResultSection.classList.remove('show');
         }
 
-        function hideSimpleError() {
-            simpleErrorMsg.style.display = 'none';
+        function hideSimpleError() { 
+            const wrapper = document.querySelector('#view-simple .datetime-wrapper');
+            wrapper.classList.remove('has-error');
         }
 
-        simpleClearBtn.addEventListener('click', () => {
-            simpleDateInput.value = '';
-            resetSimpleUI();
-        });
-        simpleDateInput.addEventListener('change', handleSimpleCalculation);
-        simpleDateInput.addEventListener('input', handleSimpleCalculation);
+        simpleClearBtn.addEventListener('click', resetSimpleUI);
 
 
         /* ==============================================================
-           複雜版邏輯 (已支援鍵盤輸入、7天/2天精準演算法)
+           複雜版邏輯 (多筆輸入)
         ============================================================== */
         let complexRecords = [
-            // 預設載入您的最新範例資料 (單筆非侵襲性，算到今日應為7天與脫離2天)
-            { id: 1, type: 'non-invasive', start: '2026-02-28T12:25', end: '2026-03-06T09:00' }
+            { id: 1, type: 'non-invasive', start: '2026-02-28 12:25', end: '2026-03-06 09:00' }
         ];
 
         const recordListEl = document.getElementById('recordList');
         const totalDaysEl = document.getElementById('totalDays');
         const weaningDaysEl = document.getElementById('weaningDays');
 
-        function generateId() {
-            return Date.now() + Math.floor(Math.random() * 1000);
+        // 局部錯誤顯示函數
+        function showFieldError(wrapper, msg) {
+            wrapper.classList.add('has-error');
+            const errorEl = wrapper.nextElementSibling;
+            if (errorEl && errorEl.classList.contains('field-error-msg')) {
+                errorEl.textContent = msg;
+            }
         }
 
+        function hideFieldError(wrapper) {
+            wrapper.classList.remove('has-error');
+        }
+
+        function generateId() { return Date.now() + Math.floor(Math.random() * 1000); }
+
         function addRecord() {
-            complexRecords.unshift({
-                id: generateId(),
-                type: 'invasive',
-                start: '',
-                end: ''
-            });
+            complexRecords.unshift({ id: generateId(), type: 'invasive', start: '', end: '' });
             renderComplex();
         }
 
@@ -438,17 +555,82 @@
             const index = complexRecords.findIndex(r => r.id === id);
             if (index !== -1) {
                 complexRecords[index][field] = value;
-                calculateComplexDays();
+                calculateComplexDays(); 
             }
         }
 
-        function parseMidnightStr(dateString) {
-            if (!dateString) return null;
-            // 支援 YYYY/MM/DD HH:MM 與 YYYY-MM-DDTHH:MM 解析
-            const cleanStr = dateString.replace('T', ' ');
-            const d = new Date(cleanStr);
-            if (isNaN(d.getTime())) return null;
-            return getMidnightDate(d);
+        // 自動觸發 Enter 效果 (複雜版)
+        function handleComplexTextInput(id, field, inputEl) {
+            hideFieldError(inputEl.closest('.datetime-wrapper')); // 開始修改就解除紅框
+            const val = inputEl.value;
+            // 只要打滿 8 碼 (MMDDHHmm) 或 12 碼 (YYYYMMDDHHmm) 就自動 blur 觸發格式化與計算
+            if (/^\d{8}$/.test(val) || /^\d{12}$/.test(val)) {
+                inputEl.blur();
+            }
+        }
+
+        function handleComplexTextBlur(id, field, inputEl) {
+            const val = inputEl.value.trim();
+            const wrapper = inputEl.closest('.datetime-wrapper');
+            
+            if (!val) {
+                hideFieldError(wrapper);
+                updateRecord(id, field, '');
+                wrapper.querySelector('.datetime-native').value = '';
+                return;
+            }
+
+            const dateObj = parseCustomDate(val);
+            if (dateObj) {
+                // 防呆：檢查是否為未來時間 (隔天以後)
+                const todayMidnight = getMidnightDate(new Date());
+                const inputMidnight = getMidnightDate(dateObj);
+                if (inputMidnight > todayMidnight) {
+                    showFieldError(wrapper, "⚠️ 時間不可晚於今天");
+                    // 故意不清除欄位文字讓使用者方便修改，但「不寫入計算」以免結果出錯
+                    updateRecord(id, field, '');
+                    return;
+                }
+
+                hideFieldError(wrapper);
+                const formatted = formatNiceDate(dateObj); 
+                inputEl.value = formatted;
+                
+                wrapper.querySelector('.datetime-native').value = formatForNative(formatted, true);
+                updateRecord(id, field, formatted);
+            } else {
+                showFieldError(wrapper, "⚠️ 無效的日期格式");
+                updateRecord(id, field, '');
+            }
+        }
+
+        function handleComplexNativeChange(id, field, inputEl) {
+            const val = inputEl.value; 
+            const wrapper = inputEl.closest('.datetime-wrapper');
+            const textInput = wrapper.querySelector('.datetime-text');
+
+            if (val) {
+                const dateObj = new Date(val.replace('T', ' '));
+                // 防呆：檢查是否為未來時間 (隔天以後)
+                const todayMidnight = getMidnightDate(new Date());
+                const inputMidnight = getMidnightDate(dateObj);
+                
+                if (inputMidnight > todayMidnight) {
+                    showFieldError(wrapper, "⚠️ 時間不可晚於今天");
+                    textInput.value = val.replace('T', ' '); // 顯示剛才選錯的時間
+                    updateRecord(id, field, '');
+                    return;
+                }
+
+                hideFieldError(wrapper);
+                const formatted = val.replace('T', ' '); 
+                textInput.value = formatted;
+                updateRecord(id, field, formatted);
+            } else {
+                hideFieldError(wrapper);
+                textInput.value = '';
+                updateRecord(id, field, '');
+            }
         }
 
         function calculateComplexDays() {
@@ -467,7 +649,7 @@
             let hasOngoing = false;
 
             validRecords.forEach(r => {
-                const startD = parseMidnightStr(r.start);
+                const startD = getMidnightDate(parseCustomDate(r.start));
                 if (startD) {
                     if (!earliestStartDate || startD < earliestStartDate) {
                         earliestStartDate = startD;
@@ -475,34 +657,31 @@
                 }
 
                 if (r.end) {
-                    const endD = parseMidnightStr(r.end);
+                    const endD = getMidnightDate(parseCustomDate(r.end));
                     if (endD) {
                         if (!latestEndDate || endD > latestEndDate) {
                             latestEndDate = endD;
                         }
                     }
                 } else {
-                    hasOngoing = true; // 只要有任何一筆沒有結束時間，就是還在使用
+                    hasOngoing = true; 
                 }
             });
 
-            /* --- 計算今日呼吸器天數 --- */
+            /* 計算今日呼吸器天數 */
             if (earliestStartDate) {
-                // 如果有尚未結束的紀錄，算到今天；如果全部結束，算到最後一個結束日
                 let calcEndDate = hasOngoing ? today : (latestEndDate || today);
-
                 if (calcEndDate < earliestStartDate) {
                     totalDaysEl.textContent = '0';
                 } else {
                     const diffMs = calcEndDate.getTime() - earliestStartDate.getTime();
-                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                    totalDaysEl.textContent = diffDays + 1; // 包含起始日
+                    totalDaysEl.textContent = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
                 }
             } else {
                 totalDaysEl.textContent = '0';
             }
 
-            /* --- 計算脫離天數 --- */
+            /* 計算脫離天數 */
             if (hasOngoing || !latestEndDate) {
                 weaningDaysEl.textContent = '0';
             } else {
@@ -510,18 +689,17 @@
                     weaningDaysEl.textContent = '0';
                 } else {
                     const diffMs = today.getTime() - latestEndDate.getTime();
-                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                    weaningDaysEl.textContent = diffDays;
+                    weaningDaysEl.textContent = Math.floor(diffMs / (1000 * 60 * 60 * 24));
                 }
             }
         }
 
         function renderComplex() {
+            const todayMax = formatNiceDateOnly(new Date()) + 'T23:59';
+
             if (complexRecords.length === 0) {
                 recordListEl.innerHTML = `
-                    <div class="empty-state">
-                        尚無呼吸器紀錄，請點擊上方「新增紀錄」按鈕。
-                    </div>
+                    <div class="empty-state">尚無呼吸器紀錄，請點擊上方「新增紀錄」按鈕。</div>
                 `;
             } else {
                 recordListEl.innerHTML = complexRecords.map(record => `
@@ -539,19 +717,53 @@
                         </div>
                         <div class="form-group">
                             <label>使用時間 (起)</label>
-                            <input 
-                                type="datetime-local" 
-                                value="${record.start}"
-                                onchange="updateRecord(${record.id}, 'start', this.value)"
-                            >
+                            <div class="datetime-wrapper">
+                                <input 
+                                    type="text" 
+                                    class="datetime-text" 
+                                    value="${record.start}"
+                                    placeholder="滿8碼自動輸入 (例 02281225)"
+                                    oninput="handleComplexTextInput(${record.id}, 'start', this)"
+                                    onblur="handleComplexTextBlur(${record.id}, 'start', this)"
+                                    onkeyup="if(event.key === 'Enter') this.blur();"
+                                >
+                                <div class="icon-container" title="開啟日曆">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                    <input 
+                                        type="datetime-local" 
+                                        class="datetime-native" 
+                                        max="${todayMax}"
+                                        value="${formatForNative(record.start, true)}"
+                                        onchange="handleComplexNativeChange(${record.id}, 'start', this)"
+                                    >
+                                </div>
+                            </div>
+                            <div class="field-error-msg"></div>
                         </div>
                         <div class="form-group">
                             <label>結束時間 (迄)</label>
-                            <input 
-                                type="datetime-local" 
-                                value="${record.end}"
-                                onchange="updateRecord(${record.id}, 'end', this.value)"
-                            >
+                            <div class="datetime-wrapper">
+                                <input 
+                                    type="text" 
+                                    class="datetime-text" 
+                                    value="${record.end}"
+                                    placeholder="滿8碼自動輸入 (例 03060900)"
+                                    oninput="handleComplexTextInput(${record.id}, 'end', this)"
+                                    onblur="handleComplexTextBlur(${record.id}, 'end', this)"
+                                    onkeyup="if(event.key === 'Enter') this.blur();"
+                                >
+                                <div class="icon-container" title="開啟日曆">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                    <input 
+                                        type="datetime-local" 
+                                        class="datetime-native" 
+                                        max="${todayMax}"
+                                        value="${formatForNative(record.end, true)}"
+                                        onchange="handleComplexNativeChange(${record.id}, 'end', this)"
+                                    >
+                                </div>
+                            </div>
+                            <div class="field-error-msg"></div>
                         </div>
                         <div class="delete-btn-container">
                             <button class="btn-icon" onclick="deleteRecord(${record.id})" title="刪除此紀錄">
@@ -561,15 +773,16 @@
                     </div>
                 `).join('');
             }
-
             calculateComplexDays();
         }
 
-        // 初始化渲染複雜版
+        // 初始渲染
         renderComplex();
 
     </script>
 </body>
 </html>
+
+
 
 
