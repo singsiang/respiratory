@@ -51,7 +51,8 @@
             Printer: <Icon path={<><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></>} />,
             Lock: <Icon path={<><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></>} />,
             Info: <Icon path={<><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></>} />,
-            Plus: <Icon path={<><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></>} />
+            Plus: <Icon path={<><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></>} />,
+            Layers: <Icon path={<><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 12 12 17 22 12"></polyline><polyline points="2 17 12 22 22 17"></polyline></>} />
         };
 
         // --- 國定假日預設值 ---
@@ -85,6 +86,22 @@
             const m = String(dateObj.getMonth() + 1).padStart(2, '0');
             const d = String(dateObj.getDate()).padStart(2, '0');
             return `${y}-${m}-${d}`;
+        };
+
+        // 新增：精準計算特定日期屬於「第幾期」與「週期內的第幾天」
+        const getCycleInfo = (dateStr) => {
+            const [y, m, d] = dateStr.split('-').map(Number);
+            const utcCurrent = Date.UTC(y, m - 1, d);
+            const utcBase = Date.UTC(2025, 11, 22); // 基準日：2025-12-22 第一期第一天
+            const diffDays = Math.floor((utcCurrent - utcBase) / (1000 * 60 * 60 * 24));
+            
+            let cycleNum = Math.floor(diffDays / 28) + 1;
+            let dayInCycle = diffDays % 28;
+            if (dayInCycle < 0) { // 防呆：處理早於基準日的極端狀況
+                dayInCycle += 28;
+                cycleNum -= 1;
+            }
+            return { cycleNum, dayInCycle, isFirstHalf: dayInCycle < 14 };
         };
 
         const getDatesArray = (startDate, endDate, holidaysMap) => {
@@ -168,6 +185,7 @@
             const [viewMode, setViewMode] = useState('monthly'); 
             const [paintBrush, setPaintBrush] = useState('D');
             const [isReservationMode, setIsReservationMode] = useState(false); 
+            const [showFourWeekOverlay, setShowFourWeekOverlay] = useState(false); // 新增：四週覆蓋圖層開關
 
             // 新增假日的表單狀態
             const [newHolDate, setNewHolDate] = useState('');
@@ -234,6 +252,29 @@
                 }
                 return options;
             }, []);
+
+            // 新增：計算月排班模式下，每一段四週區間的標題跨度 (colSpan)
+            const overlayBlocks = useMemo(() => {
+                if (viewMode !== 'monthly' || !showFourWeekOverlay) return [];
+                const blocks = [];
+                let currentBlock = null;
+                dates.forEach((d) => {
+                    const info = getCycleInfo(d.date);
+                    const label = `第${info.cycleNum}期 ${info.isFirstHalf ? '前二週' : '後二週'}`;
+                    if (!currentBlock || currentBlock.label !== label) {
+                        if (currentBlock) blocks.push(currentBlock);
+                        currentBlock = { 
+                            label, 
+                            colSpan: 1, 
+                            isFirstHalf: info.isFirstHalf 
+                        };
+                    } else {
+                        currentBlock.colSpan++;
+                    }
+                });
+                if (currentBlock) blocks.push(currentBlock);
+                return blocks;
+            }, [dates, viewMode, showFourWeekOverlay]);
 
             // 新增：如果舊紀錄的起始日(如 12/15) 不在標準週期內，自動強制修正回 12/22
             useEffect(() => {
@@ -552,7 +593,7 @@
                                             {/* 檢核模式切換 */}
                                             <div className="flex bg-gray-100 p-0.5 rounded-lg shrink-0">
                                                 <button 
-                                                    onClick={() => setViewMode('monthly')}
+                                                    onClick={() => { setViewMode('monthly'); setShowFourWeekOverlay(false); }}
                                                     className={`px-3 py-1 text-sm font-medium rounded-md transition-all flex items-center gap-1 ${viewMode === 'monthly' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
                                                     📅 月排班 <span className="text-xs font-normal text-gray-400 hidden sm:inline">(21~20號)</span>
                                                 </button>
@@ -562,6 +603,17 @@
                                                     ⚖️ 四週檢核 <span className="text-xs font-normal text-gray-400 hidden sm:inline">(28天)</span>
                                                 </button>
                                             </div>
+                                            
+                                            {/* 新增：四週圖層覆蓋開關 */}
+                                            {viewMode === 'monthly' && (
+                                                <button 
+                                                    onClick={() => setShowFourWeekOverlay(!showFourWeekOverlay)}
+                                                    className={`px-2 py-1 text-xs font-bold rounded-md transition-all flex items-center gap-1 border
+                                                    ${showFourWeekOverlay ? 'bg-indigo-50 border-indigo-300 text-indigo-700 shadow-inner' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50 shadow-sm'}`}>
+                                                    <span className="scale-75">{Icons.Layers}</span>
+                                                    {showFourWeekOverlay ? '關閉四週覆蓋' : '開啟四週覆蓋'}
+                                                </button>
+                                            )}
 
                                             {/* 日期選擇與應休提示 */}
                                             <div className="flex items-center gap-2">
@@ -636,12 +688,25 @@
                                     <div className="inline-block min-w-full align-middle pb-8">
                                         <table className="min-w-full border-collapse bg-white table-fixed md:table-auto">
                                             <thead className="sticky top-0 z-20 bg-gray-100 shadow-sm">
-                                                {/* 新增：四週模式下的「兩週區間」頂部標示框 */}
+                                                {/* 四週模式下的「兩週區間」頂部標示框 */}
                                                 {viewMode === 'fourWeek' && (
                                                     <tr>
                                                         <th className="sticky left-0 z-30 bg-gray-100 border-b border-r border-gray-300 shadow-[1px_0_0_0_#d1d5db]"></th>
                                                         <th colSpan="14" className="border-b-2 border-r-4 border-indigo-400 bg-indigo-50/90 text-indigo-700 text-xs md:text-sm py-1.5 text-center font-bold tracking-wider">前二週區間 (應排2例假)</th>
-                                                        <th colSpan="14" className="border-b-2 border-r border-gray-200 bg-indigo-50/90 text-indigo-700 text-xs md:text-sm py-1.5 text-center font-bold tracking-wider">後二週區間 (應排2例假)</th>
+                                                        <th colSpan="14" className="border-b-2 border-r-4 border-blue-400 bg-blue-50/90 text-blue-700 text-xs md:text-sm py-1.5 text-center font-bold tracking-wider">後二週區間 (應排2例假)</th>
+                                                        <th className="border-b border-gray-200 bg-gray-100"></th>
+                                                    </tr>
+                                                )}
+                                                {/* 月排班模式下的「四週圖層覆蓋」頂部標示框 */}
+                                                {viewMode === 'monthly' && showFourWeekOverlay && (
+                                                    <tr>
+                                                        <th className="sticky left-0 z-30 bg-gray-100 border-b border-r border-gray-300 shadow-[1px_0_0_0_#d1d5db]"></th>
+                                                        {overlayBlocks.map((block, i) => (
+                                                            <th key={i} colSpan={block.colSpan} className={`border-b-2 text-center text-xs py-1.5 font-bold tracking-wider
+                                                                ${block.isFirstHalf ? 'bg-indigo-50/90 text-indigo-700 border-r-4 border-indigo-400' : 'bg-blue-50/90 text-blue-700 border-r-4 border-blue-400'}`}>
+                                                                {block.label}
+                                                            </th>
+                                                        ))}
                                                         <th className="border-b border-gray-200 bg-gray-100"></th>
                                                     </tr>
                                                 )}
@@ -649,16 +714,29 @@
                                                     <th className="sticky left-0 z-30 bg-gray-100 px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-semibold text-gray-700 border-b border-r border-gray-300 w-24 md:w-40 shadow-[1px_0_0_0_#d1d5db]">
                                                         治療師
                                                     </th>
-                                                    {dates.map((d, i) => (
-                                                        <th key={i} className={`px-1 py-1.5 md:py-2 border-b text-center text-xs w-10 md:w-12
-                                                            ${viewMode === 'fourWeek' && i === 13 ? 'border-r-4 border-indigo-400' : 'border-r border-gray-200'}
-                                                            ${d.isWeekend || d.isHoliday ? 'bg-rose-50 text-rose-700' : 'text-gray-600'}`}>
-                                                            <div className="font-bold whitespace-nowrap">{d.date.slice(5).replace('-', '/')}</div>
-                                                            <div className="scale-75 md:scale-100 origin-top">({d.dayOfWeek})</div>
-                                                            {d.isHoliday && <div className="text-[10px] font-bold mt-0.5 leading-tight text-rose-600 hidden md:block">{d.holidayName}</div>}
-                                                            {d.isHoliday && <div className="text-[8px] font-bold leading-tight text-rose-600 block md:hidden scale-75">{d.holidayName.slice(0,2)}</div>}
-                                                        </th>
-                                                    ))}
+                                                    {dates.map((d, dayIndex) => {
+                                                        // 判斷表頭垂直分割粗線
+                                                        const info = getCycleInfo(d.date);
+                                                        let borderClass = 'border-r border-gray-200';
+                                                        if (viewMode === 'fourWeek') {
+                                                            if (dayIndex === 13) borderClass = 'border-r-4 border-indigo-400';
+                                                            else if (dayIndex === 27) borderClass = 'border-r-4 border-blue-400';
+                                                        } else if (viewMode === 'monthly' && showFourWeekOverlay) {
+                                                            if (info.dayInCycle === 13) borderClass = 'border-r-4 border-indigo-400';
+                                                            else if (info.dayInCycle === 27) borderClass = 'border-r-4 border-blue-400';
+                                                        }
+
+                                                        return (
+                                                            <th key={dayIndex} className={`px-1 py-1.5 md:py-2 border-b text-center text-xs w-10 md:w-12
+                                                                ${borderClass}
+                                                                ${d.isWeekend || d.isHoliday ? 'bg-rose-50 text-rose-700' : 'text-gray-600'}`}>
+                                                                <div className="font-bold whitespace-nowrap">{d.date.slice(5).replace('-', '/')}</div>
+                                                                <div className="scale-75 md:scale-100 origin-top">({d.dayOfWeek})</div>
+                                                                {d.isHoliday && <div className="text-[10px] font-bold mt-0.5 leading-tight text-rose-600 hidden md:block">{d.holidayName}</div>}
+                                                                {d.isHoliday && <div className="text-[8px] font-bold leading-tight text-rose-600 block md:hidden scale-75">{d.holidayName.slice(0,2)}</div>}
+                                                            </th>
+                                                        );
+                                                    })}
                                                     <th className="no-print px-2 py-3 text-center text-sm font-semibold text-gray-700 border-b border-gray-200 bg-gray-100 w-12">
                                                         操作
                                                     </th>
@@ -684,13 +762,22 @@
                                                             const shift = schedule[staff.id]?.[d.date] || '';
                                                             const isLocked = lockedCells[staff.id]?.[d.date];
                                                             const canEdit = isReservationMode || !isLocked;
-                                                            // 新增：判斷是否為兩週的交界線
-                                                            const isTwoWeekBoundary = viewMode === 'fourWeek' && dayIndex === 13;
+                                                            
+                                                            // 判斷內容區垂直分割粗線
+                                                            const info = getCycleInfo(d.date);
+                                                            let borderClass = 'border-r border-gray-200';
+                                                            if (viewMode === 'fourWeek') {
+                                                                if (dayIndex === 13) borderClass = 'border-r-4 border-indigo-400';
+                                                                else if (dayIndex === 27) borderClass = 'border-r-4 border-blue-400';
+                                                            } else if (viewMode === 'monthly' && showFourWeekOverlay) {
+                                                                if (info.dayInCycle === 13) borderClass = 'border-r-4 border-indigo-400';
+                                                                else if (info.dayInCycle === 27) borderClass = 'border-r-4 border-blue-400';
+                                                            }
 
                                                             return (
                                                                 <td key={dayIndex} onClick={() => handleCellClick(staff.id, d.date)}
                                                                     className={`border-b text-center select-none relative
-                                                                    ${isTwoWeekBoundary ? 'border-r-4 border-indigo-400' : 'border-r border-gray-200'}
+                                                                    ${borderClass}
                                                                     ${SHIFT_COLORS[shift] || (d.isWeekend || d.isHoliday ? 'bg-rose-50/30' : '')} 
                                                                     ${canEdit 
                                                                         ? (isReservationMode ? 'cursor-pointer hover:ring-2 hover:ring-indigo-400 hover:ring-inset' : 'cursor-pointer hover:ring-2 hover:ring-blue-400 hover:ring-inset') 
