@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>呼吸治療師排班系統</title>
+    <!-- 載入 React -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- 載入 Babel 以解析 JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; }
+            main { padding: 0 !important; overflow: visible !important; }
+            .print-break-inside-avoid { break-inside: avoid; }
+        }
+        /* 自訂捲軸樣式 */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // --- 內建圖示組件 (無外部依賴) ---
+        const Icon = ({ path, size = 20, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {path}
+            </svg>
+        );
+        const Icons = {
+            Calendar: <Icon path={<><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></>} />,
+            Users: <Icon path={<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></>} />,
+            Settings: <Icon path={<><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></>} />,
+            Alert: <Icon path={<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></>} />,
+            Chart: <Icon path={<><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></>} />,
+            Check: <Icon path={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></>} />,
+            X: <Icon path={<><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></>} />,
+            Trash: <Icon path={<><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></>} />,
+            Printer: <Icon path={<><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></>} />
+        };
+
+        // --- 工具函數 ---
+        const addDays = (dateString, days) => {
+            const date = new Date(dateString);
+            date.setDate(date.getDate() + days);
+            return date.toISOString().split('T')[0];
+        };
+
+        const getDayOfWeek = (dateString) => {
+            const date = new Date(dateString);
+            const days = ['日', '一', '二', '三', '四', '五', '六'];
+            return days[date.getDay()];
+        };
+
+        const isWeekend = (dateString) => {
+            const date = new Date(dateString);
+            const day = date.getDay();
+            return day === 0 || day === 6;
+        };
+
+        // --- 預設假資料 ---
+        const defaultSettings = {
+            startDate: new Date().toISOString().split('T')[0],
+            hours: { D: 8, E: 8, N: 10 },
+            minManpower: {
+                weekday: { D: 2, E: 1, N: 1 },
+                weekend: { D: 1, E: 1, N: 1 }
+            }
+        };
+
+        const initialStaff = [
+            { id: 1, name: '王小明', seniority: 5, nightRestricted: false, maxNights: 6 },
+            { id: 2, name: '李小華', seniority: 3, nightRestricted: false, maxNights: 6 },
+            { id: 3, name: '陳建國', seniority: 8, nightRestricted: false, maxNights: 4 },
+            { id: 4, name: '林雅婷', seniority: 2, nightRestricted: true, maxNights: 0 },
+            { id: 5, name: '張大衛', seniority: 1, nightRestricted: false, maxNights: 6 },
+            { id: 6, name: '黃詩涵', seniority: 4, nightRestricted: false, maxNights: 6 },
+        ];
+
+        const SHIFT_COLORS = {
+            '': 'bg-gray-50',
+            'D': 'bg-blue-100 text-blue-800 font-bold',
+            'E': 'bg-orange-100 text-orange-800 font-bold',
+            'N': 'bg-purple-100 text-purple-800 font-bold',
+            'X': 'bg-red-100 text-red-800 font-bold', 
+            'O': 'bg-green-100 text-green-800 font-bold',
+        };
+
+        function App() {
+            const [activeTab, setActiveTab] = useState('schedule');
+            const [paintBrush, setPaintBrush] = useState('D');
+
+            // --- Local Storage 讀取與儲存機制 ---
+            const loadData = (key, defaultVal) => {
+                try {
+                    const saved = localStorage.getItem(key);
+                    return saved ? JSON.parse(saved) : defaultVal;
+                } catch (e) {
+                    return defaultVal;
+                }
+            };
+
+            const [settings, setSettings] = useState(() => loadData('rt_settings', defaultSettings));
+            const [staffList, setStaffList] = useState(() => loadData('rt_staff', initialStaff));
+            const [schedule, setSchedule] = useState(() => loadData('rt_schedule', {}));
+
+            // 存檔監聽器
+            useEffect(() => localStorage.setItem('rt_settings', JSON.stringify(settings)), [settings]);
+            useEffect(() => localStorage.setItem('rt_staff', JSON.stringify(staffList)), [staffList]);
+            useEffect(() => localStorage.setItem('rt_schedule', JSON.stringify(schedule)), [schedule]);
+
+            // 初始化空白班表 (如果尚未建立)
+            useEffect(() => {
+                if (Object.keys(schedule).length === 0 || Object.keys(schedule).length !== staffList.length) {
+                    const initSchedule = { ...schedule };
+                    staffList.forEach(staff => {
+                        if (!initSchedule[staff.id]) {
+                            initSchedule[staff.id] = Array(28).fill('');
+                        }
+                    });
+                    setSchedule(initSchedule);
+                }
+            }, [staffList]);
+
+            // 日期陣列
+            const dates = useMemo(() => {
+                return Array.from({ length: 28 }, (_, i) => ({
+                    date: addDays(settings.startDate, i),
+                    dayOfWeek: getDayOfWeek(addDays(settings.startDate, i)),
+                    isWeekend: isWeekend(addDays(settings.startDate, i))
+                }));
+            }, [settings.startDate]);
+
+            // --- 班表操作 ---
+            const handleCellClick = (staffId, dayIndex) => {
+                setSchedule(prev => {
+                    const newSchedule = { ...prev };
+                    if (!newSchedule[staffId]) newSchedule[staffId] = Array(28).fill('');
+                    const currentShift = newSchedule[staffId][dayIndex];
+                    newSchedule[staffId][dayIndex] = currentShift === paintBrush ? '' : paintBrush;
+                    return newSchedule;
+                });
+            };
+
+            const clearRow = (staffId) => {
+                if (window.confirm('確定要清空此人的班表嗎？')) {
+                    setSchedule(prev => ({ ...prev, [staffId]: Array(28).fill('') }));
+                }
+            };
+
+            const resetAllData = () => {
+                if (window.confirm('警告：這將會清除所有您排好的班表與設定，恢復成預設值！確定嗎？')) {
+                    localStorage.removeItem('rt_settings');
+                    localStorage.removeItem('rt_staff');
+                    localStorage.removeItem('rt_schedule');
+                    window.location.reload();
+                }
+            };
+
+            // --- 核心運算：違規檢查 ---
+            const analyzeSchedule = useMemo(() => {
+                const analysis = {};
+                staffList.forEach(staff => {
+                    const shifts = schedule[staff.id] || Array(28).fill('');
+                    let countD = 0, countE = 0, countN = 0, countX = 0, countO = 0;
+                    let maxContinuous = 0, currentContinuous = 0, week1_2_X = 0, week3_4_X = 0;
+                    let violations = [];
+
+                    for (let i = 0; i < 28; i++) {
+                        const s = shifts[i];
+                        if (s === 'D') countD++;
+                        if (s === 'E') countE++;
+                        if (s === 'N') countN++;
+                        if (s === 'X') {
+                            countX++;
+                            if (i < 14) week1_2_X++; else week3_4_X++;
+                        }
+                        if (s === 'O') countO++;
+
+                        if (['D', 'E', 'N'].includes(s)) {
+                            currentContinuous++;
+                            if (currentContinuous > maxContinuous) maxContinuous = currentContinuous;
+                        } else {
+                            currentContinuous = 0;
+                        }
+
+                        if (i < 27) {
+                            const nextS = shifts[i + 1];
+                            if (s === 'N' && (nextS === 'D' || nextS === 'E')) {
+                                violations.push(`第${i+1}天大夜接第${i+2}天${nextS === 'D' ? '白班' : '小夜'} (間隔不足11h)`);
+                            }
+                            if (s === 'E' && nextS === 'D') {
+                                violations.push(`第${i+1}天小夜接第${i+2}天白班 (間隔不足11h)`);
+                            }
+                        }
+                    }
+
+                    const totalHours = (countD * settings.hours.D) + (countE * settings.hours.E) + (countN * settings.hours.N);
+
+                    if (totalHours > 160) violations.push(`四週總工時超標 (${totalHours} > 160h)`);
+                    if (maxContinuous > 12) violations.push(`連續上班天數超標 (${maxContinuous} > 12天)`);
+                    if (week1_2_X < 2) violations.push(`前二週例假不足 (${week1_2_X} < 2天)`);
+                    if (week3_4_X < 2) violations.push(`後二週例假不足 (${week3_4_X} < 2天)`);
+                    if (countX + countO < 8) violations.push(`四週休假不足 (${countX + countO} < 8天)`);
+                    if (countN > staff.maxNights) violations.push(`夜班數超過個人上限 (${countN} > ${staff.maxNights})`);
+
+                    analysis[staff.id] = {
+                        totalHours, countD, countE, countN, countX, countO,
+                        maxContinuous, violations,
+                        isValid: violations.length === 0
+                    };
+                });
+                return analysis;
+            }, [schedule, staffList, settings]);
+
+            // --- 核心運算：每日人力 ---
+            const manpowerAnalysis = useMemo(() => {
+                const dailyStats = [];
+                for (let i = 0; i < 28; i++) {
+                    let d = 0, e = 0, n = 0;
+                    staffList.forEach(staff => {
+                        const s = schedule[staff.id]?.[i];
+                        if (s === 'D') d++;
+                        if (s === 'E') e++;
+                        if (s === 'N') n++;
+                    });
+                    const isWknd = dates[i].isWeekend;
+                    const req = isWknd ? settings.minManpower.weekend : settings.minManpower.weekday;
+                    dailyStats.push({
+                        dateInfo: dates[i], actual: { D: d, E: e, N: n }, required: req,
+                        shortage: { D: d < req.D, E: e < req.E, N: n < req.N }
+                    });
+                }
+                return dailyStats;
+            }, [schedule, staffList, dates, settings]);
+
+
+            // --- UI Components ---
+            const NavItem = ({ tabId, icon, label }) => (
+                <button 
+                    onClick={() => setActiveTab(tabId)} 
+                    className={`flex items-center justify-center md:justify-start gap-2 px-3 py-3 md:px-4 md:py-3 rounded-lg md:mb-2 transition-colors whitespace-nowrap flex-1 md:flex-none
+                    ${activeTab === tabId ? 'bg-blue-600 text-white font-medium shadow-md' : 'text-gray-300 hover:bg-gray-800'}`}
+                >
+                    {icon} <span className="hidden md:inline">{label}</span>
+                </button>
+            );
+
+            return (
+                <div className="flex flex-col md:flex-row h-screen bg-gray-100 font-sans text-gray-800">
+                    {/* 導覽列 */}
+                    <nav className="no-print flex md:flex-col w-full md:w-64 bg-gray-900 text-white shadow-xl shrink-0 z-50">
+                        <div className="hidden md:block p-6 border-b border-gray-800">
+                            <h1 className="text-xl font-bold flex items-center gap-2">
+                                {Icons.Calendar} 排班系統
+                            </h1>
+                            <p className="text-gray-400 text-xs mt-2">四週變形工時檢核版</p>
+                        </div>
+                        <div className="flex flex-row md:flex-col flex-1 p-2 md:p-4 overflow-x-auto gap-1 md:gap-0">
+                            <NavItem tabId="schedule" icon={Icons.Calendar} label="四週班表" />
+                            <NavItem tabId="analysis" icon={Icons.Alert} label="違規檢查" />
+                            <NavItem tabId="manpower" icon={Icons.Chart} label="每日人力" />
+                            <NavItem tabId="staff" icon={Icons.Users} label="人員設定" />
+                            <NavItem tabId="settings" icon={Icons.Settings} label="參數設定" />
+                        </div>
+                    </nav>
+
+                    {/* 主要內容區 */}
+                    <main className="flex-1 p-2 md:p-6 overflow-hidden flex flex-col h-full relative">
+                        {/* 四週班表 */}
+                        {activeTab === 'schedule' && (
+                            <div className="flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden print-break-inside-avoid">
+                                <div className="no-print p-3 md:p-4 border-b border-gray-100 bg-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                    <div className="flex flex-wrap items-center gap-2 md:gap-4">
+                                        <span className="font-medium text-gray-700 text-sm hidden md:inline">排班筆刷：</span>
+                                        <div className="flex bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden p-1 gap-1 w-full md:w-auto overflow-x-auto">
+                                            {[{ code: 'D', l: '白班 D' }, { code: 'E', l: '小夜 E' }, { code: 'N', l: '大夜 N' }, 
+                                              { code: 'X', l: '例假 X' }, { code: 'O', l: '休息 O' }, { code: '', l: '橡皮擦' }].map(shift => (
+                                                <button key={shift.code} onClick={() => setPaintBrush(shift.code)}
+                                                    className={`px-3 md:px-4 py-1.5 md:py-2 rounded-md font-medium text-xs md:text-sm transition-all whitespace-nowrap
+                                                    ${paintBrush === shift.code ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}>
+                                                    {shift.l}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button onClick={() => window.print()} className="flex items-center gap-1 text-sm bg-gray-800 text-white px-3 py-1.5 rounded-lg hover:bg-gray-700">
+                                            {Icons.Printer} <span className="hidden sm:inline">列印</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="flex-1 overflow-auto bg-gray-100/30 relative">
+                                    <div className="inline-block min-w-full align-middle pb-8">
+                                        <table className="min-w-full border-collapse bg-white table-fixed md:table-auto">
+                                            <thead className="sticky top-0 z-20 bg-gray-100 shadow-sm">
+                                                <tr>
+                                                    <th className="sticky left-0 z-30 bg-gray-100 px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-semibold text-gray-700 border-b border-r border-gray-200 w-24 md:w-32 shadow-[1px_0_0_0_#e5e7eb]">
+                                                        治療師
+                                                    </th>
+                                                    {dates.map((d, i) => (
+                                                        <th key={i} className={`px-1 py-2 md:py-3 border-b border-r border-gray-200 text-center text-xs w-10 md:w-12
+                                                            ${d.isWeekend ? 'bg-rose-50 text-rose-700' : 'text-gray-600'}`}>
+                                                            <div className="font-bold">{d.date.slice(5)}</div>
+                                                            <div className="scale-75 md:scale-100 origin-top">({d.dayOfWeek})</div>
+                                                        </th>
+                                                    ))}
+                                                    <th className="no-print px-2 py-3 text-center text-sm font-semibold text-gray-700 border-b border-gray-200 bg-gray-100 w-12">
+                                                        操作
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {staffList.map((staff) => (
+                                                    <tr key={staff.id} className="hover:bg-blue-50/50 transition-colors">
+                                                        <td className="sticky left-0 z-10 bg-white px-2 md:px-4 py-2 text-xs md:text-sm font-medium text-gray-900 border-b border-r border-gray-200 shadow-[1px_0_0_0_#e5e7eb]">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="truncate">{staff.name}</span>
+                                                                {!analyzeSchedule[staff.id]?.isValid && (
+                                                                    <span className="text-red-500 no-print" title="排班有違規">{Icons.Alert}</span>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-[10px] md:text-xs text-gray-400 font-normal mt-0.5">年資:{staff.seniority}年</div>
+                                                        </td>
+                                                        {Array.from({ length: 28 }).map((_, dayIndex) => {
+                                                            const shift = schedule[staff.id]?.[dayIndex] || '';
+                                                            return (
+                                                                <td key={dayIndex} onClick={() => handleCellClick(staff.id, dayIndex)}
+                                                                    className={`border-b border-r border-gray-200 text-center cursor-pointer select-none relative
+                                                                    ${SHIFT_COLORS[shift] || (dates[dayIndex].isWeekend ? 'bg-rose-50/30' : '')} 
+                                                                    hover:ring-2 hover:ring-blue-300 hover:ring-inset transition-all p-0 h-10 md:h-12`}
+                                                                >
+                                                                    <div className="w-full h-full flex items-center justify-center text-xs md:text-sm">
+                                                                        {shift}
+                                                                    </div>
+                                                                </td>
+                                                            );
+                                                        })}
+                                                        <td className="no-print border-b border-gray-200 text-center px-1">
+                                                            <button onClick={() => clearRow(staff.id)} className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50" title="清空此列">
+                                                                {Icons.Trash}
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 違規檢查 */}
+                        {activeTab === 'analysis' && (
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 h-full overflow-auto">
+                                <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                                    <span className="text-orange-500">{Icons.Alert}</span> 違規檢查與工時統計
+                                </h2>
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full border border-gray-200 rounded-lg overflow-hidden whitespace-nowrap">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b">狀態/姓名</th>
+                                                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 border-b">總工時<br/><span className="text-xs font-normal">(≤160)</span></th>
+                                                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 border-b">連續上班<br/><span className="text-xs font-normal">(≤12)</span></th>
+                                                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 border-b">休假(X+O)<br/><span className="text-xs font-normal">(≥8)</span></th>
+                                                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b w-full">違規詳情</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200">
+                                            {staffList.map(staff => {
+                                                const data = analyzeSchedule[staff.id];
+                                                if (!data) return null;
+                                                return (
+                                                    <tr key={staff.id} className={!data.isValid ? 'bg-red-50/50' : ''}>
+                                                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                                            <div className="flex items-center gap-2">
+                                                                {data.isValid ? <span className="text-green-500">{Icons.Check}</span> : <span className="text-red-500">{Icons.X}</span>}
+                                                                {staff.name}
+                                                            </div>
+                                                        </td>
+                                                        <td className={`px-4 py-3 text-center text-sm font-bold ${data.totalHours > 160 ? 'text-red-600' : 'text-gray-700'}`}>{data.totalHours}</td>
+                                                        <td className={`px-4 py-3 text-center text-sm font-bold ${data.maxContinuous > 12 ? 'text-red-600' : 'text-gray-700'}`}>{data.maxContinuous}</td>
+                                                        <td className={`px-4 py-3 text-center text-sm font-bold ${(data.countX + data.countO) < 8 ? 'text-red-600' : 'text-gray-700'}`}>{data.countX + data.countO}</td>
+                                                        <td className="px-4 py-3 text-sm text-red-600">
+                                                            {data.violations.length > 0 ? (
+                                                                <ul className="list-disc list-inside space-y-1">
+                                                                    {data.violations.map((v, idx) => <li key={idx}>{v}</li>)}
+                                                                </ul>
+                                                            ) : (
+                                                                <span className="text-green-600">全部合格</span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 每日人力 */}
+                        {activeTab === 'manpower' && (
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 h-full overflow-auto">
+                                <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                                    <span className="text-blue-500">{Icons.Chart}</span> 每日人力檢核表
+                                </h2>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+                                    {manpowerAnalysis.map((dayData, i) => (
+                                        <div key={i} className={`p-3 rounded-lg border shadow-sm ${dayData.dateInfo.isWeekend ? 'bg-rose-50/50 border-rose-100' : 'bg-gray-50 border-gray-200'}`}>
+                                            <div className="font-bold text-gray-700 border-b border-gray-200/50 pb-2 mb-2 flex justify-between items-center text-sm">
+                                                <span>{dayData.dateInfo.date.slice(5)}</span>
+                                                <span className="text-xs px-1.5 py-0.5 bg-white rounded shadow-sm">({dayData.dateInfo.dayOfWeek})</span>
+                                            </div>
+                                            <div className="space-y-1 text-xs md:text-sm">
+                                                <div className="flex justify-between">
+                                                    <span className="text-blue-700 font-medium">白班</span>
+                                                    <span className={`font-bold ${dayData.shortage.D ? 'text-red-600' : 'text-green-600'}`}>
+                                                        {dayData.actual.D} <span className="text-gray-400 font-normal">/{dayData.required.D}</span>
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-orange-700 font-medium">小夜</span>
+                                                    <span className={`font-bold ${dayData.shortage.E ? 'text-red-600' : 'text-green-600'}`}>
+                                                        {dayData.actual.E} <span className="text-gray-400 font-normal">/{dayData.required.E}</span>
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-purple-700 font-medium">大夜</span>
+                                                    <span className={`font-bold ${dayData.shortage.N ? 'text-red-600' : 'text-green-600'}`}>
+                                                        {dayData.actual.N} <span className="text-gray-400 font-normal">/{dayData.required.N}</span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 人員與參數設定簡化整併顯示 */}
+                        {(activeTab === 'staff' || activeTab === 'settings') && (
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 h-full overflow-auto max-w-4xl mx-auto w-full">
+                                {activeTab === 'staff' ? (
+                                    <>
+                                        <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">人員名單管理</h2>
+                                        <div className="bg-blue-50 text-blue-800 p-4 rounded-lg mb-6 text-sm">
+                                            💡 在這個靜態展示版本中，人員清單儲存在瀏覽器本機。您可以直接在畫面上修改數值。
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="min-w-full border border-gray-200 rounded-lg">
+                                                <thead className="bg-gray-50">
+                                                    <tr>
+                                                        <th className="px-4 py-2 text-left text-sm font-semibold">姓名</th>
+                                                        <th className="px-4 py-2 text-center text-sm font-semibold w-24">年資</th>
+                                                        <th className="px-4 py-2 text-center text-sm font-semibold w-24">夜班上限</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-200">
+                                                    {staffList.map((staff, idx) => (
+                                                        <tr key={staff.id}>
+                                                            <td className="px-4 py-2">
+                                                                <input type="text" value={staff.name} 
+                                                                    onChange={e => {
+                                                                        const newList = [...staffList];
+                                                                        newList[idx].name = e.target.value;
+                                                                        setStaffList(newList);
+                                                                    }} className="w-full border-gray-300 rounded px-2 py-1 bg-gray-50 hover:bg-white focus:bg-white"/>
+                                                            </td>
+                                                            <td className="px-4 py-2 text-center">
+                                                                <input type="number" value={staff.seniority} 
+                                                                    onChange={e => {
+                                                                        const newList = [...staffList];
+                                                                        newList[idx].seniority = Number(e.target.value);
+                                                                        setStaffList(newList);
+                                                                    }} className="w-full border-gray-300 rounded px-2 py-1 text-center bg-gray-50"/>
+                                                            </td>
+                                                            <td className="px-4 py-2 text-center">
+                                                                <input type="number" value={staff.maxNights} 
+                                                                    onChange={e => {
+                                                                        const newList = [...staffList];
+                                                                        newList[idx].maxNights = Number(e.target.value);
+                                                                        setStaffList(newList);
+                                                                    }} className="w-full border-gray-300 rounded px-2 py-1 text-center bg-gray-50"/>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="space-y-8">
+                                        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">系統參數設定</h2>
+                                        
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                                <h3 className="font-bold text-gray-700 mb-3 border-b pb-2">排班週期</h3>
+                                                <label className="block text-sm text-gray-600 mb-1">四週起始日 (通常為週一)</label>
+                                                <input type="date" value={settings.startDate} 
+                                                    onChange={e => setSettings({...settings, startDate: e.target.value})}
+                                                    className="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"/>
+                                                <p className="text-xs text-gray-500 mt-2">結束日自動計算為: {addDays(settings.startDate, 27)}</p>
+                                            </div>
+
+                                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                                <h3 className="font-bold text-gray-700 mb-3 border-b pb-2">班次工時定義</h3>
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <span className="text-sm">白班 / 小夜</span>
+                                                    <div className="text-sm text-gray-500">預設 8 小時</div>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-sm font-medium">大夜班工時</span>
+                                                    <input type="number" value={settings.hours.N} 
+                                                        onChange={e => setSettings({...settings, hours: {...settings.hours, N: Number(e.target.value)}})}
+                                                        className="w-20 border border-gray-300 rounded px-2 py-1 text-center"/>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                            <h3 className="font-bold text-gray-700 mb-3 border-b pb-2">每日最低人力需求</h3>
+                                            <div className="grid grid-cols-2 gap-6">
+                                                <div>
+                                                    <h4 className="text-sm font-bold text-gray-600 mb-2 text-center">平日</h4>
+                                                    <div className="space-y-2">
+                                                        {['D', 'E', 'N'].map(shift => (
+                                                            <div key={`wd-${shift}`} className="flex justify-between items-center">
+                                                                <span className="text-sm">{shift === 'D' ? '白班' : shift === 'E' ? '小夜' : '大夜'}</span>
+                                                                <input type="number" value={settings.minManpower.weekday[shift]} min="0"
+                                                                    onChange={e => setSettings({...settings, minManpower: {...settings.minManpower, weekday: {...settings.minManpower.weekday, [shift]: Number(e.target.value)}}})}
+                                                                    className="w-16 border border-gray-300 rounded px-2 py-1 text-center" />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-bold text-rose-600 mb-2 text-center">假日</h4>
+                                                    <div className="space-y-2">
+                                                        {['D', 'E', 'N'].map(shift => (
+                                                            <div key={`we-${shift}`} className="flex justify-between items-center">
+                                                                <span className="text-sm">{shift === 'D' ? '白班' : shift === 'E' ? '小夜' : '大夜'}</span>
+                                                                <input type="number" value={settings.minManpower.weekend[shift]} min="0"
+                                                                    onChange={e => setSettings({...settings, minManpower: {...settings.minManpower, weekend: {...settings.minManpower.weekend, [shift]: Number(e.target.value)}}})}
+                                                                    className="w-16 border border-gray-300 rounded px-2 py-1 text-center" />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-10 p-4 bg-red-50 border border-red-200 rounded-lg">
+                                            <h3 className="font-bold text-red-800 mb-2">危險操作區</h3>
+                                            <p className="text-sm text-red-600 mb-4">這會清除本機瀏覽器中的所有資料（包含排好的班表）並恢復預設設定。</p>
+                                            <button onClick={resetAllData} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                                                清除所有資料並重置
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
