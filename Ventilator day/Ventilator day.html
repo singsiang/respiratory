@@ -177,12 +177,25 @@
         .info-footer { font-size: 0.75rem; color: var(--text-muted); line-height: 1.6; padding-top: 1.5rem; border-top: 1px solid var(--border-color); margin-top: 1rem; text-align: left; }
 
         .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        .metric-card { background-color: var(--result-bg); border-radius: 16px; padding: 1.5rem; text-align: center; display: flex; flex-direction: column; justify-content: center; }
+        .metric-card { background-color: var(--result-bg); border-radius: 16px; padding: 1.5rem; text-align: center; display: flex; flex-direction: column; justify-content: center; transition: all 0.3s ease; }
         .metric-card.success { background-color: rgba(16, 185, 129, 0.1); }
         .metric-title { font-size: 0.875rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.5rem; }
-        .metric-value-complex { font-size: 3rem; font-weight: 700; color: var(--primary-color); line-height: 1; font-variant-numeric: tabular-nums; }
+        .metric-value-complex { font-size: 3rem; font-weight: 700; color: var(--primary-color); line-height: 1; font-variant-numeric: tabular-nums; transition: color 0.3s ease; }
         .metric-card.success .metric-value-complex { color: var(--success-color); }
         .metric-unit { font-size: 1rem; font-weight: 500; margin-left: 0.25rem; }
+        
+        /* 脫離成功提示樣式 */
+        .weaning-success-msg {
+            display: none;
+            color: var(--success-color);
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            animation: fadeIn 0.4s ease;
+        }
+        .weaning-success-msg.show {
+            display: block;
+        }
 
         .header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
         h2 { font-size: 1.25rem; font-weight: 600; }
@@ -285,14 +298,16 @@
         <!-- ==================== 複雜版視圖 ==================== -->
         <div id="view-complex" class="view-section">
             <div class="dashboard">
-                <div class="metric-card">
+                <div class="metric-card" id="totalDaysCard">
                     <div class="metric-title">今日呼吸器天數 (連貫病程)</div>
                     <div>
                         <span class="metric-value-complex" id="totalDays">0</span>
                         <span class="metric-unit">天</span>
                     </div>
+                    <!-- 脫離成功提示元素 -->
+                    <div id="weaningSuccessMsg" class="weaning-success-msg">🎉 成功脫離</div>
                 </div>
-                <div class="metric-card success">
+                <div class="metric-card success" id="weaningDaysCard">
                     <div class="metric-title">脫離天數 (自最後結束日)</div>
                     <div>
                         <span class="metric-value-complex" id="weaningDays">0</span>
@@ -317,7 +332,8 @@
                 <div class="info-footer">
                     <strong>💡 智能輸入秘訣：</strong><br>
                     • <strong>自動觸發：</strong> 直接打滿 8 碼數字 (例 <code>02281225</code>)，系統會<strong>自動 Enter 執行</strong>並轉換！<br>
-                    • 也可點擊最右側的「日曆圖示」叫出系統選單操作。
+                    • 也可點擊最右側的「日曆圖示」叫出系統選單操作。<br>
+                    • 若脫離達 <strong>6 天 (含) 以上</strong>，系統會自動將呼吸器天數歸零並提示脫離成功。
                 </div>
             </div>
         </div>
@@ -525,6 +541,9 @@
         const recordListEl = document.getElementById('recordList');
         const totalDaysEl = document.getElementById('totalDays');
         const weaningDaysEl = document.getElementById('weaningDays');
+        const totalDaysCard = document.getElementById('totalDaysCard');
+        const weaningDaysCard = document.getElementById('weaningDaysCard');
+        const weaningSuccessMsg = document.getElementById('weaningSuccessMsg');
 
         // 局部錯誤顯示函數
         function showFieldError(wrapper, msg) {
@@ -636,9 +655,14 @@
         function calculateComplexDays() {
             const validRecords = complexRecords.filter(r => r.start);
             
+            // 若完全沒有紀錄
             if (validRecords.length === 0) {
                 totalDaysEl.textContent = '0';
                 weaningDaysEl.textContent = '0';
+                totalDaysCard.classList.remove('success');
+                weaningSuccessMsg.classList.remove('show');
+                weaningDaysCard.style.display = 'flex'; // 恢復顯示脫離天數
+                totalDaysCard.style.gridColumn = 'auto'; // 恢復網格
                 return;
             }
 
@@ -668,29 +692,45 @@
                 }
             });
 
-            /* 計算今日呼吸器天數 */
+            /* 第一步：計算脫離天數 (Weaning Days) */
+            let calculatedWeaningDays = 0;
+            if (hasOngoing || !latestEndDate) {
+                calculatedWeaningDays = 0;
+            } else {
+                if (latestEndDate > today) {
+                    calculatedWeaningDays = 0;
+                } else {
+                    const diffMs = today.getTime() - latestEndDate.getTime();
+                    calculatedWeaningDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                }
+            }
+            weaningDaysEl.textContent = calculatedWeaningDays;
+
+            /* 第二步：計算初始的呼吸器天數 (Raw Total Days) */
+            let rawTotalDays = 0;
             if (earliestStartDate) {
                 let calcEndDate = hasOngoing ? today : (latestEndDate || today);
                 if (calcEndDate < earliestStartDate) {
-                    totalDaysEl.textContent = '0';
+                    rawTotalDays = 0;
                 } else {
                     const diffMs = calcEndDate.getTime() - earliestStartDate.getTime();
-                    totalDaysEl.textContent = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+                    rawTotalDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
                 }
-            } else {
-                totalDaysEl.textContent = '0';
             }
 
-            /* 計算脫離天數 */
-            if (hasOngoing || !latestEndDate) {
-                weaningDaysEl.textContent = '0';
+            /* 第三步：判斷是否達成「脫離成功 (>= 6天)」來修改 UI */
+            if (calculatedWeaningDays >= 6) {
+                totalDaysEl.textContent = '0'; // 脫離6天以上歸零
+                totalDaysCard.classList.add('success'); // 卡片變綠色
+                weaningSuccessMsg.classList.add('show'); // 顯示 🎉 成功脫離
+                weaningDaysCard.style.display = 'none'; // 隱藏脫離天數卡片
+                totalDaysCard.style.gridColumn = '1 / -1'; // 讓主要卡片橫跨滿版
             } else {
-                if (latestEndDate > today) {
-                    weaningDaysEl.textContent = '0';
-                } else {
-                    const diffMs = today.getTime() - latestEndDate.getTime();
-                    weaningDaysEl.textContent = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                }
+                totalDaysEl.textContent = rawTotalDays; // 正常顯示天數
+                totalDaysCard.classList.remove('success'); // 恢復原底色
+                weaningSuccessMsg.classList.remove('show'); // 隱藏提示
+                weaningDaysCard.style.display = 'flex'; // 恢復顯示脫離天數卡片
+                totalDaysCard.style.gridColumn = 'auto'; // 恢復網格排版
             }
         }
 
@@ -782,7 +822,5 @@
     </script>
 </body>
 </html>
-
-
 
 
