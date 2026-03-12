@@ -88,16 +88,15 @@
             return `${y}-${m}-${d}`;
         };
 
-        // 新增：精準計算特定日期屬於「第幾期」與「週期內的第幾天」
         const getCycleInfo = (dateStr) => {
             const [y, m, d] = dateStr.split('-').map(Number);
             const utcCurrent = Date.UTC(y, m - 1, d);
-            const utcBase = Date.UTC(2025, 11, 22); // 基準日：2025-12-22 第一期第一天
+            const utcBase = Date.UTC(2025, 11, 22); 
             const diffDays = Math.floor((utcCurrent - utcBase) / (1000 * 60 * 60 * 24));
             
             let cycleNum = Math.floor(diffDays / 28) + 1;
             let dayInCycle = diffDays % 28;
-            if (dayInCycle < 0) { // 防呆：處理早於基準日的極端狀況
+            if (dayInCycle < 0) { 
                 dayInCycle += 28;
                 cycleNum -= 1;
             }
@@ -121,7 +120,6 @@
             return dates;
         };
 
-        // 取得「每月21號至下個月20號」
         const getMonthlyDates = (yearMonthStr, holidaysMap) => { 
             const [year, month] = yearMonthStr.split('-').map(Number);
             let prevMonth = month - 1;
@@ -133,7 +131,6 @@
             return getDatesArray(new Date(prevYear, prevMonth - 1, 21), new Date(year, month - 1, 20), holidaysMap);
         };
 
-        // 取得「嚴格28天四週」
         const getFourWeekDates = (startStr, holidaysMap) => { 
             const [year, month, day] = startStr.split('-').map(Number);
             const startDate = new Date(year, month - 1, day);
@@ -146,14 +143,13 @@
         const defaultSettings = {
             monthlyPeriod: '2026-01',     
             fourWeekStart: '2025-12-22',  
-            hours: { D: 8, E: 8, N: 8 },
+            hours: { D: 8, E: 8, N: 8, BC: 8, BO: 8 }, 
             minManpower: {
-                weekday: { D: 10, E: 5, N: 3 },
-                weekend: { D: 8, E: 5, N: 3 }
+                weekday: { D: 10, E: 5, N: 3, BC: 0, BO: 0 }, 
+                weekend: { D: 8, E: 5, N: 3, BC: 0, BO: 0 }
             }
         };
 
-        // 自動生成 26 位預設治療師名單
         const initialStaff = Array.from({ length: 26 }, (_, i) => ({
             id: i + 1,
             name: `治療師${String(i + 1).padStart(2, '0')}`,
@@ -161,21 +157,29 @@
             isIDS: false, 
             minE: 7, 
             minN: 5,
-            customOff: '' // 空白代表交由系統智慧計算應休天數
+            isBO: false, // 門診資格
+            customOff: '' 
         }));
         
         initialStaff[0].isIDS = true; 
+        initialStaff[0].minE = 0;
+        initialStaff[0].minN = 0;
         initialStaff[1].isIDS = true;
+        initialStaff[1].minE = 0;
+        initialStaff[1].minN = 0;
 
         initialStaff[3].pureDayShift = true; 
         initialStaff[3].minE = 0;
         initialStaff[3].minN = 0;
 
+        // --- 班別顏色 (包含 門診 BO) ---
         const SHIFT_COLORS = {
             '': 'bg-gray-50',
             'D': 'bg-blue-100 text-blue-800 font-bold',
             'E': 'bg-orange-100 text-orange-800 font-bold',
             'N': 'bg-purple-100 text-purple-800 font-bold',
+            'BC': 'bg-teal-100 text-teal-800 font-bold',
+            'BO': 'bg-amber-100 text-amber-800 font-bold',
             'X': 'bg-red-100 text-red-800 font-bold', 
             'O': 'bg-green-100 text-green-800 font-bold', 
         };
@@ -185,15 +189,14 @@
             const [viewMode, setViewMode] = useState('monthly'); 
             const [paintBrush, setPaintBrush] = useState('D');
             const [isReservationMode, setIsReservationMode] = useState(false); 
-            const [showFourWeekOverlay, setShowFourWeekOverlay] = useState(false); // 新增：四週覆蓋圖層開關
+            const [showFourWeekOverlay, setShowFourWeekOverlay] = useState(false);
 
-            // 新增假日的表單狀態
             const [newHolDate, setNewHolDate] = useState('');
             const [newHolName, setNewHolName] = useState('');
-            const [importText, setImportText] = useState('');      // 新增：智慧匯入的文字框狀態
-            const [importStatus, setImportStatus] = useState('');  // 新增：匯入成功/失敗的提示狀態
+            const [importText, setImportText] = useState('');      
+            const [importStatus, setImportStatus] = useState('');  
 
-            // --- Local Storage 機制 (升級 v12 且相容舊版資料) ---
+            // --- Local Storage 機制 (升級 v21 處理 M1/M2 合併為 BO) ---
             const loadData = (key, defaultVal, fallbackKey = null) => {
                 try {
                     const saved = localStorage.getItem(key);
@@ -208,19 +211,47 @@
                 }
             };
 
-            const [settings, setSettings] = useState(() => loadData('rt_settings_v12', defaultSettings, 'rt_settings_v11'));
-            const [staffList, setStaffList] = useState(() => loadData('rt_staff_v12', initialStaff, 'rt_staff_v11'));
-            const [schedule, setSchedule] = useState(() => loadData('rt_schedule_v12', {}, 'rt_schedule_v11'));
-            const [lockedCells, setLockedCells] = useState(() => loadData('rt_locked_v12', {}, 'rt_locked_v11'));
-            const [customHolidays, setCustomHolidays] = useState(() => loadData('rt_holidays_v12', DEFAULT_HOLIDAYS));
+            const [settings, setSettings] = useState(() => {
+                let data = loadData('rt_settings_v21', null, 'rt_settings_v20');
+                if (!data) data = defaultSettings;
+                if (data.hours.BO === undefined) data.hours.BO = data.hours.M1 !== undefined ? data.hours.M1 : 8;
+                if (data.minManpower.weekday.BO === undefined) data.minManpower.weekday.BO = data.minManpower.weekday.M1 !== undefined ? data.minManpower.weekday.M1 : 0;
+                if (data.minManpower.weekend.BO === undefined) data.minManpower.weekend.BO = data.minManpower.weekend.M1 !== undefined ? data.minManpower.weekend.M1 : 0;
+                delete data.hours.M1; delete data.hours.M2;
+                delete data.minManpower.weekday.M1; delete data.minManpower.weekday.M2;
+                delete data.minManpower.weekend.M1; delete data.minManpower.weekend.M2;
+                return data;
+            });
+            const [staffList, setStaffList] = useState(() => {
+                let data = loadData('rt_staff_v21', null, 'rt_staff_v20');
+                if (!data) return initialStaff;
+                return data.map(s => ({
+                    ...s,
+                    isBO: s.isBO !== undefined ? s.isBO : (s.isM1 || s.isM2 || false)
+                }));
+            });
+            const [schedule, setSchedule] = useState(() => {
+                let data = loadData('rt_schedule_v21', null, 'rt_schedule_v20');
+                if (!data) return {};
+                const newData = { ...data };
+                for (let staffId in newData) {
+                    for (let date in newData[staffId]) {
+                        if (newData[staffId][date] === 'M1' || newData[staffId][date] === 'M2') {
+                            newData[staffId][date] = 'BO';
+                        }
+                    }
+                }
+                return newData;
+            });
+            const [lockedCells, setLockedCells] = useState(() => loadData('rt_locked_v21', {}, 'rt_locked_v20'));
+            const [customHolidays, setCustomHolidays] = useState(() => loadData('rt_holidays_v21', DEFAULT_HOLIDAYS, 'rt_holidays_v20'));
 
-            useEffect(() => localStorage.setItem('rt_settings_v12', JSON.stringify(settings)), [settings]);
-            useEffect(() => localStorage.setItem('rt_staff_v12', JSON.stringify(staffList)), [staffList]);
-            useEffect(() => localStorage.setItem('rt_schedule_v12', JSON.stringify(schedule)), [schedule]);
-            useEffect(() => localStorage.setItem('rt_locked_v12', JSON.stringify(lockedCells)), [lockedCells]);
-            useEffect(() => localStorage.setItem('rt_holidays_v12', JSON.stringify(customHolidays)), [customHolidays]);
+            useEffect(() => localStorage.setItem('rt_settings_v21', JSON.stringify(settings)), [settings]);
+            useEffect(() => localStorage.setItem('rt_staff_v21', JSON.stringify(staffList)), [staffList]);
+            useEffect(() => localStorage.setItem('rt_schedule_v21', JSON.stringify(schedule)), [schedule]);
+            useEffect(() => localStorage.setItem('rt_locked_v21', JSON.stringify(lockedCells)), [lockedCells]);
+            useEffect(() => localStorage.setItem('rt_holidays_v21', JSON.stringify(customHolidays)), [customHolidays]);
 
-            // 動態產生日期陣列 (帶入自訂假日)
             const dates = useMemo(() => {
                 if (viewMode === 'monthly') {
                     return getMonthlyDates(settings.monthlyPeriod, customHolidays);
@@ -229,16 +260,13 @@
                 }
             }, [viewMode, settings.monthlyPeriod, settings.fourWeekStart, customHolidays]);
 
-            // 計算本期智慧基本應休天數
             const baseOffDays = useMemo(() => {
                 return dates.filter(d => d.isWeekend || d.isHoliday).length;
             }, [dates]);
 
-            // 新增：自動產生連續的四週週期選單 (以 2025-12-22 為第一期基準)
             const fourWeekCycles = useMemo(() => {
                 const base = new Date('2025-12-22');
                 const options = [];
-                // 產生 20 個週期，涵蓋 2026 全年與 2027 年初
                 for (let i = 0; i <= 20; i++) { 
                     const start = new Date(base);
                     start.setDate(start.getDate() + i * 28);
@@ -253,7 +281,6 @@
                 return options;
             }, []);
 
-            // 新增：計算月排班模式下，每一段四週區間的標題跨度 (colSpan)
             const overlayBlocks = useMemo(() => {
                 if (viewMode !== 'monthly' || !showFourWeekOverlay) return [];
                 const blocks = [];
@@ -276,14 +303,12 @@
                 return blocks;
             }, [dates, viewMode, showFourWeekOverlay]);
 
-            // 新增：如果舊紀錄的起始日(如 12/15) 不在標準週期內，自動強制修正回 12/22
             useEffect(() => {
                 if (viewMode === 'fourWeek' && !fourWeekCycles.find(c => c.val === settings.fourWeekStart)) {
                     setSettings(prev => ({ ...prev, fourWeekStart: '2025-12-22' }));
                 }
             }, [viewMode, settings.fourWeekStart, fourWeekCycles]);
 
-            // --- 班表操作 ---
             const handleCellClick = (staffId, dateStr) => {
                 const isLocked = lockedCells[staffId]?.[dateStr];
                 if (!isReservationMode && isLocked) return;
@@ -340,11 +365,12 @@
 
             const resetAllData = () => {
                 if (window.confirm('警告：這將會清除所有您排好的班表與設定，恢復成預設值！確定嗎？')) {
-                    localStorage.removeItem('rt_settings_v12');
-                    localStorage.removeItem('rt_staff_v12');
-                    localStorage.removeItem('rt_schedule_v12');
-                    localStorage.removeItem('rt_locked_v12');
-                    localStorage.removeItem('rt_holidays_v12');
+                    localStorage.removeItem('rt_settings_v21');
+                    localStorage.removeItem('rt_staff_v21');
+                    localStorage.removeItem('rt_schedule_v21');
+                    localStorage.removeItem('rt_locked_v21');
+                    localStorage.removeItem('rt_holidays_v21');
+                    localStorage.removeItem('rt_settings_v20'); // 防呆
                     window.location.reload();
                 }
             };
@@ -367,7 +393,6 @@
                 }
             };
 
-            // 新增：智慧解析國定假日文字的引擎
             const handleSmartImport = () => {
                 if (!importText.trim()) return;
 
@@ -376,24 +401,21 @@
                 const newHolidays = {};
                 let count = 0;
 
-                // 先解析「挪移與調整休假」，例如：02/15(日)小年夜02/20(五)休假
                 const shiftRegex = /\d{2}\/\d{2}\([一二三四五六日]\)(.+?)(\d{2})\/(\d{2})\([一二三四五六日]\)休假/g;
                 let match;
                 let remainingText = importText;
                 
                 while ((match = shiftRegex.exec(importText)) !== null) {
-                    const name = match[1].trim(); // 取得名稱(如小年夜)
-                    const month = match[2];       // 取得補假月份(02)
-                    const day = match[3];         // 取得補假日期(20)
-                    // 假設 11 月、12 月屬於排班起始年度 (如2025)，其餘為隔年 (如2026)
+                    const name = match[1].trim(); 
+                    const month = match[2];       
+                    const day = match[3];         
                     const year = parseInt(month, 10) >= 11 ? baseYear : baseYear + 1; 
                     const dateStr = `${year}-${month}-${day}`;
                     newHolidays[dateStr] = name + '(補)';
-                    remainingText = remainingText.replace(match[0], ''); // 替換掉已解析的部分，避免重複
+                    remainingText = remainingText.replace(match[0], ''); 
                     count++;
                 }
 
-                // 再解析「一般國定假日」，例如：12/25(四)行憲紀念日、
                 const normalRegex = /(\d{2})\/(\d{2})\([一二三四五六日]\)([^、，。：；\s]+)/g;
                 while ((match = normalRegex.exec(remainingText)) !== null) {
                     const month = match[1];
@@ -430,7 +452,7 @@
                         let explicitLeaveCount = 0;
                         idsStaffIds.forEach(id => {
                             const s = schedule[id]?.[d.date] || '';
-                            if (['D', 'E', 'N'].includes(s)) workingCount++;
+                            if (['D', 'E', 'N', 'BC', 'BO'].includes(s)) workingCount++; // 門診也是上班
                             if (['X', 'O'].includes(s)) explicitLeaveCount++;
                         });
                         if (workingCount === 0 && explicitLeaveCount > 0) {
@@ -440,7 +462,8 @@
                 }
 
                 staffList.forEach(staff => {
-                    let countD = 0, countE = 0, countN = 0, countX = 0, countO = 0;
+                    let countD = 0, countE = 0, countN = 0, countBC = 0, countBO = 0, countX = 0, countO = 0;
+                    let holidayOffCount = 0; // 假日OFF統計
                     let maxContinuous = 0, currentContinuous = 0;
                     let xIndices = []; 
                     let violations = [];
@@ -452,13 +475,22 @@
                         if (s === 'D') countD++;
                         if (s === 'E') countE++;
                         if (s === 'N') countN++;
+                        if (s === 'BC') countBC++;
+                        if (s === 'BO') countBO++;
                         if (s === 'X') {
                             countX++;
                             xIndices.push(i);
                         }
                         if (s === 'O') countO++;
 
-                        if (['D', 'E', 'N'].includes(s)) {
+                        // 統計 週末及國定假日的 OFF (包含 X, O)
+                        if (dates[i].isWeekend || dates[i].isHoliday) {
+                            if (s === 'X' || s === 'O') {
+                                holidayOffCount++;
+                            }
+                        }
+
+                        if (['D', 'E', 'N', 'BC', 'BO'].includes(s)) {
                             currentContinuous++;
                             if (currentContinuous > maxContinuous) maxContinuous = currentContinuous;
                         } else {
@@ -468,26 +500,29 @@
                         if (i < dates.length - 1) {
                             const nextDateStr = dates[i + 1].date;
                             const nextS = schedule[staff.id]?.[nextDateStr] || '';
-                            if (s === 'N' && (nextS === 'D' || nextS === 'E')) {
-                                violations.push(`${dateStr.slice(5)} 大夜接 ${nextDateStr.slice(5)} ${nextS === 'D' ? '白班' : '小夜'} (間隔不足11h)`);
+                            if (s === 'N' && ['D', 'E', 'BC', 'BO'].includes(nextS)) {
+                                violations.push(`${dateStr.slice(5)} 大夜接 ${nextDateStr.slice(5)} ${nextS}班 (間隔不足11h)`);
                             }
-                            if (s === 'E' && nextS === 'D') {
-                                violations.push(`${dateStr.slice(5)} 小夜接 ${nextDateStr.slice(5)} 白班 (間隔不足11h)`);
+                            if (s === 'E' && ['D', 'BC', 'BO'].includes(nextS)) {
+                                violations.push(`${dateStr.slice(5)} 小夜接 ${nextDateStr.slice(5)} ${nextS}班 (間隔不足11h)`);
                             }
                         }
                     }
 
-                    const totalHours = (countD * settings.hours.D) + (countE * settings.hours.E) + (countN * settings.hours.N);
+                    const totalHours = (countD * settings.hours.D) + 
+                                       (countE * settings.hours.E) + 
+                                       (countN * settings.hours.N) + 
+                                       (countBC * settings.hours.BC) + 
+                                       (countBO * settings.hours.BO);
 
                     if (totalHours > 160 && viewMode === 'fourWeek') violations.push(`四週總工時超標 (${totalHours} > 160h)`);
                     if (maxContinuous > 12) violations.push(`連續上班天數超標 (${maxContinuous} > 12天)`);
                     
-                    if (!staff.pureDayShift) {
+                    if (!staff.pureDayShift && !staff.isIDS) {
                         if (countE < staff.minE) violations.push(`小夜班數不足 (${countE} < ${staff.minE}天)`);
                         if (countN < staff.minN) violations.push(`大夜班數不足 (${countN} < ${staff.minN}天)`);
                     }
 
-                    // 智慧休假檢核：如果個人沒有指定天數，就採用系統計算的 baseOffDays
                     const targetOff = (typeof staff.customOff === 'number' && staff.customOff !== '') ? staff.customOff : baseOffDays;
                     if ((countX + countO) < targetOff) {
                         violations.push(`休假天數不足 (${countX + countO} < ${targetOff}天)`);
@@ -519,7 +554,7 @@
                     }
 
                     analysis[staff.id] = {
-                        totalHours, countD, countE, countN, countX, countO,
+                        totalHours, countD, countE, countN, countBC, countBO, countX, countO, holidayOffCount,
                         maxContinuous, violations, targetOff,
                         isValid: violations.length === 0
                     };
@@ -532,21 +567,22 @@
                 const dailyStats = [];
                 for (let i = 0; i < dates.length; i++) {
                     const dateStr = dates[i].date;
-                    let d = 0, e = 0, n = 0;
+                    let d = 0, e = 0, n = 0, bc = 0, bo = 0;
                     staffList.forEach(staff => {
                         const s = schedule[staff.id]?.[dateStr];
                         if (s === 'D') d++;
                         if (s === 'E') e++;
                         if (s === 'N') n++;
+                        if (s === 'BC') bc++;
+                        if (s === 'BO') bo++;
                     });
                     
-                    // 國定假日等同週末，套用假日人力標準
                     const isWkndOrHoliday = dates[i].isWeekend || dates[i].isHoliday;
                     const req = isWkndOrHoliday ? settings.minManpower.weekend : settings.minManpower.weekday;
                     
                     dailyStats.push({
-                        dateInfo: dates[i], actual: { D: d, E: e, N: n }, required: req,
-                        shortage: { D: d < req.D, E: e < req.E, N: n < req.N }
+                        dateInfo: dates[i], actual: { D: d, E: e, N: n, BC: bc, BO: bo }, required: req,
+                        shortage: { D: d < req.D, E: e < req.E, N: n < req.N, BC: bc < (req.BC || 0), BO: bo < (req.BO || 0) }
                     });
                 }
                 return dailyStats;
@@ -557,23 +593,23 @@
             const NavItem = ({ tabId, icon, label }) => (
                 <button 
                     onClick={() => setActiveTab(tabId)} 
-                    className={`flex items-center justify-center md:justify-start gap-2 px-3 py-3 md:px-4 md:py-3 rounded-lg md:mb-2 transition-colors whitespace-nowrap flex-1 md:flex-none
+                    className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors whitespace-nowrap shrink-0
                     ${activeTab === tabId ? 'bg-blue-600 text-white font-medium shadow-md' : 'text-gray-300 hover:bg-gray-800'}`}
                 >
-                    {icon} <span className="hidden md:inline">{label}</span>
+                    {icon} <span>{label}</span>
                 </button>
             );
 
             return (
-                <div className="flex flex-col md:flex-row h-screen bg-gray-100 font-sans text-gray-800">
-                    <nav className="no-print flex md:flex-col w-full md:w-64 bg-gray-900 text-white shadow-xl shrink-0 z-50">
-                        <div className="hidden md:block p-6 border-b border-gray-800">
-                            <h1 className="text-xl font-bold flex items-center gap-2">
+                <div className="flex flex-col h-screen bg-gray-100 font-sans text-gray-800">
+                    <nav className="no-print flex flex-col md:flex-row w-full bg-gray-900 text-white shadow-md shrink-0 z-50 items-center">
+                        <div className="flex w-full md:w-auto justify-between items-center p-3 md:px-6 md:py-3 border-b md:border-b-0 md:border-r border-gray-800">
+                            <h1 className="text-lg font-bold flex items-center gap-2 whitespace-nowrap">
                                 {Icons.Calendar} 智慧排班系統
                             </h1>
-                            <p className="text-rose-400 text-xs mt-2 font-medium">V11 國定假日智慧排休版</p>
+                            <p className="text-rose-400 text-xs ml-3 font-medium hidden md:block mt-1 whitespace-nowrap">V21 門診合併BO版</p>
                         </div>
-                        <div className="flex flex-row md:flex-col flex-1 p-2 md:p-4 overflow-x-auto gap-1 md:gap-0">
+                        <div className="flex flex-row flex-1 p-2 md:px-4 overflow-x-auto gap-2 w-full md:w-auto items-center">
                             <NavItem tabId="schedule" icon={Icons.Calendar} label="人員班表" />
                             <NavItem tabId="analysis" icon={Icons.Alert} label="違規檢查" />
                             <NavItem tabId="manpower" icon={Icons.Chart} label="每日人力" />
@@ -585,12 +621,9 @@
                     <main className="flex-1 p-2 md:p-6 overflow-hidden flex flex-col h-full relative">
                         {activeTab === 'schedule' && (
                             <div className="flex flex-col h-full bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden print-break-inside-avoid">
-                                {/* 優化壓縮後的上方工具列 */}
                                 <div className="no-print p-2 border-b border-gray-200 bg-white flex flex-col gap-2 shrink-0 z-10">
-                                    {/* 第一行：模式與日期 */}
                                     <div className="flex flex-wrap items-center justify-between gap-2">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            {/* 檢核模式切換 */}
                                             <div className="flex bg-gray-100 p-0.5 rounded-lg shrink-0">
                                                 <button 
                                                     onClick={() => { setViewMode('monthly'); setShowFourWeekOverlay(false); }}
@@ -604,7 +637,6 @@
                                                 </button>
                                             </div>
                                             
-                                            {/* 新增：四週圖層覆蓋開關 */}
                                             {viewMode === 'monthly' && (
                                                 <button 
                                                     onClick={() => setShowFourWeekOverlay(!showFourWeekOverlay)}
@@ -615,7 +647,6 @@
                                                 </button>
                                             )}
 
-                                            {/* 日期選擇與應休提示 */}
                                             <div className="flex items-center gap-2">
                                                 {viewMode === 'monthly' ? (
                                                     <div className="flex items-center gap-1">
@@ -650,7 +681,6 @@
                                         </button>
                                     </div>
 
-                                    {/* 第二行：正式/預約模式 與 筆刷 */}
                                     <div className="flex flex-wrap items-center gap-2 lg:gap-4 bg-gray-50 p-1.5 rounded-lg border border-gray-100">
                                         <div className="flex bg-gray-200 p-0.5 rounded-lg items-center shrink-0">
                                             <button 
@@ -670,6 +700,7 @@
                                         <div className="flex flex-wrap items-center gap-1.5">
                                             <span className="font-medium text-gray-600 text-sm hidden sm:inline ml-1">筆刷：</span>
                                             {[{ code: 'D', l: '白班 D' }, { code: 'E', l: '小夜 E' }, { code: 'N', l: '大夜 N' }, 
+                                              { code: 'BC', l: '行政 BC' }, { code: 'BO', l: '門診 BO' },
                                               { code: 'X', l: '例假 X' }, { code: 'O', l: '休息 O' }, { code: '', l: '橡皮擦' }].map(shift => (
                                                 <button key={shift.code} onClick={() => setPaintBrush(shift.code)}
                                                     className={`px-2 lg:px-3 py-1 rounded-md font-medium text-xs lg:text-sm transition-all whitespace-nowrap border
@@ -683,12 +714,10 @@
                                     </div>
                                 </div>
 
-                                {/* 表格區域 */}
                                 <div className="flex-1 overflow-auto bg-gray-100/30 relative">
                                     <div className="inline-block min-w-full align-middle pb-8">
                                         <table className="min-w-full border-collapse bg-white table-fixed md:table-auto">
                                             <thead className="sticky top-0 z-20 bg-gray-100 shadow-sm">
-                                                {/* 四週模式下的「兩週區間」頂部標示框 */}
                                                 {viewMode === 'fourWeek' && (
                                                     <tr>
                                                         <th className="sticky left-0 z-30 bg-gray-100 border-b border-r border-gray-300 shadow-[1px_0_0_0_#d1d5db]"></th>
@@ -697,7 +726,6 @@
                                                         <th className="border-b border-gray-200 bg-gray-100"></th>
                                                     </tr>
                                                 )}
-                                                {/* 月排班模式下的「四週圖層覆蓋」頂部標示框 */}
                                                 {viewMode === 'monthly' && showFourWeekOverlay && (
                                                     <tr>
                                                         <th className="sticky left-0 z-30 bg-gray-100 border-b border-r border-gray-300 shadow-[1px_0_0_0_#d1d5db]"></th>
@@ -715,7 +743,6 @@
                                                         治療師
                                                     </th>
                                                     {dates.map((d, dayIndex) => {
-                                                        // 判斷表頭垂直分割粗線
                                                         const info = getCycleInfo(d.date);
                                                         let borderClass = 'border-r border-gray-200';
                                                         if (viewMode === 'fourWeek') {
@@ -754,7 +781,8 @@
                                                             </div>
                                                             <div className="text-[10px] md:text-xs text-gray-400 font-normal mt-0.5 whitespace-nowrap">
                                                                 {staff.isIDS && <span className="text-purple-600 font-bold mr-1">⭐IDS</span>}
-                                                                {staff.pureDayShift ? '🟢 純白班' : `夜: ${staff.minE}E, ${staff.minN}N`} 
+                                                                {staff.isBO && <span className="text-amber-600 font-bold mr-1">🏥門診</span>}
+                                                                {staff.pureDayShift || staff.isIDS ? '🟢 免夜班' : `夜: ${staff.minE}E, ${staff.minN}N`} 
                                                                 <span className="ml-1 px-1 bg-gray-100 rounded text-gray-500">休≥{analyzeSchedule[staff.id]?.targetOff || baseOffDays}</span>
                                                             </div>
                                                         </td>
@@ -763,7 +791,6 @@
                                                             const isLocked = lockedCells[staff.id]?.[d.date];
                                                             const canEdit = isReservationMode || !isLocked;
                                                             
-                                                            // 判斷內容區垂直分割粗線
                                                             const info = getCycleInfo(d.date);
                                                             let borderClass = 'border-r border-gray-200';
                                                             if (viewMode === 'fourWeek') {
@@ -835,6 +862,9 @@
                                                 <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 border-b">
                                                     休假日(X+O)<br/><span className="text-xs font-normal text-blue-600">(智慧目標)</span>
                                                 </th>
+                                                <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700 border-b">
+                                                    假日OFF<br/><span className="text-xs font-normal text-teal-600">(週末/國定)</span>
+                                                </th>
                                                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b w-full">違規詳情</th>
                                             </tr>
                                         </thead>
@@ -854,6 +884,9 @@
                                                         <td className={`px-4 py-3 text-center text-sm font-bold ${data.maxContinuous > 12 ? 'text-red-600' : 'text-gray-700'}`}>{data.maxContinuous}</td>
                                                         <td className={`px-4 py-3 text-center text-sm font-bold ${(data.countX + data.countO) < data.targetOff ? 'text-red-600' : 'text-gray-700'}`}>
                                                             {data.countX + data.countO} <span className="text-xs font-normal text-gray-400">/ {data.targetOff}</span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center text-sm font-bold text-teal-700">
+                                                            {data.holidayOffCount}
                                                         </td>
                                                         <td className="px-4 py-3 text-sm text-red-600 whitespace-normal min-w-[300px]">
                                                             {data.violations.length > 0 ? (
@@ -907,6 +940,18 @@
                                                         {dayData.actual.N} <span className="text-gray-400 font-normal">/{dayData.required.N}</span>
                                                     </span>
                                                 </div>
+                                                <div className="flex justify-between border-t border-gray-200/50 pt-1 mt-1">
+                                                    <span className="text-teal-700 font-medium">行政BC</span>
+                                                    <span className={`font-bold ${dayData.shortage.BC ? 'text-red-600' : 'text-gray-600'}`}>
+                                                        {dayData.actual.BC} <span className="text-gray-400 font-normal">/{dayData.required.BC || 0}</span>
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-amber-700 font-medium">門診BO</span>
+                                                    <span className={`font-bold ${dayData.shortage.BO ? 'text-red-600' : 'text-gray-600'}`}>
+                                                        {dayData.actual.BO} <span className="text-gray-400 font-normal">/{dayData.required.BO || 0}</span>
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
@@ -915,7 +960,7 @@
                         )}
 
                         {(activeTab === 'staff' || activeTab === 'settings') && (
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 h-full overflow-auto max-w-5xl mx-auto w-full">
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 h-full overflow-auto w-full">
                                 {activeTab === 'staff' ? (
                                     <>
                                         <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">人員名單管理</h2>
@@ -923,32 +968,36 @@
                                             <table className="min-w-full border border-gray-200 rounded-lg">
                                                 <thead className="bg-gray-50">
                                                     <tr>
-                                                        <th className="px-4 py-2 text-left text-sm font-semibold">姓名</th>
-                                                        <th className="px-4 py-2 text-center text-sm font-semibold w-24">純白班</th>
-                                                        <th className="px-4 py-2 text-center text-sm font-semibold w-28">
-                                                            IDS個管師
-                                                            <div className="text-[10px] text-red-500 font-normal mt-0.5">不能同時放假</div>
+                                                        <th className="px-2 py-2 text-left text-sm font-semibold">姓名</th>
+                                                        <th className="px-2 py-2 text-center text-sm font-semibold w-20">純白班</th>
+                                                        <th className="px-2 py-2 text-center text-sm font-semibold w-24">
+                                                            IDS個管
+                                                            <div className="text-[10px] text-red-500 font-normal mt-0.5">不能同休</div>
                                                         </th>
-                                                        <th className="px-4 py-2 text-center text-sm font-semibold w-28">小夜班至少 (天)</th>
-                                                        <th className="px-4 py-2 text-center text-sm font-semibold w-28">大夜班至少 (天)</th>
-                                                        <th className="px-4 py-2 text-center text-sm font-semibold w-28">
-                                                            指定應休(天)
-                                                            <div className="text-[10px] text-gray-500 font-normal mt-0.5">留白則由系統計算</div>
+                                                        <th className="px-2 py-2 text-center text-sm font-semibold w-24">小夜班<br/>至少(天)</th>
+                                                        <th className="px-2 py-2 text-center text-sm font-semibold w-24">大夜班<br/>至少(天)</th>
+                                                        <th className="px-2 py-2 text-center text-sm font-semibold w-24">
+                                                            門診資格
+                                                            <div className="text-[10px] text-amber-600 font-normal mt-0.5">可上BO班</div>
+                                                        </th>
+                                                        <th className="px-2 py-2 text-center text-sm font-semibold w-24">
+                                                            指定應休
+                                                            <div className="text-[10px] text-gray-500 font-normal mt-0.5">空白由系統算</div>
                                                         </th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-200">
                                                     {staffList.map((staff, idx) => (
                                                         <tr key={staff.id}>
-                                                            <td className="px-4 py-2">
+                                                            <td className="px-2 py-2">
                                                                 <input type="text" value={staff.name} 
                                                                     onChange={e => {
                                                                         const newList = [...staffList];
                                                                         newList[idx].name = e.target.value;
                                                                         setStaffList(newList);
-                                                                    }} className="w-full border-gray-300 rounded px-2 py-1 bg-gray-50 hover:bg-white focus:bg-white"/>
+                                                                    }} className="w-full border-gray-300 rounded px-2 py-1 bg-gray-50 hover:bg-white focus:bg-white text-sm"/>
                                                             </td>
-                                                            <td className="px-4 py-2 text-center">
+                                                            <td className="px-2 py-2 text-center">
                                                                 <input type="checkbox" checked={staff.pureDayShift || false}
                                                                     onChange={e => {
                                                                         const newList = [...staffList];
@@ -961,37 +1010,50 @@
                                                                         setStaffList(newList);
                                                                     }} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"/>
                                                             </td>
-                                                            <td className="px-4 py-2 text-center">
+                                                            <td className="px-2 py-2 text-center">
                                                                 <input type="checkbox" checked={staff.isIDS || false}
                                                                     onChange={e => {
                                                                         const newList = [...staffList];
-                                                                        newList[idx].isIDS = e.target.checked;
+                                                                        const isIDS = e.target.checked;
+                                                                        newList[idx].isIDS = isIDS;
+                                                                        if (isIDS) {
+                                                                            newList[idx].minE = 0;
+                                                                            newList[idx].minN = 0;
+                                                                        }
                                                                         setStaffList(newList);
                                                                     }} className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500 cursor-pointer"/>
                                                             </td>
-                                                            <td className="px-4 py-2 text-center">
-                                                                <input type="number" value={staff.minE} disabled={staff.pureDayShift}
+                                                            <td className="px-2 py-2 text-center">
+                                                                <input type="number" value={staff.minE} disabled={staff.pureDayShift || staff.isIDS}
                                                                     onChange={e => {
                                                                         const newList = [...staffList];
                                                                         newList[idx].minE = Number(e.target.value);
                                                                         setStaffList(newList);
-                                                                    }} className={`w-full border-gray-300 rounded px-2 py-1 text-center ${staff.pureDayShift ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-50 hover:bg-white'}`}/>
+                                                                    }} className={`w-full border-gray-300 rounded px-1 py-1 text-center text-sm ${staff.pureDayShift || staff.isIDS ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-50 hover:bg-white'}`}/>
                                                             </td>
-                                                            <td className="px-4 py-2 text-center">
-                                                                <input type="number" value={staff.minN} disabled={staff.pureDayShift}
+                                                            <td className="px-2 py-2 text-center">
+                                                                <input type="number" value={staff.minN} disabled={staff.pureDayShift || staff.isIDS}
                                                                     onChange={e => {
                                                                         const newList = [...staffList];
                                                                         newList[idx].minN = Number(e.target.value);
                                                                         setStaffList(newList);
-                                                                    }} className={`w-full border-gray-300 rounded px-2 py-1 text-center ${staff.pureDayShift ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-50 hover:bg-white'}`}/>
+                                                                    }} className={`w-full border-gray-300 rounded px-1 py-1 text-center text-sm ${staff.pureDayShift || staff.isIDS ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-50 hover:bg-white'}`}/>
                                                             </td>
-                                                            <td className="px-4 py-2 text-center relative">
+                                                            <td className="px-2 py-2 text-center">
+                                                                <input type="checkbox" checked={staff.isBO || false}
+                                                                    onChange={e => {
+                                                                        const newList = [...staffList];
+                                                                        newList[idx].isBO = e.target.checked;
+                                                                        setStaffList(newList);
+                                                                    }} className="w-5 h-5 text-amber-600 rounded border-gray-300 focus:ring-amber-500 cursor-pointer"/>
+                                                            </td>
+                                                            <td className="px-2 py-2 text-center relative">
                                                                 <input type="number" value={staff.customOff === undefined ? '' : staff.customOff} placeholder={String(baseOffDays)}
                                                                     onChange={e => {
                                                                         const newList = [...staffList];
                                                                         newList[idx].customOff = e.target.value ? Number(e.target.value) : '';
                                                                         setStaffList(newList);
-                                                                    }} className="w-full border-gray-300 rounded px-2 py-1 text-center bg-blue-50/50 hover:bg-white focus:bg-white placeholder-gray-400 font-bold text-blue-800"/>
+                                                                    }} className="w-full border-gray-300 rounded px-1 py-1 text-center text-sm bg-blue-50/50 hover:bg-white focus:bg-white placeholder-gray-400 font-bold text-blue-800"/>
                                                             </td>
                                                         </tr>
                                                     ))}
@@ -1003,56 +1065,45 @@
                                     <div className="space-y-8">
                                         <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">系統參數設定</h2>
                                         
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                                <h3 className="font-bold text-gray-700 mb-3 border-b pb-2">班次工時定義</h3>
-                                                <div className="flex justify-between items-center mb-2">
-                                                    <span className="text-sm">白班 / 小夜</span>
-                                                    <div className="text-sm text-gray-500">預設 8 小時</div>
-                                                </div>
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-sm font-medium">大夜班工時</span>
-                                                    <input type="number" value={settings.hours.N} 
-                                                        onChange={e => setSettings({...settings, hours: {...settings.hours, N: Number(e.target.value)}})}
-                                                        className="w-20 border border-gray-300 rounded px-2 py-1 text-center"/>
-                                                </div>
-                                            </div>
-
-                                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                                <h3 className="font-bold text-gray-700 mb-3 border-b pb-2">每日最低人力需求</h3>
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <h4 className="text-sm font-bold text-gray-600 mb-2 text-center">平日</h4>
-                                                        <div className="space-y-2">
-                                                            {['D', 'E', 'N'].map(shift => (
-                                                                <div key={`wd-${shift}`} className="flex justify-between items-center">
-                                                                    <span className="text-sm">{shift === 'D' ? '白班' : shift === 'E' ? '小夜' : '大夜'}</span>
-                                                                    <input type="number" value={settings.minManpower.weekday[shift]} min="0"
-                                                                        onChange={e => setSettings({...settings, minManpower: {...settings.minManpower, weekday: {...settings.minManpower.weekday, [shift]: Number(e.target.value)}}})}
-                                                                        className="w-12 border border-gray-300 rounded px-1 py-1 text-center text-sm" />
-                                                                </div>
-                                                            ))}
-                                                        </div>
+                                        <div className="bg-gray-50 p-4 md:p-6 rounded-lg border border-gray-200">
+                                            <h3 className="font-bold text-gray-700 mb-4 border-b pb-2">每日最低人力需求</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+                                                <div className="bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+                                                    <h4 className="text-sm font-bold text-gray-600 mb-4 text-center pb-2 border-b border-gray-100">平日 (星期一至五)</h4>
+                                                    <div className="space-y-3 px-2 md:px-6">
+                                                        {['D', 'E', 'N', 'BC', 'BO'].map(shift => (
+                                                            <div key={`wd-${shift}`} className="flex justify-between items-center">
+                                                                <span className="text-sm font-medium text-gray-700">
+                                                                    {shift === 'D' ? '白班' : shift === 'E' ? '小夜' : shift === 'N' ? '大夜' : shift === 'BC' ? '行政BC' : '門診BO'}
+                                                                </span>
+                                                                <input type="number" value={settings.minManpower.weekday[shift]} min="0"
+                                                                    onChange={e => setSettings({...settings, minManpower: {...settings.minManpower, weekday: {...settings.minManpower.weekday, [shift]: Number(e.target.value)}}})}
+                                                                    className="w-16 border border-gray-300 rounded px-2 py-1 text-center text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                                                            </div>
+                                                        ))}
                                                     </div>
-                                                    <div>
-                                                        <h4 className="text-sm font-bold text-rose-600 mb-2 text-center">假日 (含週末及國定假日)</h4>
-                                                        <div className="space-y-2">
-                                                            {['D', 'E', 'N'].map(shift => (
-                                                                <div key={`we-${shift}`} className="flex justify-between items-center">
-                                                                    <span className="text-sm">{shift === 'D' ? '白班' : shift === 'E' ? '小夜' : '大夜'}</span>
-                                                                    <input type="number" value={settings.minManpower.weekend[shift]} min="0"
-                                                                        onChange={e => setSettings({...settings, minManpower: {...settings.minManpower, weekend: {...settings.minManpower.weekend, [shift]: Number(e.target.value)}}})}
-                                                                        className="w-12 border border-gray-300 rounded px-1 py-1 text-center text-sm" />
-                                                                </div>
-                                                            ))}
-                                                        </div>
+                                                </div>
+                                                <div className="bg-white p-4 rounded-lg border border-rose-100 shadow-sm">
+                                                    <h4 className="text-sm font-bold text-rose-600 mb-4 text-center pb-2 border-b border-rose-50">假日 (含週末及國定假日)</h4>
+                                                    <div className="space-y-3 px-2 md:px-6">
+                                                        {['D', 'E', 'N', 'BC', 'BO'].map(shift => (
+                                                            <div key={`we-${shift}`} className="flex justify-between items-center">
+                                                                <span className="text-sm font-medium text-gray-700">
+                                                                    {shift === 'D' ? '白班' : shift === 'E' ? '小夜' : shift === 'N' ? '大夜' : shift === 'BC' ? '行政BC' : '門診BO'}
+                                                                </span>
+                                                                <input type="number" value={settings.minManpower.weekend[shift]} min="0"
+                                                                    onChange={e => setSettings({...settings, minManpower: {...settings.minManpower, weekend: {...settings.minManpower.weekend, [shift]: Number(e.target.value)}}})}
+                                                                    className="w-16 border border-rose-300 rounded px-2 py-1 text-center text-sm focus:ring-2 focus:ring-rose-500 outline-none transition-all bg-rose-50/30" />
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 </div>
                                             </div>
+                                        </div>
 
-                                            {/* 新增的自訂國定假日區塊 */}
-                                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 col-span-1 md:col-span-2">
-                                                <h3 className="font-bold text-gray-700 mb-3 border-b pb-2">自訂國定假日與調整放假</h3>
+                                        {/* 新增的自訂國定假日區塊 */}
+                                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                            <h3 className="font-bold text-gray-700 mb-3 border-b pb-2">自訂國定假日與調整放假</h3>
                                                 
                                                 {/* 智慧匯入區塊 */}
                                                 <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -1110,7 +1161,6 @@
                                                         <div className="col-span-full text-center text-gray-500 py-4">目前沒有設定任何國定假日</div>
                                                     )}
                                                 </div>
-                                            </div>
                                         </div>
 
                                         <div className="mt-10 p-4 bg-red-50 border border-red-200 rounded-lg">
