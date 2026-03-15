@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>低血氧 (Hypoxemia) 快速評估與處置助手</title>
+  
+  <!-- 引入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- 引入 React & ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- 引入 Babel 用於在瀏覽器中編譯 JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-gray-100">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // --- 圖示元件 (取代外部依賴，確保單檔完美運行) ---
+    const IconStethoscope = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3A3 3 0 0 1 12 4v5a5 5 0 0 1-10 0V4a3 3 0 0 1 2.8-1.7z"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>;
+    const IconActivity = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
+    const IconAlertTriangle = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
+    const IconCheckCircle = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
+    const IconAlertCircle = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
+    const IconInfo = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>;
+    const IconWind = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/></svg>;
+    const IconHeartPulse = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/></svg>;
+    const IconBookOpen = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>;
+    const IconChevronDown = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="6 9 12 15 18 9"/></svg>;
+    const IconChevronUp = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="18 15 12 9 6 15"/></svg>;
+    const IconBrain = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z"/></svg>;
+    const IconMountain = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>;
+    const IconLungs = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 22a2.5 2.5 0 0 0 2.5-2.5c0-.75-.32-1.58-.87-2.32L12 15l-1.63 2.18c-.55.74-.87 1.57-.87 2.32A2.5 2.5 0 0 0 12 22Z"/><path d="M12 15V2"/><path d="M12 5.5A2.5 2.5 0 0 0 9.5 3H7a5 5 0 0 0-5 5v3c0 4 3 6 5 6h2.5"/><path d="M12 5.5A2.5 2.5 0 0 1 14.5 3H17a5 5 0 0 1 5 5v3c0 4-3 6-5 6h-2.5"/></svg>;
+    const IconDroplets = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7 2.9 7 2.9s-2.15 6.16-2.29 6.16c-1.14.93-1.71 2.03-1.71 3.19 0 2.22 1.8 4.05 4 4.05z"/><path d="M17 21.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S17 7.9 17 7.9s-2.15 6.16-2.29 6.16c-1.14.93-1.71 2.03-1.71 3.19 0 2.22 1.8 4.05 4 4.05z"/></svg>;
+    const IconActivitySquare = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M17 12h-2l-2 5-2-10-2 5H7"/></svg>;
+    const IconShieldAlert = ({ size=24, className="" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>;
+
+
+    // --- 主要 App 元件 ---
+    const App = () => {
+      const [spo2, setSpo2] = useState(95);
+      const [pao2, setPao2] = useState('');
+      const [paco2, setPaco2] = useState('');
+      const [fio2, setFio2] = useState(21);
+      const [age, setAge] = useState(30);
+
+      const [showEdu, setShowEdu] = useState(false);
+      const [results, setResults] = useState({
+        isHypoxemic: false,
+        severity: '正常',
+        severityColor: 'text-green-500',
+        bgColor: 'bg-green-50',
+        paO2Estimated: false,
+        aaGradient: null,
+        expectedAa: null,
+        mechanism: [],
+        solutions: []
+      });
+
+      useEffect(() => {
+        analyzeHypoxemia();
+      }, [spo2, pao2, paco2, fio2, age]);
+
+      const analyzeHypoxemia = () => {
+        let currentPaO2 = parseFloat(pao2);
+        let isEstimated = false;
+
+        if (isNaN(currentPaO2)) {
+          isEstimated = true;
+          if (spo2 >= 95) currentPaO2 = 80;
+          else if (spo2 >= 90) currentPaO2 = 60;
+          else if (spo2 >= 80) currentPaO2 = 50;
+          else if (spo2 >= 70) currentPaO2 = 40;
+          else currentPaO2 = 30;
+        }
+
+        let hypoxemic = false;
+        let severityStatus = '正常 (Normal)';
+        let color = 'text-green-600';
+        let bg = 'bg-green-50 border-green-200';
+
+        if (currentPaO2 < 60 || spo2 < 90) {
+          hypoxemic = true;
+          severityStatus = '重度低血氧 (Severe Hypoxemia)';
+          color = 'text-red-600';
+          bg = 'bg-red-50 border-red-200';
+        } else if (currentPaO2 < 80 || spo2 < 95) {
+          hypoxemic = true;
+          severityStatus = '輕/中度低血氧 (Mild/Moderate)';
+          color = 'text-orange-600';
+          bg = 'bg-orange-50 border-orange-200';
+        }
+
+        let calculatedAa = null;
+        let expectedAaValue = null;
+        let mechanisms = [];
+        let recommendedSolutions = [];
+
+        const numPaCO2 = parseFloat(paco2);
+        const numFiO2 = parseFloat(fio2) / 100;
+        const numAge = parseFloat(age) || 30;
+
+        if (hypoxemic) {
+           recommendedSolutions.push('【一般目標】將 SpO2 維持在 88% - 95%，或 PaO2 維持在 55 - 80 mmHg 即可，以避免過高氧氣引發「高氧性急性肺損傷」。');
+           recommendedSolutions.push('【緊急原則】絕不應因為擔憂氧氣中毒或抑制呼吸驅力，而對嚴重缺氧的患者扣留氧氣。');
+        }
+
+        if (!isNaN(currentPaO2) && !isNaN(numPaCO2) && !isNaN(numFiO2)) {
+          const PAO2 = (713 * numFiO2) - (numPaCO2 / 0.8);
+          calculatedAa = PAO2 - currentPaO2;
+          expectedAaValue = (numAge / 4) + 4;
+          const isAaElevated = calculatedAa > (expectedAaValue + 5);
+
+          if (hypoxemic) {
+            if (!isAaElevated) {
+              if (numPaCO2 > 45) {
+                mechanisms.push({ title: '肺泡通氣不足 (Alveolar Hypoventilation)', desc: '肺泡換氣量下降，異常累積的 CO2 「排擠」了肺泡內的氧氣分壓。A-a gradient 維持正常。', cause: '中樞神經受抑制(藥物過量)、神經肌肉疾病等。' });
+                recommendedSolutions.push('【通氣不足處置】單靠給氧無法解決二氧化碳堆積。必須改善通氣量（考慮非侵入性 NIV 或侵入性機械換氣）以排出 CO2。');
+              } else {
+                mechanisms.push({ title: '吸入氧氣分壓降低 (Decreased Inspired Oxygen)', desc: '環境中的氧氣分壓低於正常值。呼吸系統正常，但因來源氧氣不足而缺氧。', cause: '高海拔地區。' });
+                recommendedSolutions.push('【低氧環境處置】給予補充氧氣 (Supplemental O2) 即可明顯改善。');
+              }
+            } else {
+              const pF_ratio = currentPaO2 / numFiO2;
+              if (numFiO2 > 0.4 && pF_ratio < 200) {
+                 mechanisms.push({ title: '分流 (Shunt)', desc: 'V/Q 失衡的極端情況 (V/Q = 0)。充滿缺氧血的靜脈血繞過通氣區直接混入動脈血。', cause: '嚴重肺炎、ARDS、肺不張、肺水腫或先天性心內分流。' });
+                 recommendedSolutions.push('【分流處置】對高濃度氧氣反應極差 (Refractory hypoxemia)。需使用吐氣末正壓 (PEEP) 或 CPAP 來撐開塌陷肺泡、清除積液。');
+              } else {
+                 mechanisms.push({ title: '通氣/血流灌注比例失衡 (V/Q Mismatch)', desc: '最常見的原因。局部通氣量減少，但血流灌注依舊存在，打破平衡。', cause: '氣喘、肺氣腫、輕度肺部感染、心臟衰竭。' });
+                 mechanisms.push({ title: '擴散障礙 (Diffusion Impairment)', desc: '肺泡-微血管膜受損、增厚或結疤。休息時影響較小，運動時低血氧會明顯惡化。', cause: '肺纖維化、石棉沉著症、結節病。' });
+                 mechanisms.push({ title: '靜脈血混合 (Venous Admixture) / 灌注擴散障礙', desc: '心輸出量偏低增加組織氧氣提取，導致混合靜脈血氧極低；或肺微血管異常擴張導致擴散障礙。', cause: '鬱血性心臟衰竭、肝肺症候群 (Hepatopulmonary syndrome)。' });
+                 
+                 recommendedSolutions.push('【V/Q失衡與擴散障礙處置】給予補充氧氣 (Supplemental O2) 通常能顯著改善血氧，足以彌補氣體交換效率不足。');
+                 recommendedSolutions.push('針對根本原因治療（如：支氣管擴張劑、利尿劑、抗生素等）。');
+              }
+            }
+          }
+        } else if (hypoxemic) {
+          mechanisms.push({ title: '請輸入 PaO2 與 PaCO2 以進行精確分類', desc: '需要計算 A-a Gradient 才能精準鑑別 6 大低血氧機制是屬於肺外或肺內問題。', cause: '' });
+          recommendedSolutions.push('立即給予氧氣支持，確保生命徵象穩定。');
+          recommendedSolutions.push('抽動脈血氣體分析 (ABG) 以獲得 PaO2 與 PaCO2。');
+        }
+
+        if (!hypoxemic) {
+          mechanisms.push({ title: '目前無明顯低血氧狀況', desc: '動脈血氧分壓（PaO2）在預期正常值內。', cause: '' });
+          recommendedSolutions.push('持續監測生命徵象與 SpO2。');
+        }
+
+        setResults({
+          isHypoxemic: hypoxemic,
+          severity: severityStatus,
+          severityColor: color,
+          bgColor: bg,
+          paO2Estimated: isEstimated,
+          aaGradient: calculatedAa ? calculatedAa.toFixed(1) : null,
+          expectedAa: expectedAaValue ? expectedAaValue.toFixed(1) : null,
+          mechanism: mechanisms,
+          solutions: recommendedSolutions
+        });
+      };
+
+      return (
+        <div className="min-h-screen bg-gray-100 p-4 md:p-8 font-sans pb-20">
+          <div className="max-w-6xl mx-auto space-y-6">
+            
+            <div className="bg-gradient-to-r from-blue-800 to-blue-600 text-white p-6 rounded-2xl shadow-lg flex items-center space-x-4">
+              <IconStethoscope size={40} className="text-blue-100" />
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold">臨床低血氧評估與學習助手</h1>
+                <p className="text-blue-100 mt-1">第一型急性呼吸衰竭 (Hypoxemia) 6大機制鑑別</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              <div className="lg:col-span-5 space-y-6">
+                <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
+                  <h2 className="text-xl font-semibold mb-4 flex items-center text-gray-800">
+                    <IconActivity className="mr-2 text-blue-500" size={20}/> 參數輸入
+                  </h2>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SpO2 (血氧飽和度) % <span className="text-red-500">*</span></label>
+                      <input type="number" value={spo2} onChange={(e) => setSpo2(e.target.value)}
+                        className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all outline-none" placeholder="90 - 100" />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">PaO2 (動脈氧分壓)</label>
+                        <input type="number" value={pao2} onChange={(e) => setPao2(e.target.value)}
+                          className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none" placeholder="mmHg" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">PaCO2 (二氧化碳分壓)</label>
+                        <input type="number" value={paco2} onChange={(e) => setPaco2(e.target.value)}
+                          className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none" placeholder="mmHg" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">FiO2 (吸入氧濃度) %</label>
+                        <input type="number" value={fio2} onChange={(e) => setFio2(e.target.value)}
+                          className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none" placeholder="Room air=21" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">病患年齡 (Age)</label>
+                        <input type="number" value={age} onChange={(e) => setAge(e.target.value)}
+                          className="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none" />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-5 text-sm text-blue-800 bg-blue-50 p-3 rounded-lg flex items-start">
+                    <IconInfo size={18} className="mr-2 text-blue-500 flex-shrink-0 mt-0.5" />
+                    <p>輸入 PaO2 與 PaCO2 即可自動計算 <strong>A-a Gradient</strong>，幫助您鑑別低血氧的 6 大潛在原因。</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-7 space-y-6">
+                <div className={`p-6 rounded-2xl shadow-md border ${results.bgColor} transition-colors duration-300`}>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-gray-600 font-medium text-sm">當前血氧狀態評估</h3>
+                      <div className={`text-2xl md:text-3xl font-bold mt-1 ${results.severityColor} flex items-center`}>
+                        {results.isHypoxemic ? <IconAlertTriangle className="mr-3" size={32} /> : <IconCheckCircle className="mr-3" size={32} />}
+                        {results.severity}
+                      </div>
+                      {results.paO2Estimated && results.isHypoxemic && (
+                        <p className="text-sm mt-2 text-gray-600 flex items-center">
+                          <IconAlertCircle size={14} className="mr-1"/> 未提供 PaO2，此為根據 SpO2 之估算結果
+                        </p>
+                      )}
+                    </div>
+                    
+                    {results.aaGradient !== null && (
+                      <div className="bg-white p-4 rounded-xl border border-black/10 shadow-sm w-full sm:w-auto flex-shrink-0 text-center sm:text-right">
+                        <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">A-a Gradient</div>
+                        <div className="text-3xl font-black text-gray-800">{results.aaGradient} <span className="text-sm font-normal text-gray-500">mmHg</span></div>
+                        <div className="text-xs font-medium text-indigo-600 mt-1 bg-indigo-50 py-1 px-2 rounded-md">預期正常值: ≤ {results.expectedAa}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
+                  <h2 className="text-xl font-bold mb-4 flex items-center text-gray-800 border-b pb-3">
+                    <IconWind className="mr-2 text-indigo-500" size={22}/> 電腦判讀：可能原因與處置
+                  </h2>
+                  
+                  <div className="space-y-4">
+                    {results.mechanism.map((mech, idx) => (
+                      <div key={idx} className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                        <h4 className="font-bold text-indigo-900 text-lg">{mech.title}</h4>
+                        <p className="text-sm text-gray-700 mt-2 font-medium leading-relaxed">{mech.desc}</p>
+                        {mech.cause && (
+                          <div className="mt-3 text-sm bg-white p-2.5 rounded-lg text-gray-600 border border-indigo-50 shadow-sm">
+                            <span className="font-semibold text-gray-800">常見原因：</span>{mech.cause}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {results.solutions.length > 0 && (
+                    <div className="mt-6 pt-4 border-t border-gray-100">
+                      <h4 className="font-bold text-gray-800 flex items-center mb-3">
+                        <IconHeartPulse className="mr-2 text-red-500" size={18}/> 臨床處置建議與原則
+                      </h4>
+                      <ul className="space-y-3">
+                        {results.solutions.map((solution, idx) => {
+                          const isWarning = solution.includes('【緊急原則】');
+                          return (
+                            <li key={idx} className={`flex items-start p-2 rounded-lg ${isWarning ? 'bg-red-50' : ''}`}>
+                              {isWarning ? 
+                                <IconShieldAlert className="text-red-600 mr-2 mt-0.5 flex-shrink-0" size={18} /> : 
+                                <IconCheckCircle className="text-green-500 mr-2 mt-0.5 flex-shrink-0" size={18} />
+                              }
+                              <span className={`text-sm leading-relaxed ${isWarning ? 'text-red-800 font-medium' : 'text-gray-700'}`}>
+                                {solution}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+
+            <div className="mt-8 bg-white rounded-2xl shadow-lg border border-indigo-100 overflow-hidden transition-all duration-300">
+              <button 
+                onClick={() => setShowEdu(!showEdu)}
+                className="w-full bg-indigo-50 hover:bg-indigo-100 transition-colors p-6 flex justify-between items-center outline-none"
+              >
+                <div className="flex items-center text-left">
+                  <div className="bg-indigo-600 p-2 rounded-lg mr-4 text-white">
+                    <IconBookOpen size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl md:text-2xl font-bold text-indigo-900">低血氧 6 大機制與處置指引</h2>
+                    <p className="text-indigo-700 text-sm mt-1">深入了解第一型（低血氧型）急性呼吸衰竭的核心知識</p>
+                  </div>
+                </div>
+                <div className="bg-white p-2 rounded-full shadow-sm text-indigo-600">
+                  {showEdu ? <IconChevronUp size={24} /> : <IconChevronDown size={24} />}
+                </div>
+              </button>
+
+              {showEdu && (
+                <div className="p-6 md:p-8 border-t border-indigo-100">
+                  <p className="text-gray-700 leading-relaxed mb-6 text-lg">
+                    <strong>低氧血症（Hypoxemia）</strong>發生於動脈血氧分壓（PaO2）降至低於預期正常值時，代表血液中氧氣含量過低，常被稱為<strong>第一型（低血氧型）急性呼吸衰竭</strong>。臨床上可依據 <strong>A-a gradient</strong> 是否升高，將其劃分為 6 大主要原因：
+                  </p>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                    
+                    <div className="bg-green-50 rounded-2xl p-6 border border-green-200 shadow-sm relative">
+                      <div className="absolute top-0 right-0 bg-green-200 text-green-800 text-xs font-bold px-3 py-1 rounded-bl-lg">肺外問題</div>
+                      <h3 className="text-xl font-bold text-green-800 border-b border-green-200 pb-3 mb-4 flex items-center">
+                        一、 A-a gradient 正常 <span className="text-sm font-normal ml-2 bg-white px-2 py-1 rounded-md shadow-sm">通常 &lt; 15 mmHg</span>
+                      </h3>
+                      <p className="text-sm text-green-900 mb-4">肺實質本身並未受損，低血氧是因為「進入肺泡的氧氣量」本身就不夠。</p>
+                      
+                      <div className="space-y-4">
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-green-100">
+                          <h4 className="font-bold flex items-center text-gray-800 text-base">
+                            <IconBrain className="w-5 h-5 mr-2 text-green-600" /> 1. 肺泡通氣不足 (Alveolar Hypoventilation)
+                          </h4>
+                          <p className="text-sm text-gray-600 mt-2">肺泡換氣量下降，動脈血中 CO2 異常累積，升高的 CO2 直接「排擠」並降低肺泡內的氧氣分壓。</p>
+                          <div className="mt-2 text-xs font-bold bg-yellow-100 text-yellow-800 inline-block px-2 py-1 rounded">
+                            ★ 特徵：伴隨 PaCO2 顯著升高
+                          </div>
+                        </div>
+
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-green-100">
+                          <h4 className="font-bold flex items-center text-gray-800 text-base">
+                            <IconMountain className="w-5 h-5 mr-2 text-green-600" /> 2. 吸入氧分壓降低 (Decreased Inspired O2)
+                          </h4>
+                          <p className="text-sm text-gray-600 mt-2">環境中的氧氣分壓低於正常值（如高海拔地區）。即使呼吸系統正常，也會因來源氧氣不足而缺氧。</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-red-50 rounded-2xl p-6 border border-red-200 shadow-sm relative">
+                      <div className="absolute top-0 right-0 bg-red-200 text-red-800 text-xs font-bold px-3 py-1 rounded-bl-lg">肺內/血管問題</div>
+                      <h3 className="text-xl font-bold text-red-800 border-b border-red-200 pb-3 mb-4 flex items-center">
+                        二、 A-a gradient 升高 <span className="text-sm font-normal ml-2 bg-white px-2 py-1 rounded-md shadow-sm">通常 &gt; 15 mmHg</span>
+                      </h3>
+                      <p className="text-sm text-red-900 mb-4">代表肺部本身（肺泡-微血管單位）出現病變，或有異常血流混合。</p>
+                      
+                      <div className="space-y-4">
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-red-100">
+                          <h4 className="font-bold flex items-center text-gray-800 text-base">
+                            <IconLungs className="w-5 h-5 mr-2 text-red-500" /> 3. 通氣/血流比例失衡 (V/Q Mismatch)
+                          </h4>
+                          <p className="text-sm text-gray-600 mt-2">最常見原因。氣道痙攣或阻塞導致局部通氣量減少，但血流灌注依舊存在，打破平衡（如氣喘、COPD）。</p>
+                          <div className="mt-2 text-xs font-bold bg-blue-100 text-blue-800 inline-block px-2 py-1 rounded">
+                            ★ 特徵：給予氧氣治療後，低血氧可明顯改善
+                          </div>
+                        </div>
+
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-red-100">
+                          <h4 className="font-bold flex items-center text-gray-800 text-base">
+                            <IconDroplets className="w-5 h-5 mr-2 text-red-500" /> 4. 分流 (Shunt)
+                          </h4>
+                          <p className="text-sm text-gray-600 mt-2">V/Q 失衡的極端情況（V/Q=0）。充滿缺氧血的靜脈血繞過通氣區直接混入動脈血（如 ARDS、肺水腫）。</p>
+                          <div className="mt-2 text-xs font-bold bg-red-100 text-red-800 inline-block px-2 py-1 rounded">
+                            ★ 特徵：對 100% 純氧治療反應極差
+                          </div>
+                        </div>
+
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-red-100">
+                          <h4 className="font-bold flex items-center text-gray-800 text-base">
+                            <IconActivitySquare className="w-5 h-5 mr-2 text-red-500" /> 5. 擴散障礙 (Diffusion Impairment)
+                          </h4>
+                          <p className="text-sm text-gray-600 mt-2">肺泡-微血管膜受損、增厚或結疤（如肺纖維化）。</p>
+                          <div className="mt-2 text-xs font-bold bg-purple-100 text-purple-800 inline-block px-2 py-1 rounded">
+                            ★ 特徵：休息時影響較小，運動時低血氧會顯著惡化
+                          </div>
+                        </div>
+
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-red-100">
+                          <h4 className="font-bold flex items-center text-gray-800 text-base">
+                            <IconHeartPulse className="w-5 h-5 mr-2 text-red-500" /> 6. 靜脈血混合 (Venous Admixture)
+                          </h4>
+                          <p className="text-sm text-gray-600 mt-2">心輸出量偏低（鬱血性心臟衰竭）增加組織氧氣提取，導致混合靜脈血氧極低；或肝肺症候群引起異常擴張的微血管導致擴散障礙。</p>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  <div className="bg-slate-800 text-white p-6 md:p-8 rounded-2xl shadow-md border-t-4 border-blue-400">
+                    <h3 className="text-xl font-bold text-blue-300 mb-4 flex items-center border-b border-slate-700 pb-3">
+                      <IconStethoscope size={24} className="mr-3" /> 處理與治療方式核心原則
+                    </h3>
+                    <p className="text-sm leading-relaxed mb-5 text-slate-300">
+                      治療低氧血症的首要目標是<strong>藉由提高肺泡和血液中的氧氣濃度來糾正低血氧</strong>，同時減輕心臟與肺臟的代償性負荷。
+                    </p>
+                    
+                    <div className="space-y-4">
+                      <div className="bg-slate-700/50 p-4 rounded-xl border border-slate-600">
+                        <h4 className="text-red-400 font-bold mb-1">⚠️ 絕對原則</h4>
+                        <p className="text-sm">絕不應因為擔憂氧氣中毒或抑制呼吸驅力而對嚴重缺氧的患者扣留氧氣。</p>
+                      </div>
+                      
+                      <div className="bg-slate-700/50 p-4 rounded-xl border border-slate-600">
+                        <h4 className="text-blue-400 font-bold mb-1">🎯 一般氧氣治療目標</h4>
+                        <p className="text-sm">使用最低限度的 FiO2，將 <strong>PaO2 維持在 55-80 mmHg</strong>，或將 <strong>SpO2 維持在 88%-95%</strong>，以避免過高氧氣引發「高氧性急性肺損傷」及吸收性肺不張。</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                        <div className="bg-slate-900/50 p-4 rounded-xl">
+                          <h5 className="font-bold text-teal-400 text-sm mb-2">針對 V/Q 失衡 & 擴散障礙</h5>
+                          <p className="text-xs text-slate-300">給予<strong>補充氧氣</strong>通常能顯著改善血氧，因為提高肺泡氧氣濃度足以彌補氣體交換的效率不足。</p>
+                        </div>
+                        <div className="bg-slate-900/50 p-4 rounded-xl">
+                          <h5 className="font-bold text-teal-400 text-sm mb-2">針對 分流 (Shunt)</h5>
+                          <p className="text-xs text-slate-300">對氧氣反應極差。處置需針對病因，例如使用 <strong>PEEP 或 CPAP</strong> 來撐開塌陷肺泡、清除積液，重建氣體交換。</p>
+                        </div>
+                        <div className="bg-slate-900/50 p-4 rounded-xl">
+                          <h5 className="font-bold text-teal-400 text-sm mb-2">針對 肺泡通氣不足</h5>
+                          <p className="text-xs text-slate-300">單靠給氧無法解決二氧化碳堆積。重點必須是<strong>改善通氣量</strong>（使用機械器換氣），從根本排出 CO2。</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+      );
+    };
+
+    // --- 渲染到 DOM ---
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
+
