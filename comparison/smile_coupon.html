@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>速邁樂優惠券試算</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛽</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --g1:#0d2118;--g2:#1a3d28;--g3:#2e8b3e;
+  --acc:#5dbf7a;--acc2:#7de89a;
+  --gold:#fbbf24;--goldt:#fde68a;
+  --red:#f87171;--redt:#fca5a5;--blue:#60a5fa;
+  --purple:#c084fc;--purplet:#e9d5ff;
+  --t0:#fff;--t1:rgba(255,255,255,.55);--t2:rgba(255,255,255,.35);--t3:rgba(255,255,255,.18);
+  --bd:rgba(255,255,255,.08);--card:rgba(255,255,255,.05);--dark:rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--g1);color:var(--t0);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse 90% 50% at 15% 5%,rgba(46,139,62,.16) 0%,transparent 60%),
+             linear-gradient(160deg,var(--g1) 0%,var(--g2) 50%,var(--g1) 100%);
+  z-index:0;pointer-events:none}
+#app{position:relative;z-index:1;max-width:480px;margin:0 auto;padding-bottom:64px}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+input[type=number]{-moz-appearance:textfield}
+button{cursor:pointer;font-family:inherit}
+/* 兩欄固定，手機也維持左右並排 */
+/* 欄位內的卡片去除左右 margin */
+.responsive-grid > div > div[style*="margin:0 16px"],
+.responsive-grid > div > div[style*="margin:12px 16px"] {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+select{cursor:pointer;font-family:inherit;appearance:none;-webkit-appearance:none}
+@keyframes spin   {to{transform:rotate(360deg)}}
+@keyframes fadeUp {from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.spinner{display:inline-block;width:15px;height:15px;
+  border:2px solid rgba(93,191,122,.3);border-top-color:var(--acc);
+  border-radius:50%;animation:spin .8s linear infinite;
+  vertical-align:middle;margin-right:8px}
+/* custom input style */
+.field-label{font-size:10px;color:var(--t2);letter-spacing:1px;display:block;margin-bottom:5px}
+.field-input{width:100%;background:rgba(0,0,0,.35);border:1px solid var(--bd);border-radius:9px;
+  color:var(--t0);font-size:14px;font-weight:700;padding:8px 11px;outline:none;transition:border-color .2s}
+.field-input:focus{border-color:rgba(93,191,122,.4)}
+.field-select{width:100%;background:rgba(0,0,0,.45);border:1px solid var(--bd);border-radius:9px;
+  color:var(--t0);font-size:13px;font-weight:600;padding:8px 32px 8px 11px;outline:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235dbf7a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;transition:border-color .2s}
+.field-select:focus{border-color:rgba(93,191,122,.4)}
+/* type pill tabs */
+.type-tabs{display:flex;gap:6px;margin-bottom:12px}
+.type-tab{flex:1;padding:7px 4px;border:1px solid var(--bd);border-radius:8px;
+  background:none;color:var(--t2);font-size:11px;font-weight:600;transition:all .2s;text-align:center}
+.type-tab.active-discount{background:rgba(248,113,113,.15);border-color:rgba(248,113,113,.5);color:var(--red)}
+.type-tab.active-op      {background:rgba(96,165,250,.15);border-color:rgba(96,165,250,.5);color:var(--blue)}
+.type-tab.active-fixed   {background:rgba(192,132,252,.15);border-color:rgba(192,132,252,.5);color:var(--purple)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+'use strict';
+/* ═══════════════════════════════════════════
+   常數
+═══════════════════════════════════════════ */
+const WEEKDAY_ZH=['日','一','二','三','四','五','六'];
+const WED_ACTIVE=(()=>{
+  const n=new Date();
+  return n.getDay()===3&&n>=new Date('2026-01-01')&&n<=new Date('2026-06-30T23:59:59');
+})();
+
+const COUPONS_BASE=[
+  {id:1,label:'汽油711元送OP點5%', type:'op',      threshold:711,rate:.05,count:1,tag:'好禮分享券',validity:'2026/03/01–03/31'},
+  {id:2,label:'汽油25公升降1.6元', type:'discount', liters:25,dpL:1.6,  count:2,tag:'好禮分享券',validity:'2026/03/01–03/31'},
+  {id:3,label:'汽油25公升降1.8元', type:'discount', liters:25,dpL:1.8,  count:1,tag:'好禮分享券',validity:'2026/03/01–03/31'},
+  {id:4,label:'汽油711元送OP點7%', type:'op',      threshold:711,rate:.07,count:2,tag:'好禮分享券',validity:'2026/03/01–03/31'},
+];
+const COUPONS_WED=[
+  {id:10,label:'週三會員日｜加滿35公升降2.4元/公升',type:'wed',liters:35,dpL:2.4,count:1,
+   tag:'APP會員條碼',validity:'2026/01/01–06/30 每週三',note:'等同每公升降2.0元＋單筆再折15元'},
+  {id:11,label:'週三會員日｜加滿25公升降2.4元/公升',type:'wed',liters:25,dpL:2.4,count:1,
+   tag:'APP會員條碼',validity:'2026/01/01–06/30 每週三',note:'等同每公升降1.8元＋單筆再折15元'},
+];
+const FUEL_TYPES=[
+  {key:'fp95',label:'台塑95+',src:'速邁樂官網'},
+];
+
+/* ═══════════════════════════════════════════
+   油價抓取
+═══════════════════════════════════════════ */
+const PROXY='https://api.allorigins.win/get?url=';
+async function fetchSmilePrice(){
+  const r=await fetch(PROXY+encodeURIComponent('https://www.mech-smile.com.tw/'),{signal:AbortSignal.timeout(8000)});
+  const j=await r.json();
+  const m=j.contents.match(/95\+\s*NT\s*([\d.]+)/i);
+  if(!m)throw new Error('找不到台塑95+油價');
+  return parseFloat(m[1]);
+}
+async function fetchAllPrices(){
+  const notes=[];
+  try{
+    const fp95=await fetchSmilePrice();
+    return{prices:{fp95},notes};
+  }catch(e){
+    notes.push('台塑95+ 抓取失敗，請手動輸入');
+    return{prices:{},notes};
+  }
+}
+
+/* ═══════════════════════════════════════════
+   計算 — 既有優惠券
+═══════════════════════════════════════════ */
+function calc(c,liters,price){
+  const total=+(price*liters).toFixed(1);
+  if(c.type==='discount'){
+    const used=Math.min(liters,c.liters),saving=+(c.dpL*used).toFixed(1);
+    const afterTotal=+(total-saving).toFixed(1),afterPer=+(price-c.dpL).toFixed(2);
+    const pct=price>0?(c.dpL/price*100).toFixed(1):0;
+    return{saving,afterTotal,afterPer,pct,dpL:c.dpL,
+      detail:`降 ${c.dpL} 元/公升（折 ${pct}%）→ ${afterPer} 元/公升`,ok:true};
+  }
+  if(c.type==='wed'){
+    if(liters>=c.liters){
+      const saving=+(c.dpL*c.liters).toFixed(1),afterTotal=+(total-saving).toFixed(1);
+      const afterPer=+(price-c.dpL).toFixed(2),pct=price>0?(c.dpL/price*100).toFixed(1):0;
+      return{saving,afterTotal,afterPer,pct,dpL:c.dpL,
+        detail:`降 ${c.dpL} 元/公升（折 ${pct}%）→ ${afterPer} 元/公升`,ok:true};
+    }
+    return{saving:0,afterTotal:total,afterPer:price,pct:0,dpL:c.dpL,
+      detail:`⚠ 需加滿${c.liters}公升整（目前${liters}公升）`,ok:false};
+  }
+  if(total>=c.threshold){
+    const pts=Math.floor(total*c.rate),afterTotal=+(total-pts).toFixed(1);
+    const pct=(c.rate*100).toFixed(0),eff=+(pts/liters).toFixed(2);
+    return{saving:pts,afterTotal,afterPer:+(price-eff).toFixed(2),pct,dpL:eff,
+      detail:`回饋 ${pct}% OP點 = ${pts}點（等效降 ${eff} 元/公升）`,ok:true};
+  }
+  return{saving:0,afterTotal:total,afterPer:price,pct:0,dpL:0,
+    detail:`⚠ 需消費滿${c.threshold}元（目前${total}元）`,ok:false};
+}
+
+/* ═══════════════════════════════════════════
+   計算 — 自訂優惠
+═══════════════════════════════════════════ */
+// type: 'custom_discount' | 'custom_op' | 'custom_fixed'
+function calcCustom(custom, liters, price){
+  const total=+(price*liters).toFixed(1);
+  if(!custom.enabled) return null;
+
+  if(custom.type==='custom_discount'){
+    // 每公升降 X 元
+    const dpL=parseFloat(custom.val)||0;
+    if(dpL<=0) return null;
+    const saving=+(dpL*liters).toFixed(1);
+    const afterTotal=+(total-saving).toFixed(1);
+    const afterPer=+(price-dpL).toFixed(2);
+    const pct=price>0?(dpL/price*100).toFixed(1):0;
+    return{
+      id:'cx1',label:custom.name||`油價降 ${dpL} 元/公升`,
+      type:'custom_discount',tag:'自訂優惠',
+      saving,afterTotal,afterPer,pct,dpL,
+      detail:`降 ${dpL} 元/公升（折 ${pct}%）→ ${afterPer} 元/公升`,ok:true,
+    };
+  }
+  if(custom.type==='custom_op'){
+    // 回饋 X% OP點
+    const rate=parseFloat(custom.val)||0;
+    if(rate<=0||rate>100) return null;
+    const pts=Math.floor(total*(rate/100));
+    const afterTotal=+(total-pts).toFixed(1);
+    const eff=+(pts/liters).toFixed(2);
+    const pct=rate.toFixed(1);
+    return{
+      id:'cx2',label:custom.name||`消費回饋 ${rate}% OP點`,
+      type:'custom_op',tag:'自訂優惠',
+      saving:pts,afterTotal,afterPer:+(price-eff).toFixed(2),pct,dpL:eff,
+      detail:`回饋 ${pct}% OP點 = ${pts}點（等效降 ${eff} 元/公升）`,ok:true,
+    };
+  }
+  if(custom.type==='custom_fixed'){
+    // 固定回饋 X 點
+    const pts=parseInt(custom.val)||0;
+    if(pts<=0) return null;
+    const afterTotal=+(total-pts).toFixed(1);
+    const eff=+(pts/liters).toFixed(2);
+    const pct=total>0?(pts/total*100).toFixed(1):0;
+    return{
+      id:'cx3',label:custom.name||`固定回饋 ${pts} OP點`,
+      type:'custom_fixed',tag:'自訂優惠',
+      saving:pts,afterTotal,afterPer:+(price-eff).toFixed(2),pct,dpL:eff,
+      detail:`固定回饋 ${pts} 點（等效折 ${pct}%，降 ${eff} 元/公升）`,ok:true,
+    };
+  }
+  return null;
+}
+
+/* ═══════════════════════════════════════════
+   State
+═══════════════════════════════════════════ */
+const S={
+  prices:{},priceNotes:[],loading:true,
+  liters:35,manual:'',
+  showWed:WED_ACTIVE,payOpen:false,
+  customs:[
+    {id:'cx1',type:'custom_discount',name:'',val:'',enabled:false},
+    {id:'cx2',type:'custom_op',      name:'',val:'',enabled:false},
+    {id:'cx3',type:'custom_fixed',   name:'',val:'',enabled:false},
+  ],
+  fc:{km:'534',mpk:'15.1',tank:'',open:true},
+  payMethod:'other', // '7eleven' | 'other'
+};
+function set(patch){Object.assign(S,patch);render();}
+function setCustom(idx,patch){
+  const c=[...S.customs];
+  c[idx]=Object.assign({},c[idx],patch);
+  set({customs:c});
+}
+
+/* ═══════════════════════════════════════════
+   色彩
+═══════════════════════════════════════════ */
+const savClr=t=>{
+  if(t==='op'||t==='custom_op'||t==='custom_fixed') return'var(--blue)';
+  if(t==='wed') return'var(--gold)';
+  if(t==='custom_discount') return'var(--red)';
+  return'var(--red)';
+};
+const perClr=t=>t==='wed'?'var(--goldt)':
+  (t==='custom_op'||t==='custom_fixed')?'var(--purple)':
+  t==='custom_discount'?'#fda4af':'var(--acc2)';
+const tagBg=t=>{
+  if(t==='wed') return'rgba(120,90,10,.7)';
+  if(t.startsWith('custom')) return'rgba(80,50,130,.7)';
+  return'rgba(46,125,50,.7)';
+};
+const tagClr=t=>{
+  if(t==='wed') return'var(--goldt)';
+  if(t.startsWith('custom')) return'var(--purplet)';
+  return'var(--acc)';
+};
+
+/* ═══════════════════════════════════════════
+   DOM helpers
+═══════════════════════════════════════════ */
+function h(tag,attrs,children){
+  const e=document.createElement(tag);
+  for(const[k,v]of Object.entries(attrs||{})){
+    if(k==='style') Object.assign(e.style,v);
+    else if(k==='cls') e.className=v;
+    else if(k[0]==='o'&&k[1]==='n') e.addEventListener(k.slice(2).toLowerCase(),v);
+    else e.setAttribute(k,v);
+  }
+  for(const c of children||[]){
+    if(c==null||c===false) continue;
+    e.appendChild(typeof c==='string'?document.createTextNode(c):c);
+  }
+  return e;
+}
+const D=(s,ch)=>h('div',{style:s},ch);
+const Sp=(s,t)=>h('span',{style:s},[t]);
+const Btn=(s,ev,ch,cls)=>h('button',{style:s,onClick:ev,cls:cls||''},ch);
+
+/* ═══════════════════════════════════════════
+   自訂優惠 Section
+═══════════════════════════════════════════ */
+const CUSTOM_META=[
+  {type:'custom_discount', icon:'💲', label:'油價折扣',  color:'var(--red)',
+   hint:'每公升降價元數，例如：1.5',  unit:'元/公升', placeholder:'例如 1.5'},
+  {type:'custom_op',       icon:'🔵', label:'% 回饋點數',color:'var(--blue)',
+   hint:'消費金額 × X% 回饋 OP 點',  unit:'%',       placeholder:'例如 3'},
+  {type:'custom_fixed',    icon:'🟣', label:'固定點數',  color:'var(--purple)',
+   hint:'單筆加油固定回饋點數',       unit:'點',       placeholder:'例如 50'},
+];
+
+function mkCustomSection(liters, price){
+  // 單一卡片，三行輸入，輸入即計算，不觸發 re-render
+  const card=D({margin:'0',background:'var(--card)',borderRadius:'14px',
+    border:'1px solid var(--bd)',padding:'14px 16px'});
+
+  const ROWS=[
+    {idx:0, icon:'💲', label:'油價折扣',   unit:'元/公升', step:'0.1', placeholder:'例如 1.5'},
+    {idx:1, icon:'🔵', label:'% 回饋點數', unit:'%',       step:'0.1', placeholder:'例如 3'},
+    {idx:2, icon:'🟣', label:'固定點數',   unit:'點',      step:'1',   placeholder:'例如 50'},
+  ];
+
+  // 結果容器
+  const resultDiv=D({id:'custom-result',marginTop:'10px'});
+
+  function updateCustom(){
+    // 從三個 input 讀值，存入 S.customs，重新計算
+    ROWS.forEach(row=>{
+      const inp=document.getElementById('cx-inp-'+row.idx);
+      const v=inp?inp.value:'';
+      S.customs[row.idx].val=v;
+      S.customs[row.idx].enabled=v!=='';
+    });
+    // 永遠從 S 讀最新加油量和油價
+    const curLiters=S.liters;
+    const curPrice=S.manual!==''?parseFloat(S.manual)||0:(S.prices['fp95']??30.4);
+    // 更新結果
+    resultDiv.innerHTML='';
+    const active=S.customs.filter(cu=>cu.enabled);
+    if(active.length===0){
+      resultDiv.appendChild(D({fontSize:'11px',color:'var(--t2)',padding:'4px 0',textAlign:'center'},
+        ['輸入數值後自動計算']));
+      return;
+    }
+    active.forEach(cu=>{
+      const r=calcCustom(cu,curLiters,curPrice);
+      if(!r) return;
+      const isOP=cu.type!=='custom_discount';
+      const row=D({display:'flex',justifyContent:'space-between',alignItems:'center',
+        background:'rgba(80,50,130,.1)',border:'1px solid rgba(192,132,252,.2)',
+        borderRadius:'9px',padding:'8px 12px',marginBottom:'6px'},[
+        D({},[
+          D({fontSize:'11px',fontWeight:'700',color:'var(--purplet)',marginBottom:'2px'},[r.label]),
+          D({fontSize:'10px',color:'var(--t2)'},[r.detail]),
+        ]),
+        D({textAlign:'right',flexShrink:'0',marginLeft:'10px'},[
+          D({fontFamily:"'Bebas Neue',cursive",fontSize:'18px',color:isOP?'var(--blue)':'var(--red)'},
+            [isOP?'+'+r.saving+'點':'-'+r.saving+'元']),
+          D({fontSize:'11px',fontWeight:'700',color:'var(--purple)'},['實付 '+r.afterTotal+' 元']),
+        ]),
+      ]);
+      resultDiv.appendChild(row);
+    });
+    // 也更新 coupon 結果區（讓自訂優惠進入比較）
+    renderCouponResults(curLiters, curPrice);
+  }
+
+  // 三行輸入
+  const grid=D({display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px',marginBottom:'0'});
+  ROWS.forEach(row=>{
+    const cell=D({});
+    const lbl=D({fontSize:'10px',color:'var(--t2)',marginBottom:'5px',
+      display:'flex',alignItems:'center',gap:'4px'},[
+      Sp({},row.icon),Sp({letterSpacing:'.5px'},row.label),
+    ]);
+    const wrapper=D({position:'relative'});
+    const inp=document.createElement('input');
+    inp.type='number';
+    inp.id='cx-inp-'+row.idx;
+    inp.className='field-input';
+    inp.placeholder=row.placeholder;
+    inp.value=S.customs[row.idx].val||'';
+    inp.step=row.step;
+    inp.min='0';
+    inp.style.cssText='background:rgba(0,0,0,.35);padding-right:36px';
+    inp.addEventListener('input',updateCustom);
+    const unitLbl=D({position:'absolute',right:'8px',top:'50%',transform:'translateY(-50%)',
+      fontSize:'11px',color:'var(--t2)',fontWeight:'700',pointerEvents:'none'},[row.unit]);
+    wrapper.appendChild(inp);
+    wrapper.appendChild(unitLbl);
+    cell.appendChild(lbl);
+    cell.appendChild(wrapper);
+    grid.appendChild(cell);
+  });
+
+  card.appendChild(grid);
+  card.appendChild(resultDiv);
+
+  card._update=updateCustom;
+  return card;
+}
+
+/* ═══════════════════════════════════════════
+   既有優惠券 renders
+═══════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════
+   里程 / 油耗計算器
+═══════════════════════════════════════════ */
+/* ── 油耗計算：只更新結果區，不觸發全局 render ── */
+function mkFuelCalc(){
+  /* ── 純 HTML 建構，所有事件直接操作 DOM ── */
+  const fc = S.fc;
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'margin:0;background:var(--card);border-radius:18px;border:1px solid rgba(96,165,250,.25);overflow:hidden';
+
+  /* header */
+  const hdr = document.createElement('div');
+  hdr.style.cssText = 'background:linear-gradient(90deg,#1e3a5c,#1e4d8c);padding:11px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer';
+  hdr.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:16px">🚗</span>
+      <div>
+        <span style="font-weight:700;font-size:13px;display:block">加油公升估算</span>
+        <span style="font-size:10px;color:rgba(255,255,255,.5);display:block">依里程 ÷ 油耗推算本次加油量</span>
+      </div>
+    </div>
+    <span id="fc-arrow" style="color:rgba(255,255,255,.4);font-size:20px;transition:transform .2s;display:inline-block;transform:${fc.open?'rotate(90deg)':'rotate(-90deg)'}">‹</span>
+  `;
+
+  const body = document.createElement('div');
+  body.style.cssText = 'padding:16px;display:' + (fc.open?'block':'none');
+
+  hdr.addEventListener('click', ()=>{
+    S.fc.open = !S.fc.open;
+    body.style.display = S.fc.open ? 'block' : 'none';
+    const arr = document.getElementById('fc-arrow');
+    if(arr) arr.style.transform = S.fc.open ? 'rotate(90deg)' : 'rotate(-90deg)';
+  });
+
+  /* input grid */
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px';
+
+  function makeInput(id, label, placeholder, step, span){
+    const cell = document.createElement('div');
+    if(span) cell.style.gridColumn = '1 / -1';
+
+    const lbl = document.createElement('label');
+    lbl.className = 'field-label';
+    lbl.textContent = label;
+
+    const inp = document.createElement('input');
+    inp.type = 'number';
+    inp.id = id;
+    inp.className = 'field-input';
+    inp.placeholder = placeholder;
+    inp.step = step;
+    inp.min = '0';
+    inp.style.background = 'rgba(0,0,0,.35)';
+    // 設定初始值
+    const stateKey = id==='fc-km'?'km':id==='fc-mpk'?'mpk':'tank';
+    inp.value = S.fc[stateKey] || '';
+
+    inp.addEventListener('input', ()=>{
+      S.fc[stateKey] = inp.value;
+      calcAndRender();
+    });
+
+    cell.appendChild(lbl);
+    cell.appendChild(inp);
+    return cell;
+  }
+
+  grid.appendChild(makeInput('fc-km',  '行駛距離（公里）',     '例如 534',      '1',   false));
+  grid.appendChild(makeInput('fc-mpk', '平均油耗（公里/公升）', '例如 15.1',     '0.1', false));
+  grid.appendChild(makeInput('fc-tank','油箱剩餘（公升，選填）','留空 = 全部加滿','0.1', true));
+
+  body.appendChild(grid);
+
+  /* 結果區 */
+  const resultDiv = document.createElement('div');
+  resultDiv.id = 'fc-result';
+  body.appendChild(resultDiv);
+
+  wrap.appendChild(hdr);
+  wrap.appendChild(body);
+
+  /* 計算並更新結果 */
+  function calcAndRender(){
+    const km   = parseFloat(S.fc.km)   || 0;
+    const mpk  = parseFloat(S.fc.mpk)  || 0;
+    const tank = parseFloat(S.fc.tank) || 0;
+
+    resultDiv.innerHTML = '';
+
+    if(km <= 0 || mpk <= 0){
+      const hint = document.createElement('p');
+      hint.style.cssText = 'font-size:12px;color:var(--t2);text-align:center;padding:8px 0';
+      hint.textContent = '請輸入行駛距離及油耗以計算';
+      resultDiv.appendChild(hint);
+      return;
+    }
+
+    const needed     = +(km / mpk).toFixed(2);
+    const withTank   = tank > 0 ? +(needed - tank).toFixed(2) : null;
+    const canGo      = tank > 0 ? +(tank * mpk).toFixed(0)    : null;
+    const toAdd      = withTank != null ? Math.max(0, withTank) : needed;
+    const applyLiters= Math.ceil(toAdd);
+
+    /* 結果卡 */
+    const box = document.createElement('div');
+    box.style.cssText = 'background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.25);border-radius:12px;padding:14px 16px';
+
+    /* 主數字行 */
+    const mainRow = document.createElement('div');
+    mainRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
+    mainRow.innerHTML = `
+      <div>
+        <span style="font-size:11px;color:rgba(255,255,255,.45);display:block;margin-bottom:2px">${km} km ÷ ${mpk} km/L${tank>0?' − '+tank+' L剩油':''}</span>
+        <span style="font-size:11px;color:var(--blue);font-weight:700;display:block">${withTank!=null?'扣除剩油後需加：':'本次預估需加：'}</span>
+      </div>
+      <span style="font-family:'Bebas Neue',cursive;font-size:38px;letter-spacing:2px;color:#93c5fd">${toAdd} L</span>
+    `;
+    box.appendChild(mainRow);
+
+    /* 明細格 */
+    const cols = tank > 0 ? '1fr 1fr 1fr' : '1fr';
+    const grid2 = document.createElement('div');
+    grid2.style.cssText = `display:grid;grid-template-columns:${cols};gap:6px;margin-bottom:10px`;
+
+    function addCell(label, value, color){
+      const c = document.createElement('div');
+      c.style.cssText = 'background:rgba(0,0,0,.3);border-radius:9px;padding:8px 10px;text-align:center';
+      c.innerHTML = `
+        <div style="font-size:9px;color:var(--t2);letter-spacing:1px;margin-bottom:3px">${label}</div>
+        <div style="font-family:'Bebas Neue',cursive;font-size:18px;color:${color}">${value}</div>
+      `;
+      grid2.appendChild(c);
+    }
+
+    addCell('總耗油量',    needed + ' L', '#93c5fd');
+    if(tank > 0) addCell('油箱剩油',   tank   + ' L', 'var(--acc2)');
+    if(tank > 0) addCell('剩油可行駛', canGo  + ' km','var(--goldt)');
+    box.appendChild(grid2);
+
+    /* 套用按鈕 */
+    const btn = document.createElement('button');
+    btn.style.cssText = 'width:100%;background:rgba(96,165,250,.18);border:1px solid rgba(96,165,250,.5);border-radius:9px;color:#93c5fd;font-weight:700;font-size:13px;padding:10px;cursor:pointer';
+    btn.textContent = '⬆ 套用 ' + applyLiters + ' 公升到加油試算';
+    btn.addEventListener('click', ()=>{
+      // 1. 更新 state
+      S.liters = applyLiters;
+
+      // 2. 按鈕本身的視覺回饋：變綠 + 打勾
+      btn.textContent = '✓ 已套用 ' + applyLiters + ' 公升';
+      btn.style.background = 'rgba(93,191,122,.25)';
+      btn.style.borderColor = 'rgba(93,191,122,.7)';
+      btn.style.color = 'var(--acc2)';
+      setTimeout(()=>{
+        btn.textContent = '⬆ 套用 ' + applyLiters + ' 公升到加油試算';
+        btn.style.background = 'rgba(96,165,250,.18)';
+        btn.style.borderColor = 'rgba(96,165,250,.5)';
+        btn.style.color = '#93c5fd';
+      }, 2000);
+
+      // 3. 更新加油量輸入框
+      const li = document.getElementById('liters-input');
+      if(li) li.value = String(applyLiters);
+
+      // 4. 更新總金額 + 優惠試算
+      updateInputDisplay();
+
+      // 5. 捲動到加油量卡片 + 綠色閃爍
+      const card = document.getElementById('input-card');
+      if(card){
+        setTimeout(()=>{
+          card.scrollIntoView({behavior:'smooth', block:'center'});
+          card.style.transition = 'box-shadow .2s, border-color .2s';
+          card.style.boxShadow  = '0 0 0 3px rgba(93,191,122,.7)';
+          card.style.borderColor= 'rgba(93,191,122,.7)';
+          // 閃爍兩次
+          setTimeout(()=>{ card.style.boxShadow='0 0 0 1px rgba(93,191,122,.3)'; card.style.borderColor='rgba(93,191,122,.3)'; }, 400);
+          setTimeout(()=>{ card.style.boxShadow='0 0 0 3px rgba(93,191,122,.7)'; card.style.borderColor='rgba(93,191,122,.7)'; }, 700);
+          setTimeout(()=>{ card.style.boxShadow=''; card.style.borderColor='var(--bd)'; }, 1400);
+        }, 50);
+      }
+    });
+    box.appendChild(btn);
+
+    resultDiv.appendChild(box);
+  }
+
+  /* 初始計算（在 append 到 DOM 後由外部呼叫） */
+  wrap._calcAndRender = calcAndRender;
+  return wrap;
+}
+
+function updateFcResult(){
+  /* 相容舊有呼叫點，找到 mkFuelCalc 的內部 calcAndRender */
+  const fc = document.getElementById('fc-result');
+  if(!fc) return;
+  // 重算：直接從 S.fc 讀值
+  const km   = parseFloat(S.fc.km)   || 0;
+  const mpk  = parseFloat(S.fc.mpk)  || 0;
+  const tank = parseFloat(S.fc.tank) || 0;
+  // 觸發 input event 讓 calcAndRender 跑
+  const kmEl = document.getElementById('fc-km');
+  if(kmEl){ kmEl.value = S.fc.km||''; kmEl.dispatchEvent(new Event('input')); }
+}
+
+
+/* ═══════════════════════════════════════════
+   付款方式選擇器（Step 1）
+═══════════════════════════════════════════ */
+const PAY_OPTIONS=[
+  {key:'other',   icon:'💳', label:'現金／信用卡／行動支付',
+   sub:'可累積 OPENPOINT 點數',   color:'#5dbf7a', border:'rgba(93,191,122,.5)',  bg:'rgba(93,191,122,.12)'},
+  {key:'7eleven', icon:'🏪', label:'統一超商數位禮券／開心卡',
+   sub:'⚠ 無法累積 OPENPOINT 點數', color:'#f87171', border:'rgba(248,113,113,.5)', bg:'rgba(248,113,113,.1)'},
+];
+
+function mkPayMethod(){
+  const cur=S.payMethod;
+  return D({margin:'0',animation:'fadeUp .4s both'},[
+    D({fontWeight:'900',fontSize:'15px',marginBottom:'12px',
+      display:'flex',alignItems:'center',gap:'8px'},[
+      D({width:'24px',height:'24px',borderRadius:'50%',background:'var(--g3)',
+        display:'flex',alignItems:'center',justifyContent:'center',
+        fontSize:'12px',fontWeight:'900',flexShrink:'0'},['1']),
+      '選擇付款方式',
+    ]),
+    D({display:'flex',flexDirection:'column',gap:'8px'},[
+      ...PAY_OPTIONS.map(opt=>{
+        const active=cur===opt.key;
+        const card=D({
+          background:active?opt.bg:'var(--card)',
+          border:'2px solid '+(active?opt.border:'var(--bd)'),
+          borderRadius:'14px',padding:'14px 16px',
+          display:'flex',alignItems:'center',gap:'12px',
+          cursor:'pointer',transition:'all .2s',
+        },[
+          // radio circle
+          D({width:'20px',height:'20px',borderRadius:'50%',flexShrink:'0',
+            border:'2px solid '+(active?opt.color:'rgba(255,255,255,.25)'),
+            background:active?opt.color:'none',
+            display:'flex',alignItems:'center',justifyContent:'center'},[
+            active?Sp({fontSize:'10px',color:'#000',fontWeight:'900'},'✓'):null,
+          ]),
+          Sp({fontSize:'20px',flexShrink:'0'},opt.icon),
+          D({flex:'1'},[
+            D({fontWeight:'700',fontSize:'13px',color:active?opt.color:'var(--t0)'},[opt.label]),
+            D({fontSize:'10px',color:active?opt.color:'var(--t2)',marginTop:'2px'},[opt.sub]),
+          ]),
+        ]);
+        card.addEventListener('click',()=>set({payMethod:opt.key}));
+        return card;
+      }),
+    ]),
+    // 若選 7-11，展開說明
+    cur==='7eleven'?D({marginTop:'10px',background:'rgba(239,68,68,.08)',
+      border:'1px solid rgba(239,68,68,.25)',borderRadius:'12px',padding:'12px 14px'},[
+      D({fontWeight:'700',fontSize:'12px',color:'var(--redt)',marginBottom:'8px'},
+        ['使用統一超商數位禮券 / 開心卡時：']),
+      ...[
+        '無法累積 OPENPOINT 點數，即使持有 OP 回饋券亦不會入帳',
+        'OP 點數回饋券（5% / 7%）將完全無效',
+        '建議只選擇「折價」類型的優惠券，避免選 OP 點數券',
+      ].map(t=>D({display:'flex',gap:'7px',alignItems:'flex-start',marginBottom:'4px'},[
+        Sp({color:'var(--red)',fontSize:'12px',flexShrink:'0'},'✗'),
+        Sp({fontSize:'11px',color:'var(--t1)'},t),
+      ])),
+    ]):null,
+  ]);
+}
+
+function mkHeader(){
+  const wd=WEEKDAY_ZH[new Date().getDay()];
+  return D({textAlign:'center',padding:'26px 20px 18px',
+    borderBottom:'1px solid var(--bd)',
+    background:'linear-gradient(180deg,rgba(255,255,255,.05) 0%,transparent 100%)',
+    animation:'fadeUp .5s both'},[
+    Sp({fontSize:'10px',letterSpacing:'4px',color:'var(--acc)',textTransform:'uppercase',
+      display:'block',marginBottom:'5px'},'Smile 速邁樂加油中心'),
+    D({fontFamily:"'Bebas Neue',cursive",fontSize:'38px',letterSpacing:'4px',
+      background:'linear-gradient(135deg,#fff 40%,var(--acc))',
+      WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'},['優惠券試算']),
+    D({marginTop:'7px',display:'inline-flex',alignItems:'center',gap:'6px',
+      background:'rgba(255,255,255,.06)',borderRadius:'20px',padding:'4px 14px'},[
+      Sp({fontSize:'11px',color:'var(--t1)'},'今日 週'+wd),
+      WED_ACTIVE?Sp({fontSize:'11px',fontWeight:'700',color:'var(--gold)'},'🎉 APP 會員日活動中！'):null,
+    ]),
+  ]);
+}
+
+function mkPayBanner(hasOP){
+  const open=S.payOpen;
+  return D({margin:'0',borderRadius:'14px',overflow:'hidden',
+    border:'1px solid rgba(239,68,68,.3)',animation:'fadeUp .4s .05s both'},[
+    h('button',{style:{background:'rgba(239,68,68,.1)',padding:'11px 14px',width:'100%',
+      display:'flex',alignItems:'center',justifyContent:'space-between',
+      border:'none',color:'var(--t0)',textAlign:'left'},
+      onClick:()=>set({payOpen:!open})},[
+      D({display:'flex',alignItems:'center',gap:'8px'},[
+        Sp({fontSize:'15px'},'⚠️'),
+        D({},[
+          D({fontWeight:'700',fontSize:'12px',color:'var(--redt)'},['統一超商數位禮券 / 開心卡 付款提醒']),
+          D({fontSize:'10px',color:'var(--t2)',marginTop:'1px'},['點擊展開說明']),
+        ]),
+      ]),
+      Sp({color:'var(--t2)',fontSize:'20px',display:'inline-block',
+        transform:open?'rotate(90deg)':'rotate(-90deg)',transition:'transform .2s'},'‹'),
+    ]),
+    open?D({background:'rgba(0,0,0,.3)',padding:'12px 14px'},[
+      D({fontSize:'11px',color:'var(--t1)',lineHeight:'1.8',marginBottom:'8px'},
+        ['以 統一超商數位禮券 或 開心卡 付款時：']),
+      ...[
+        ['✗','var(--red)','無法累積 OPENPOINT（OP）點數，即使持有 OP 回饋券亦不會入帳'],
+        ['✗','var(--red)','OP 點數折扣券（5% / 7%）的回饋將無效'],
+        ['✓','var(--acc)','建議改用現金、信用卡或速邁樂 APP 綁定支付'],
+      ].map(([icon,c,txt])=>D({display:'flex',gap:'8px',alignItems:'flex-start',marginBottom:'4px'},[
+        Sp({color:c,fontSize:'13px',flexShrink:'0'},icon),
+        Sp({fontSize:'11px',color:'var(--t1)'},txt),
+      ])),
+      hasOP?D({marginTop:'8px',background:'rgba(239,68,68,.12)',borderRadius:'8px',
+        padding:'7px 10px',border:'1px solid rgba(239,68,68,.25)'},[
+        Sp({fontSize:'11px',color:'var(--redt)',fontWeight:'700'},
+          '📌 目前有 OP 點數回饋券，使用開心卡 / 數位禮券將無法獲得任何回饋！'),
+      ]):null,
+    ]):null,
+  ]);
+}
+
+function mkOilPrice(){
+  const{prices,loading,priceNotes}=S;
+  const p=prices['fp95'];
+  return D({},[
+    D({fontSize:'10px',letterSpacing:'3px',color:'var(--t2)',
+      textTransform:'uppercase',padding:'16px 20px 8px'},['⛽ 台塑95+ 今日油價']),
+    D({margin:'0',background:'var(--card)',borderRadius:'18px',
+      border:'1px solid rgba(251,191,36,.3)',overflow:'hidden',animation:'fadeUp .4s .1s both'},[
+      D({background:'linear-gradient(90deg,#1e5c35,var(--g3))',
+        padding:'10px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'},[
+        Sp({fontWeight:'700',fontSize:'13px'},'速邁樂 台塑95+ 牌價'),
+        loading?D({display:'flex',alignItems:'center',gap:'6px'},[
+          h('span',{cls:'spinner'},[]),
+          Sp({fontSize:'11px',color:'rgba(255,255,255,.6)'},'抓取中…'),
+        ]):Sp({fontSize:'11px',color:'rgba(255,255,255,.6)'},'即時'),
+      ]),
+      loading?D({padding:'22px',textAlign:'center',color:'var(--acc)',fontSize:'13px'},[
+        h('span',{cls:'spinner'},[]),'自動抓取速邁樂官網油價中…',
+      ]):D({padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'},[
+        D({},[
+          D({fontSize:'11px',color:'var(--t2)',marginBottom:'4px'},['台塑95+']),
+          D({fontFamily:"'Bebas Neue',cursive",fontSize:'42px',letterSpacing:'2px',color:'var(--goldt)',lineHeight:'1'},
+            [p!=null?String(p):'—']),
+          D({fontSize:'11px',color:'var(--t2)',marginTop:'2px'},['元 / 公升']),
+        ]),
+        p!=null?D({textAlign:'right'},[
+          D({fontSize:'10px',color:'var(--t2)',marginBottom:'4px'},['來源']),
+          D({fontSize:'11px',color:'var(--acc)'},['速邁樂官網']),
+          D({fontSize:'10px',color:'var(--t3)',marginTop:'8px'},['如有差異請手動覆蓋']),
+        ]):D({fontSize:'12px',color:'var(--t2)',textAlign:'right'},['請手動輸入油價']),
+      ]),
+      !loading?D({background:'rgba(0,0,0,.15)',borderTop:'1px solid var(--bd)',
+        padding:'6px 14px',fontSize:'10px',color:'var(--t2)',lineHeight:'1.7'},
+        ['📡 資料來源：速邁樂官網（mech-smile.com.tw）']):null,
+      ...priceNotes.map(msg=>D({background:'rgba(255,180,0,.09)',
+        borderTop:'1px solid rgba(255,180,0,.2)',padding:'6px 14px',fontSize:'11px',color:'var(--gold)'},
+        ['⚠ '+msg])),
+    ]),
+  ]);
+}
+
+function updateInputDisplay(){
+  // 從 state 算出總金額，直接更新 DOM，不 re-render
+  const priceVal = S.manual!=='' ? (parseFloat(S.manual)||0) : (S.prices['fp95']??30.4);
+  const newTotal = +(priceVal * S.liters).toFixed(1);
+  const lbl   = document.getElementById('total-label');
+  const disp  = document.getElementById('total-display');
+  const linp  = document.getElementById('liters-input');
+  if(lbl)  lbl.textContent  = '台塑95+ '+priceVal+'元 × '+S.liters+'公升';
+  if(disp) disp.textContent = newTotal+' 元';
+  if(linp && document.activeElement!==linp) linp.value = String(S.liters);
+  renderCouponResults(S.liters, priceVal);
+  // 自訂優惠同步連動
+  const cxCard=document.getElementById('cx-inp-0');
+  if(cxCard) cxCard.dispatchEvent(new Event('input'));
+}
+
+function mkInput(price,total){
+  const{liters,manual,prices}=S;
+  const wrap=D({id:'input-card',margin:'0',background:'var(--card)',borderRadius:'18px',
+    border:'1px solid var(--bd)',padding:'16px'});
+
+  // ── 加油量 stepper ──
+  const litersInp = h('input',{type:'number',id:'liters-input',value:String(liters),
+    style:{flex:'1',background:'none',border:'none',color:'var(--t0)',fontSize:'19px',
+      fontWeight:'900',textAlign:'center',outline:'none',width:'0',
+      fontFamily:"'Bebas Neue',cursive",letterSpacing:'1px',transition:'box-shadow .15s'}});
+  litersInp.addEventListener('input', e=>{
+    const v = Math.max(1, parseInt(e.target.value)||1);
+    S.liters = v;
+    updateInputDisplay();
+  });
+
+  const minusBtn = h('button',{style:{background:'none',border:'none',color:'var(--acc)',fontSize:'26px',padding:'4px 13px',lineHeight:'1'}});
+  minusBtn.textContent='-';
+  minusBtn.addEventListener('click',()=>{
+    S.liters = Math.max(1, S.liters-5);
+    litersInp.value = String(S.liters);
+    updateInputDisplay();
+  });
+
+  const plusBtn = h('button',{style:{background:'none',border:'none',color:'var(--acc)',fontSize:'26px',padding:'4px 13px',lineHeight:'1'}});
+  plusBtn.textContent='+';
+  plusBtn.addEventListener('click',()=>{
+    S.liters = S.liters+5;
+    litersInp.value = String(S.liters);
+    updateInputDisplay();
+  });
+
+  const stepper = D({display:'flex',alignItems:'center',background:'rgba(0,0,0,.35)',
+    borderRadius:'10px',border:'1px solid var(--bd)',overflow:'hidden'},[minusBtn,litersInp,plusBtn]);
+
+  // ── 手動油價 ──
+  const manualInp = h('input',{type:'number',
+    cls:'field-input',
+    placeholder:(prices['fp95']!=null?prices['fp95']:'—')+' 元',
+    value:manual,step:'0.1'});
+  manualInp.addEventListener('input', e=>{
+    S.manual = e.target.value;
+    updateInputDisplay();
+  });
+
+  wrap.appendChild(D({display:'flex',gap:'12px',marginBottom:'12px'},[
+    D({flex:'1'},[h('label',{cls:'field-label'},['加油量（公升）']),stepper]),
+    D({flex:'1'},[h('label',{cls:'field-label'},['手動油價（可覆蓋）']),manualInp]),
+  ]));
+
+  wrap.appendChild(D({background:'linear-gradient(90deg,rgba(46,139,62,.3),rgba(93,191,122,.12))',
+    border:'1px solid rgba(93,191,122,.2)',borderRadius:'10px',
+    padding:'10px 14px',display:'flex',alignItems:'center',justifyContent:'space-between'},[
+    h('span',{id:'total-label',style:{color:'var(--t1)',fontSize:'13px'}},['台塑95+ '+price+'元 × '+liters+'公升']),
+    h('span',{id:'total-display',style:{fontFamily:"'Bebas Neue',cursive",fontSize:'26px',letterSpacing:'2px',color:'var(--acc2)'}},
+      [total+' 元']),
+  ]));
+  return wrap;
+}
+
+function mkCoupon(r,idx,isBest){
+  const isWed=r.type==='wed',isOP=r.type==='op';
+  const isCx=r.type.startsWith('custom');
+  // 非最佳卡片：灰階低對比
+  const dimmed = !isBest;
+  const cardBg = isBest
+    ? (isCx?'linear-gradient(135deg,rgba(80,50,130,.25),rgba(192,132,252,.08))':
+       isWed?'linear-gradient(135deg,rgba(120,90,10,.28),rgba(251,191,36,.07))':
+       'linear-gradient(135deg,rgba(46,139,62,.22),rgba(93,191,122,.07))')
+    : 'rgba(255,255,255,.025)';
+  const cardBorder = isBest
+    ? (isCx?'rgba(192,132,252,.5)':isWed?'rgba(251,191,36,.5)':'rgba(93,191,122,.45)')
+    : 'rgba(255,255,255,.05)';
+  const numColor   = dimmed ? 'rgba(255,255,255,.3)' : null; // override for dimmed
+  const labelColor = dimmed ? 'rgba(255,255,255,.35)' : 'var(--t0)';
+  const detailColor= dimmed ? 'rgba(255,255,255,.22)' : 'var(--t2)';
+  const savColor   = dimmed ? 'rgba(255,255,255,.28)' : savClr(r.type);
+  const totalColor = dimmed ? 'rgba(255,255,255,.4)'  : perClr(r.type);
+
+  return D({
+    background:cardBg,
+    borderRadius:'14px',
+    border:'1px solid '+cardBorder,
+    padding: isBest?'16px 16px':'11px 14px',
+    marginBottom:'8px',position:'relative',
+    opacity:r.ok?'1':'.35',
+    animation:`fadeUp .35s ${idx*.04}s both`,
+    transition:'opacity .2s',
+  },[
+    isBest?D({position:'absolute',top:'9px',right:'12px',
+      background:isCx?'linear-gradient(90deg,#a855f7,#7c3aed)':
+        isWed?'linear-gradient(90deg,#f0b429,#f59e0b)':'linear-gradient(90deg,#22c55e,#16a34a)',
+      color:'#fff',fontSize:'10px',fontWeight:'900',padding:'2px 8px',borderRadius:'6px'},['最划算']):null,
+    // 排名 badge（非第一顯示名次）
+    !isBest&&r.ok?D({position:'absolute',top:'9px',right:'10px',
+      background:'rgba(255,255,255,.07)',color:'rgba(255,255,255,.3)',
+      fontSize:'10px',fontWeight:'700',padding:'1px 7px',borderRadius:'6px',
+      border:'1px solid rgba(255,255,255,.08)'},['#'+(idx+1)]):null,
+    D({marginBottom: isBest?'7px':'5px',paddingRight:isBest?'60px':'36px'},[
+      D({fontWeight: isBest?'700':'600',fontSize: isBest?'13px':'12px',
+        lineHeight:'1.4',marginBottom:'3px',color:labelColor},[r.label]),
+      D({display:'flex',gap:'6px',flexWrap:'wrap',alignItems:'center'},[
+        Sp({display:'inline-block',
+          background:dimmed?'rgba(255,255,255,.06)':tagBg(r.type),
+          color:dimmed?'rgba(255,255,255,.3)':tagClr(r.type),
+          fontSize:'10px',borderRadius:'4px',padding:'2px 7px'},r.tag),
+        r.validity?Sp({fontSize:'10px',color:dimmed?'rgba(255,255,255,.18)':'var(--t2)'},'🗓 '+r.validity):null,
+      ]),
+    ]),
+    D({fontSize:'10px',color:detailColor,marginBottom:r.ok&&isBest?'10px':r.ok?'7px':'0',lineHeight:'1.4'},[r.detail]),
+    isWed&&r.note&&r.ok&&isBest?D({fontSize:'10px',color:'rgba(251,191,36,.6)',marginBottom:'8px'},['💡 '+r.note]):null,
+    r.ok?D({display:'grid',gridTemplateColumns:'1fr 1fr',gap:'5px'},[
+      ...[['折扣率',r.pct+'%',savColor],
+          [(isOP||isCx&&r.type!=='custom_discount')?'等效降/公升':'降價/公升','-'+r.dpL+'元',savColor]].map(([lbl,val,clr])=>
+        D({background:dimmed?'rgba(255,255,255,.03)':'var(--dark)',
+          borderRadius:'8px',padding:isBest?'8px 10px':'6px 8px',textAlign:'center'},[
+          D({fontSize:'9px',color:dimmed?'rgba(255,255,255,.2)':'var(--t2)',letterSpacing:'1px',marginBottom:'2px'},[lbl]),
+          D({fontFamily:"'Bebas Neue',cursive",fontSize:isBest?'20px':'17px',letterSpacing:'1px',color:clr},[val]),
+        ])
+      ),
+    ]):null,
+    r.ok?D({marginTop:'6px',display:'flex',justifyContent:'space-between',alignItems:'center',
+      background:dimmed?'rgba(255,255,255,.03)':'rgba(0,0,0,.2)',
+      borderRadius:'8px',padding:isBest?'7px 12px':'5px 10px'},[
+      Sp({fontSize:'11px',color:dimmed?'rgba(255,255,255,.2)':'var(--t2)'},
+        (isOP||isCx&&r.type!=='custom_discount')?'回饋 '+r.saving+' OP點':'省下 '+r.saving+' 元'),
+      Sp({fontWeight:'900',fontSize:isBest?'14px':'13px',color:totalColor},'實付 '+r.afterTotal+' 元'),
+    ]):null,
+    // 若被付款方式擋住
+    r.blockedBy7?D({marginTop:'8px',background:'rgba(239,68,68,.1)',
+      border:'1px solid rgba(239,68,68,.35)',borderRadius:'10px',padding:'8px 12px',
+      display:'flex',gap:'7px',alignItems:'flex-start'},[
+      Sp({fontSize:'14px',flexShrink:'0'},'🚫'),
+      Sp({fontSize:'11px',color:'var(--redt)',fontWeight:'700'},r.blockedBy7),
+    ]):
+    // 一般 OP 提示（未選 7-11 時）
+    (isOP||isCx&&r.type!=='custom_discount')&&r.ok?
+      D({marginTop:'8px',background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.3)',
+        borderRadius:'10px',padding:'8px 12px',display:'flex',gap:'7px',alignItems:'flex-start'},[
+        Sp({fontSize:'14px',flexShrink:'0'},'⚠️'),
+        D({},[
+          D({fontSize:'11px',fontWeight:'700',color:'var(--redt)',marginBottom:'2px'},['使用統一超商數位禮券 / 開心卡注意']),
+          D({fontSize:'10px',color:'var(--t2)',lineHeight:'1.6'},
+            ['此券回饋為 OP 點數，上述支付方式 ',
+             h('strong',{style:{color:'var(--redt)'}},'無法累積 OPENPOINT'),
+             '，建議改用現金或信用卡。']),
+        ]),
+      ]):null,
+  ]);
+}
+
+function mkBest(best){
+  if(!best)return null;
+  const isWed=best.type==='wed',isOP=best.type==='op';
+  const isCx=best.type.startsWith('custom');
+  const isPoints=isOP||(isCx&&best.type!=='custom_discount');
+  return D({margin:'4px 16px 0',
+    background:isCx?'linear-gradient(135deg,#2d1f4a,#4c1d95)':
+      isWed?'linear-gradient(135deg,#3d2a00,#78460a)':'linear-gradient(135deg,#1a4726,#2e7d32)',
+    borderRadius:'16px',
+    border:'1px solid '+(isCx?'rgba(192,132,252,.4)':isWed?'rgba(251,191,36,.4)':'rgba(93,191,122,.35)'),
+    padding:'18px',animation:'fadeUp .3s .05s both'},[
+    D({fontSize:'11px',color:isCx?'var(--purplet)':isWed?'var(--goldt)':'var(--acc)',
+      letterSpacing:'3px',marginBottom:'6px'},['🏆 最佳選擇']),
+    D({fontWeight:'700',fontSize:'14px',marginBottom:'12px',lineHeight:'1.4'},[best.label]),
+    D({display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'10px'},[
+      ...[['折扣率',best.pct+'%',savClr(best.type)],
+          [isPoints?'等效降/公升':'降價/公升','-'+best.dpL+'元',savClr(best.type)]].map(([lbl,val,clr])=>
+        D({textAlign:'center'},[
+          D({fontSize:'9px',color:'var(--t2)',marginBottom:'2px'},[lbl]),
+          D({fontFamily:"'Bebas Neue',cursive",fontSize:'22px',color:clr},[val]),
+        ])
+      ),
+    ]),
+    D({display:'flex',justifyContent:'space-between',alignItems:'center',
+      background:'rgba(0,0,0,.2)',borderRadius:'10px',padding:'9px 14px'},[
+      Sp({color:'var(--t1)',fontSize:'13px'},
+        isPoints?'回饋 '+best.saving+' OP點':'省下 '+best.saving+' 元'),
+      Sp({fontFamily:"'Bebas Neue',cursive",fontSize:'26px',letterSpacing:'2px',color:perClr(best.type)},
+        '實付 '+best.afterTotal+' 元'),
+    ]),
+    isPoints?D({marginTop:'10px',background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.3)',
+      borderRadius:'10px',padding:'8px 12px',display:'flex',gap:'7px',alignItems:'flex-start'},[
+      Sp({fontSize:'14px'},'⚠️'),
+      Sp({fontSize:'11px',color:'var(--redt)'},
+        '最佳方案為 OP 點數回饋，使用統一超商數位禮券 / 開心卡付款將無法獲得任何回饋！'),
+    ]):null,
+  ]);
+}
+
+
+/* ═══════════════════════════════════════════
+   局部更新：只重繪優惠結果區（不 re-render 整頁）
+═══════════════════════════════════════════ */
+function renderCouponResults(liters, price){
+  const is7Eleven=S.payMethod==='7eleven';
+  const showWed=S.showWed;
+  const allC=showWed?[...COUPONS_BASE,...COUPONS_WED]:COUPONS_BASE;
+  const couponResults=allC.map(c=>{
+    const r={...c,...calc(c,liters,price)};
+    if(is7Eleven&&c.type==='op'){r.ok=false;r.blockedBy7='使用數位禮券/開心卡支付，OP 點數回饋無效';}
+    return r;
+  });
+  const customResults=S.customs.map(cu=>{
+    const r=calcCustom(cu,liters,price);
+    if(!r)return null;
+    if(is7Eleven&&(r.type==='custom_op'||r.type==='custom_fixed')){r.ok=false;r.blockedBy7='使用數位禮券/開心卡支付，OP 點數回饋無效';}
+    return r;
+  }).filter(Boolean);
+  const allResults=[...couponResults,...customResults];
+  const best=[...allResults].filter(r=>r.ok).sort((a,b)=>b.saving-a.saving)[0];
+
+  const listWrap=document.getElementById('coupon-list');
+  const bestWrap=document.getElementById('best-wrap');
+  const countEl=document.getElementById('coupon-count');
+  if(!listWrap)return;
+
+  // 排序：最佳放第一，其餘依 saving 降冪
+  const sorted=[...allResults].sort((a,b)=>{
+    if(!a.ok && b.ok) return 1;
+    if(a.ok && !b.ok) return -1;
+    return b.saving - a.saving;
+  });
+
+  listWrap.innerHTML='';
+  sorted.forEach((r,i)=>{
+    listWrap.appendChild(mkCoupon(r,i,best&&best.id===r.id));
+  });
+  if(countEl) countEl.textContent='共'+allResults.length+'項';
+}
+
+/* ═══════════════════════════════════════════
+   Main render
+═══════════════════════════════════════════ */
+function render(){
+  const{prices,liters,manual,showWed,payMethod}=S;
+  const is7Eleven = payMethod==='7eleven';
+  const price=manual!==''?parseFloat(manual)||0:(prices['fp95']??null);
+  const safePrice=price??30.4;
+  const total=+(safePrice*liters).toFixed(1);
+
+  // 根據付款方式過濾可用優惠券
+  // 7-11 模式下 OP 點數券無效，直接標記不可用
+  const allC=showWed?[...COUPONS_BASE,...COUPONS_WED]:COUPONS_BASE;
+  const couponResults=allC.map(c=>{
+    const r={...c,...calc(c,liters,safePrice)};
+    if(is7Eleven && (c.type==='op')){
+      r.ok=false;
+      r.blockedBy7='使用數位禮券/開心卡支付，OP 點數回饋無效';
+    }
+    return r;
+  });
+  const customResults=S.customs.map(cu=>{
+    const r=calcCustom(cu,liters,safePrice);
+    if(!r) return null;
+    if(is7Eleven && (r.type==='custom_op'||r.type==='custom_fixed')){
+      r.ok=false;
+      r.blockedBy7='使用數位禮券/開心卡支付，OP 點數回饋無效';
+    }
+    return r;
+  }).filter(Boolean);
+  const allResults=[...couponResults,...customResults];
+  const best=[...allResults].filter(r=>r.ok).sort((a,b)=>b.saving-a.saving)[0];
+
+  const root=document.getElementById('app');
+  root.innerHTML='';
+  root.appendChild(mkHeader());
+
+  // ── Step 1：付款方式 ──
+  root.appendChild(D({fontSize:'10px',letterSpacing:'3px',color:'var(--t2)',
+    textTransform:'uppercase',padding:'16px 8px 8px'},['step 1 · 付款方式']));
+  const payMethodWrap = mkPayMethod();
+  payMethodWrap.style.padding='0 8px';
+  root.appendChild(payMethodWrap);
+
+  // ── 兩欄並排佈局 ──
+  const twoCol = D({cls:'responsive-grid',style:'display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 8px;align-items:start;margin-top:12px'});
+
+  // ── 左欄：Step 2 ──
+  const leftCol = D({});
+
+  // step label 2
+  leftCol.appendChild(D({display:'flex',alignItems:'center',gap:'7px',padding:'14px 0 8px',
+    fontSize:'10px',letterSpacing:'3px',color:'rgba(255,255,255,.35)',textTransform:'uppercase'},[
+    D({width:'22px',height:'22px',borderRadius:'50%',background:'var(--g3)',display:'flex',
+      alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:'900',flexShrink:'0'},['2']),
+    Sp({},'估算 ＆ 油價'),
+  ]));
+
+  // 油耗計算器
+  const fcWrap = mkFuelCalc();
+  fcWrap.style.margin='0 0 8px 0';
+  leftCol.appendChild(fcWrap);
+  if(fcWrap._calcAndRender) fcWrap._calcAndRender();
+
+  // 油價卡
+  const oilCard=mkOilPrice();
+  oilCard.style.margin='0 0 8px 0';
+  leftCol.appendChild(oilCard);
+
+  // 加油量卡
+  const inputCard = mkInput(price!=null?price:'–',total);
+  inputCard.style.margin='0';
+  leftCol.appendChild(inputCard);
+
+  // ── 右欄：Step 3+4 ──
+  const rightCol = D({});
+
+  // step label 3
+  rightCol.appendChild(D({display:'flex',alignItems:'center',gap:'7px',padding:'14px 0 8px',
+    fontSize:'10px',letterSpacing:'3px',color:'rgba(255,255,255,.35)',textTransform:'uppercase'},[
+    D({width:'22px',height:'22px',borderRadius:'50%',background:'var(--g3)',display:'flex',
+      alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:'900',flexShrink:'0'},['3']),
+    Sp({},'活動優惠'),
+  ]));
+
+  // 週三會員日
+  const wedWrap=D({background:'rgba(251,191,36,.07)',borderRadius:'14px',
+    border:'1px solid '+(S.showWed?'rgba(251,191,36,.4)':'var(--bd)'),
+    padding:'11px 13px',display:'flex',alignItems:'center',justifyContent:'space-between',
+    cursor:'pointer',marginBottom:'8px'},[
+    D({},[
+      D({fontWeight:'700',fontSize:'12px',color:'var(--goldt)'},['📅 週三會員日']),
+      D({fontSize:'9px',color:'var(--t2)',marginTop:'2px'},['人工島 · 2026/01–06 每週三']),
+    ]),
+    D({display:'flex',alignItems:'center',gap:'5px'},[
+      WED_ACTIVE?Sp({fontSize:'9px',background:'var(--gold)',color:'#000',
+        borderRadius:'8px',padding:'1px 6px',fontWeight:'900'},'今日有效'):null,
+      D({width:'36px',height:'20px',borderRadius:'10px',
+        background:S.showWed?'var(--gold)':'rgba(255,255,255,.15)',
+        position:'relative',transition:'background .2s',flexShrink:'0'},[
+        D({position:'absolute',top:'2px',left:S.showWed?'17px':'2px',
+          width:'16px',height:'16px',borderRadius:'50%',background:'#fff',
+          transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.4)'}),
+      ]),
+    ]),
+  ]);
+  wedWrap.addEventListener('click',()=>set({showWed:!S.showWed}));
+  rightCol.appendChild(wedWrap);
+
+  // 自訂優惠
+  rightCol.appendChild(D({fontSize:'10px',letterSpacing:'2px',color:'rgba(255,255,255,.35)',
+    textTransform:'uppercase',padding:'4px 0 6px'},['✏️ 自訂優惠']));
+  const cxWrap=mkCustomSection(liters,safePrice);
+  cxWrap.style.margin='0 0 8px 0';
+  rightCol.appendChild(cxWrap);
+  if(cxWrap._update) setTimeout(cxWrap._update,0);
+
+  // step label 4
+  rightCol.appendChild(D({display:'flex',alignItems:'center',gap:'7px',padding:'8px 0 6px',
+    fontSize:'10px',letterSpacing:'3px',color:'rgba(255,255,255,.35)',textTransform:'uppercase'},[
+    D({width:'22px',height:'22px',borderRadius:'50%',background:'var(--g3)',display:'flex',
+      alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:'900',flexShrink:'0'},['4']),
+    D({},[
+      D({display:'flex',alignItems:'baseline',gap:'5px'},[
+        Sp({fontSize:'10px'},'比較結果'),
+        h('span',{id:'coupon-count',style:{fontSize:'10px',color:'var(--t2)'}},['']),
+      ]),
+      Sp({fontSize:'9px',color:is7Eleven?'var(--redt)':'var(--acc)',display:'block'},
+        is7Eleven?'⚠ OP券停用':'✓ 全部有效'),
+    ]),
+  ]));
+
+  const sorted=[...allResults].sort((a,b)=>{
+    if(!a.ok && b.ok) return 1;
+    if(a.ok && !b.ok) return -1;
+    return b.saving - a.saving;
+  });
+  const listWrap=D({id:'coupon-list',margin:'0'});
+  sorted.forEach((r,i)=>listWrap.appendChild(mkCoupon(r,i,best&&best.id===r.id)));
+  rightCol.appendChild(listWrap);
+
+  twoCol.appendChild(leftCol);
+  twoCol.appendChild(rightCol);
+  root.appendChild(twoCol);
+
+
+  root.appendChild(D({textAlign:'center',color:'var(--t3)',fontSize:'10px',
+    marginTop:'24px',padding:'0 16px',lineHeight:'1.9'},[
+    '台塑95+ 來源：速邁樂官網（mech-smile.com.tw）',h('br',{}),
+    'OP點以1點=1元計算  ·  週三會員日限人工島加油站',h('br',{}),
+    '本工具僅供參考，實際優惠依現場公告為準',
+  ]));
+}
+
+/* ═══════════════════════════════════════════
+   Boot
+═══════════════════════════════════════════ */
+render();
+fetchAllPrices().then(({prices,notes})=>{
+  set({prices,priceNotes:notes,loading:false});
+}).catch(()=>{
+  set({prices:{},priceNotes:['油價自動抓取失敗，請手動輸入'],loading:false});
+});
+</script>
+</body>
+</html>
