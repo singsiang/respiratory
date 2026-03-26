@@ -90,28 +90,6 @@ const FUEL_TYPES=[
 ];
 
 /* ═══════════════════════════════════════════
-   油價抓取
-═══════════════════════════════════════════ */
-const PROXY='https://api.allorigins.win/get?url=';
-async function fetchSmilePrice(){
-  const r=await fetch(PROXY+encodeURIComponent('https://www.mech-smile.com.tw/'),{signal:AbortSignal.timeout(8000)});
-  const j=await r.json();
-  const m=j.contents.match(/95\+\s*NT\s*([\d.]+)/i);
-  if(!m)throw new Error('找不到台塑95+油價');
-  return parseFloat(m[1]);
-}
-async function fetchAllPrices(){
-  const notes=[];
-  try{
-    const fp95=await fetchSmilePrice();
-    return{prices:{fp95},notes};
-  }catch(e){
-    notes.push('台塑95+ 抓取失敗，請手動輸入');
-    return{prices:{},notes};
-  }
-}
-
-/* ═══════════════════════════════════════════
    計算 — 既有優惠券
 ═══════════════════════════════════════════ */
 function calc(c,liters,price){
@@ -202,8 +180,8 @@ function calcCustom(custom, liters, price){
    State
 ═══════════════════════════════════════════ */
 const S={
-  prices:{},priceNotes:[],loading:true,
-  liters:35,manual:'',
+  price:'30.4',
+  liters:35,
   showWed:WED_ACTIVE,payOpen:false,
   customs:[
     {id:'cx1',type:'custom_discount',name:'',val:'',enabled:false},
@@ -300,7 +278,7 @@ function mkCustomSection(liters, price){
     });
     // 永遠從 S 讀最新加油量和油價
     const curLiters=S.liters;
-    const curPrice=S.manual!==''?parseFloat(S.manual)||0:(S.prices['fp95']??30.4);
+    const curPrice=parseFloat(S.price)||0;
     // 更新結果
     resultDiv.innerHTML='';
     const active=S.customs.filter(cu=>cu.enabled);
@@ -474,7 +452,7 @@ function mkFuelCalc(){
     const withTank   = tank > 0 ? +(needed - tank).toFixed(2) : null;
     const canGo      = tank > 0 ? +(tank * mpk).toFixed(0)    : null;
     const toAdd      = withTank != null ? Math.max(0, withTank) : needed;
-    const applyLiters= Math.ceil(toAdd);
+    const applyLiters= toAdd;
 
     /* 結果卡 */
     const box = document.createElement('div');
@@ -699,50 +677,9 @@ function mkPayBanner(hasOP){
   ]);
 }
 
-function mkOilPrice(){
-  const{prices,loading,priceNotes}=S;
-  const p=prices['fp95'];
-  return D({},[
-    D({fontSize:'10px',letterSpacing:'3px',color:'var(--t2)',
-      textTransform:'uppercase',padding:'16px 20px 8px'},['⛽ 台塑95+ 今日油價']),
-    D({margin:'0',background:'var(--card)',borderRadius:'18px',
-      border:'1px solid rgba(251,191,36,.3)',overflow:'hidden',animation:'fadeUp .4s .1s both'},[
-      D({background:'linear-gradient(90deg,#1e5c35,var(--g3))',
-        padding:'10px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'},[
-        Sp({fontWeight:'700',fontSize:'13px'},'速邁樂 台塑95+ 牌價'),
-        loading?D({display:'flex',alignItems:'center',gap:'6px'},[
-          h('span',{cls:'spinner'},[]),
-          Sp({fontSize:'11px',color:'rgba(255,255,255,.6)'},'抓取中…'),
-        ]):Sp({fontSize:'11px',color:'rgba(255,255,255,.6)'},'即時'),
-      ]),
-      loading?D({padding:'22px',textAlign:'center',color:'var(--acc)',fontSize:'13px'},[
-        h('span',{cls:'spinner'},[]),'自動抓取速邁樂官網油價中…',
-      ]):D({padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'},[
-        D({},[
-          D({fontSize:'11px',color:'var(--t2)',marginBottom:'4px'},['台塑95+']),
-          D({fontFamily:"'Bebas Neue',cursive",fontSize:'42px',letterSpacing:'2px',color:'var(--goldt)',lineHeight:'1'},
-            [p!=null?String(p):'—']),
-          D({fontSize:'11px',color:'var(--t2)',marginTop:'2px'},['元 / 公升']),
-        ]),
-        p!=null?D({textAlign:'right'},[
-          D({fontSize:'10px',color:'var(--t2)',marginBottom:'4px'},['來源']),
-          D({fontSize:'11px',color:'var(--acc)'},['速邁樂官網']),
-          D({fontSize:'10px',color:'var(--t3)',marginTop:'8px'},['如有差異請手動覆蓋']),
-        ]):D({fontSize:'12px',color:'var(--t2)',textAlign:'right'},['請手動輸入油價']),
-      ]),
-      !loading?D({background:'rgba(0,0,0,.15)',borderTop:'1px solid var(--bd)',
-        padding:'6px 14px',fontSize:'10px',color:'var(--t2)',lineHeight:'1.7'},
-        ['📡 資料來源：速邁樂官網（mech-smile.com.tw）']):null,
-      ...priceNotes.map(msg=>D({background:'rgba(255,180,0,.09)',
-        borderTop:'1px solid rgba(255,180,0,.2)',padding:'6px 14px',fontSize:'11px',color:'var(--gold)'},
-        ['⚠ '+msg])),
-    ]),
-  ]);
-}
-
 function updateInputDisplay(){
   // 從 state 算出總金額，直接更新 DOM，不 re-render
-  const priceVal = S.manual!=='' ? (parseFloat(S.manual)||0) : (S.prices['fp95']??30.4);
+  const priceVal = parseFloat(S.price) || 0;
   const newTotal = +(priceVal * S.liters).toFixed(1);
   const lbl   = document.getElementById('total-label');
   const disp  = document.getElementById('total-display');
@@ -757,25 +694,25 @@ function updateInputDisplay(){
 }
 
 function mkInput(price,total){
-  const{liters,manual,prices}=S;
+  const{liters}=S;
   const wrap=D({id:'input-card',margin:'0',background:'var(--card)',borderRadius:'18px',
     border:'1px solid var(--bd)',padding:'16px'});
 
   // ── 加油量 stepper ──
-  const litersInp = h('input',{type:'number',id:'liters-input',value:String(liters),
+  const litersInp = h('input',{type:'number',id:'liters-input',value:String(liters), step:'any',
     style:{flex:'1',background:'none',border:'none',color:'var(--t0)',fontSize:'19px',
       fontWeight:'900',textAlign:'center',outline:'none',width:'0',
       fontFamily:"'Bebas Neue',cursive",letterSpacing:'1px',transition:'box-shadow .15s'}});
   litersInp.addEventListener('input', e=>{
-    const v = Math.max(1, parseInt(e.target.value)||1);
-    S.liters = v;
+    const v = Math.max(0, parseFloat(e.target.value)||0);
+    S.liters = v || 0.1; // 避免變成 0 導致計算錯誤
     updateInputDisplay();
   });
 
   const minusBtn = h('button',{style:{background:'none',border:'none',color:'var(--acc)',fontSize:'26px',padding:'4px 13px',lineHeight:'1'}});
   minusBtn.textContent='-';
   minusBtn.addEventListener('click',()=>{
-    S.liters = Math.max(1, S.liters-5);
+    S.liters = Math.max(1, Math.ceil(S.liters) - 1);
     litersInp.value = String(S.liters);
     updateInputDisplay();
   });
@@ -783,7 +720,7 @@ function mkInput(price,total){
   const plusBtn = h('button',{style:{background:'none',border:'none',color:'var(--acc)',fontSize:'26px',padding:'4px 13px',lineHeight:'1'}});
   plusBtn.textContent='+';
   plusBtn.addEventListener('click',()=>{
-    S.liters = S.liters+5;
+    S.liters = Math.floor(S.liters) + 1;
     litersInp.value = String(S.liters);
     updateInputDisplay();
   });
@@ -792,18 +729,18 @@ function mkInput(price,total){
     borderRadius:'10px',border:'1px solid var(--bd)',overflow:'hidden'},[minusBtn,litersInp,plusBtn]);
 
   // ── 手動油價 ──
-  const manualInp = h('input',{type:'number',
+  const priceInp = h('input',{type:'number',
     cls:'field-input',
-    placeholder:(prices['fp95']!=null?prices['fp95']:'—')+' 元',
-    value:manual,step:'0.1'});
-  manualInp.addEventListener('input', e=>{
-    S.manual = e.target.value;
+    placeholder:'例如 30.4',
+    value:S.price,step:'0.1'});
+  priceInp.addEventListener('input', e=>{
+    S.price = e.target.value;
     updateInputDisplay();
   });
 
   wrap.appendChild(D({display:'flex',gap:'12px',marginBottom:'12px'},[
     D({flex:'1'},[h('label',{cls:'field-label'},['加油量（公升）']),stepper]),
-    D({flex:'1'},[h('label',{cls:'field-label'},['手動油價（可覆蓋）']),manualInp]),
+    D({flex:'1'},[h('label',{cls:'field-label'},['每公升油價（元）']),priceInp]),
   ]));
 
   wrap.appendChild(D({background:'linear-gradient(90deg,rgba(46,139,62,.3),rgba(93,191,122,.12))',
@@ -991,17 +928,16 @@ function renderCouponResults(liters, price){
    Main render
 ═══════════════════════════════════════════ */
 function render(){
-  const{prices,liters,manual,showWed,payMethod}=S;
+  const{liters,showWed,payMethod}=S;
   const is7Eleven = payMethod==='7eleven';
-  const price=manual!==''?parseFloat(manual)||0:(prices['fp95']??null);
-  const safePrice=price??30.4;
-  const total=+(safePrice*liters).toFixed(1);
+  const price=parseFloat(S.price)||0;
+  const total=+(price*liters).toFixed(1);
 
   // 根據付款方式過濾可用優惠券
   // 7-11 模式下 OP 點數券無效，直接標記不可用
   const allC=showWed?[...COUPONS_BASE,...COUPONS_WED]:COUPONS_BASE;
   const couponResults=allC.map(c=>{
-    const r={...c,...calc(c,liters,safePrice)};
+    const r={...c,...calc(c,liters,price)};
     if(is7Eleven && (c.type==='op')){
       r.ok=false;
       r.blockedBy7='使用數位禮券/開心卡支付，OP 點數回饋無效';
@@ -1009,7 +945,7 @@ function render(){
     return r;
   });
   const customResults=S.customs.map(cu=>{
-    const r=calcCustom(cu,liters,safePrice);
+    const r=calcCustom(cu,liters,price);
     if(!r) return null;
     if(is7Eleven && (r.type==='custom_op'||r.type==='custom_fixed')){
       r.ok=false;
@@ -1051,13 +987,8 @@ function render(){
   leftCol.appendChild(fcWrap);
   if(fcWrap._calcAndRender) fcWrap._calcAndRender();
 
-  // 油價卡
-  const oilCard=mkOilPrice();
-  oilCard.style.margin='0 0 8px 0';
-  leftCol.appendChild(oilCard);
-
-  // 加油量卡
-  const inputCard = mkInput(price!=null?price:'–',total);
+  // 加油量卡 (現在包含手動油價輸入)
+  const inputCard = mkInput(price,total);
   inputCard.style.margin='0';
   leftCol.appendChild(inputCard);
 
@@ -1099,7 +1030,7 @@ function render(){
   // 自訂優惠
   rightCol.appendChild(D({fontSize:'10px',letterSpacing:'2px',color:'rgba(255,255,255,.35)',
     textTransform:'uppercase',padding:'4px 0 6px'},['✏️ 自訂優惠']));
-  const cxWrap=mkCustomSection(liters,safePrice);
+  const cxWrap=mkCustomSection(liters,price);
   cxWrap.style.margin='0 0 8px 0';
   rightCol.appendChild(cxWrap);
   if(cxWrap._update) setTimeout(cxWrap._update,0);
@@ -1135,7 +1066,7 @@ function render(){
 
   root.appendChild(D({textAlign:'center',color:'var(--t3)',fontSize:'10px',
     marginTop:'24px',padding:'0 16px',lineHeight:'1.9'},[
-    '台塑95+ 來源：速邁樂官網（mech-smile.com.tw）',h('br',{}),
+    '台塑95+ 油價請自行確認與輸入',h('br',{}),
     'OP點以1點=1元計算  ·  週三會員日限人工島加油站',h('br',{}),
     '本工具僅供參考，實際優惠依現場公告為準',
   ]));
@@ -1145,11 +1076,6 @@ function render(){
    Boot
 ═══════════════════════════════════════════ */
 render();
-fetchAllPrices().then(({prices,notes})=>{
-  set({prices,priceNotes:notes,loading:false});
-}).catch(()=>{
-  set({prices:{},priceNotes:['油價自動抓取失敗，請手動輸入'],loading:false});
-});
 </script>
 </body>
 </html>
