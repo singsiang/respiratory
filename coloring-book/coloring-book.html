@@ -116,9 +116,105 @@
         const templates = [
             // 1. Baby Shark (鯊魚寶寶)
             `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet"><path d="M 40,32 L 48,10 L 55,33" ${strokeStyle}/><path d="M 45,65 L 50,85 L 60,65" ${strokeStyle}/><path d="M 15,55 C 20,25 65,25 75,45 L 95,30 L 90,55 L 95,80 L 75,65 C 65,85 20,85 15,55 Z" ${strokeStyle}/><circle cx="32" cy="45" r="4" fill="#1f2937" /><path d="M 20,55 Q 26,62 34,55" ${strokeStyle}/><path d="M 45,45 L 45,55 M 50,46 L 50,54" stroke="#1f2937" stroke-width="3" stroke-linecap="round" fill="none"/></svg>`,
+            
             // 2. 胖胖小企鵝
-            `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet"><path d="M 50,10 C 20,10 15,55 20,80 C 30,90 70,90 80,80 C 85,55 80,10 50,10 Z" ${strokeStyle}/><path d="M 50,35 C 30,35 25,65 30,82 C 40,88 60,88 70,82 C 75,65 70,35 50,35 Z" ${strokeStyle}/><circle cx="38" cy="28" r="4" fill="#1f2937" /><circle cx="62" cy="28" r="4" fill="#1f2937" /><path d="M 45,35 L 55,35 L 50,42 Z" ${strokeStyle}/><path d="M 17,45 C -5,55 5,75 12,65" ${strokeStyle}/><path d="M 83,45 C 105,55 95,75 88,65" ${strokeStyle}/><path d="M 30,85 C 30,98 15,98 25,84" ${strokeStyle}/><path d="M 70,85 C 70,98 85,98 75,84" ${strokeStyle}/></svg>`
-            // 為節省篇幅，此處保留前兩個圖案，其餘圖案陣列可完全沿用原代碼
+            `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet"><path d="M 50,10 C 20,10 15,55 20,80 C 30,90 70,90 80,80 C 85,55 80,10 50,10 Z" ${strokeStyle}/><path d="M 50,35 C 30,35 25,65 30,82 C 40,88 60,88 70,82 C 75,65 70,35 50,35 Z" ${strokeStyle}/><circle cx="38" cy="28" r="4" fill="#1f2937" /><circle cx="62" cy="28" r="4" fill="#1f2937" /><path d="M 45,35 L 55,35 L 50,42 Z" ${strokeStyle}/><path d="M 17,45 C -5,55 5,75 12,65" ${strokeStyle}/><path d="M 83,45 C 105,55 95,75 88,65" ${strokeStyle}/><path d="M 30,85 C 30,98 15,98 25,84" ${strokeStyle}/><path d="M 70,85 C 70,98 85,98 75,84" ${strokeStyle}/></svg>`,
+
+            // 3. 溫馨小房子 (新增)
+            `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet">
+                <!-- 煙囪 -->
+                <path d="M 70,40 L 70,20 L 80,20 L 80,45" ${strokeStyle}/>
+                <!-- 煙 -->
+                <circle cx="75" cy="12" r="3" ${strokeStyle}/>
+                <circle cx="82" cy="5" r="4" ${strokeStyle}/>
+                <!-- 屋頂 -->
+                <path d="M 10,50 L 50,15 L 90,50 Z" ${strokeStyle}/>
+                <!-- 房屋主體 -->
+                <path d="M 20,50 L 20,90 L 80,90 L 80,50" ${strokeStyle}/>
+                <!-- 門 -->
+                <path d="M 40,90 L 40,65 L 60,65 L 60,90" ${strokeStyle}/>
+                <circle cx="55" cy="78" r="2" fill="#1f2937"/>
+                <!-- 窗戶 -->
+                <rect x="25" y="55" width="10" height="10" ${strokeStyle}/>
+                <path d="M 30,55 L 30,65 M 25,60 L 35,60" ${strokeStyle}/>
+                <rect x="65" y="55" width="10" height="10" ${strokeStyle}/>
+                <path d="M 70,55 L 70,65 M 65,60 L 75,60" ${strokeStyle}/>
+            </svg>`,
+
+            // 4. 嘟嘟小汽車 (新增)
+            `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet">
+                <!-- 車身 -->
+                <path d="M 15,65 L 15,45 C 15,38 20,38 25,38 L 35,22 C 40,15 48,18 55,18 L 75,22 C 82,25 88,35 90,40 L 92,65 C 92,70 85,70 80,70 L 25,70 C 20,70 15,70 15,65 Z" ${strokeStyle}/>
+                <!-- 車窗 -->
+                <path d="M 35,38 L 40,22 L 53,22 L 53,38 Z" ${strokeStyle}/>
+                <path d="M 57,38 L 57,22 L 70,25 L 75,38 Z" ${strokeStyle}/>
+                <!-- 輪胎 -->
+                <circle cx="30" cy="70" r="12" ${strokeStyle} fill="white" />
+                <circle cx="30" cy="70" r="4" fill="#1f2937" />
+                <circle cx="75" cy="70" r="12" ${strokeStyle} fill="white" />
+                <circle cx="75" cy="70" r="4" fill="#1f2937" />
+                <!-- 車燈 -->
+                <path d="M 90,45 L 95,45 L 95,52 L 91,52" ${strokeStyle}/>
+                <path d="M 15,45 L 10,45 L 10,52 L 14,52" ${strokeStyle}/>
+            </svg>`,
+
+            // 5. 可愛大蘋果 (新增)
+            `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet">
+                <!-- 蘋果主體 -->
+                <path d="M 50,30 C 20,15 5,50 25,80 C 35,95 45,85 50,85 C 55,85 65,95 75,80 C 95,50 80,15 50,30 Z" ${strokeStyle} fill="white"/>
+                <!-- 梗 -->
+                <path d="M 50,30 C 50,15 55,10 60,5" ${strokeStyle}/>
+                <!-- 葉片 -->
+                <path d="M 55,20 C 75,20 85,5 85,25 C 85,40 65,35 55,20 Z" ${strokeStyle} fill="white"/>
+                <path d="M 55,20 C 65,22 75,22 83,23" ${strokeStyle}/>
+            </svg>`,
+
+            // 6. 微笑小花朵 (新增)
+            `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet">
+                <!-- 莖 -->
+                <path d="M 50,55 L 50,95" ${strokeStyle}/>
+                <!-- 葉片 -->
+                <path d="M 50,75 C 25,75 25,50 50,75" ${strokeStyle} fill="white"/>
+                <path d="M 50,85 C 75,85 75,60 50,85" ${strokeStyle} fill="white"/>
+                <!-- 花瓣 -->
+                <path d="M 50,25 C 35,5 65,5 50,25" ${strokeStyle} fill="white"/>
+                <path d="M 50,55 C 35,75 65,75 50,55" ${strokeStyle} fill="white"/>
+                <path d="M 35,40 C 15,25 15,55 35,40" ${strokeStyle} fill="white"/>
+                <path d="M 65,40 C 85,25 85,55 65,40" ${strokeStyle} fill="white"/>
+                <!-- 斜向花瓣 -->
+                <path d="M 39,29 C 15,10 30,0 39,29" ${strokeStyle} fill="white"/>
+                <path d="M 61,29 C 85,10 70,0 61,29" ${strokeStyle} fill="white"/>
+                <path d="M 39,51 C 15,70 30,80 39,51" ${strokeStyle} fill="white"/>
+                <path d="M 61,51 C 85,70 70,80 61,51" ${strokeStyle} fill="white"/>
+                <!-- 花蕊中心 -->
+                <circle cx="50" cy="40" r="12" ${strokeStyle} fill="white" />
+                <!-- 微笑表情 -->
+                <circle cx="46" cy="37" r="2" fill="#1f2937" />
+                <circle cx="54" cy="37" r="2" fill="#1f2937" />
+                <path d="M 45,43 C 48,46 52,46 55,43" ${strokeStyle} stroke-width="2"/>
+            </svg>`,
+
+            // 7. 飛舞蝴蝶 (新增)
+            `<svg viewBox="0 0 100 100" class="w-full h-full max-w-full max-h-full drop-shadow-md" preserveAspectRatio="xMidYMid meet">
+                <!-- 觸角 -->
+                <path d="M 47,25 C 35,5 25,15 35,20" ${strokeStyle}/>
+                <path d="M 53,25 C 65,5 75,15 65,20" ${strokeStyle}/>
+                <circle cx="35" cy="20" r="2" fill="#1f2937"/>
+                <circle cx="65" cy="20" r="2" fill="#1f2937"/>
+                <!-- 左翅膀 -->
+                <path d="M 45,40 C 5,20 0,60 45,60" ${strokeStyle} fill="white"/>
+                <path d="M 45,60 C 15,65 20,95 45,75" ${strokeStyle} fill="white"/>
+                <!-- 右翅膀 -->
+                <path d="M 55,40 C 95,20 100,60 55,60" ${strokeStyle} fill="white"/>
+                <path d="M 55,60 C 85,65 80,95 55,75" ${strokeStyle} fill="white"/>
+                <!-- 身體 -->
+                <rect x="45" y="25" width="10" height="50" rx="5" ${strokeStyle} fill="white"/>
+                <!-- 翅膀花紋 -->
+                <circle cx="25" cy="45" r="6" ${strokeStyle}/>
+                <circle cx="75" cy="45" r="6" ${strokeStyle}/>
+                <circle cx="32" cy="70" r="4" ${strokeStyle}/>
+                <circle cx="68" cy="70" r="4" ${strokeStyle}/>
+            </svg>`
         ];
 
         let currentTemplateIndex = 0;
